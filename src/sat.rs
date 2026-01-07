@@ -22,7 +22,7 @@ fn naive_create_possible_valuations(vars: &[String]) -> Vec<Map> {
     }
 }
 
-fn naive_solve_sat(expr: Expr) -> Option<Map> {
+pub fn naive_solve_sat(expr: Expr) -> Option<Map> {
     let vars = collect_vars(expr.clone());
     let valuations = naive_create_possible_valuations(&vars);
 

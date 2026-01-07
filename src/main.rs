@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use expr_eval_server::expr::*;
 use expr_eval_server::sat::*;
 
@@ -5,16 +6,14 @@ use expr_eval_server::sat::*;
 enum State {
     Idle,
     AcceptingExpr,
-    AcceptingMap(Expr),
-    Ready(Expr, Map),
-    Done(Result<bool, String>),
+    Ready(Expr),
+    Done(Option<Map>),
 }
 
 #[derive(Debug, Clone)]
 enum Command {
     Begin,
     GotExpr(Expr),
-    GotMap(Map),
     Compute,
     End,
 }
@@ -22,9 +21,8 @@ enum Command {
 fn process_command(state: State, com: Command) -> Option<State> {
     match (state, com) {
         (State::Idle, Command::Begin) => Some(State::AcceptingExpr),
-        (State::AcceptingExpr, Command::GotExpr(e)) => Some(State::AcceptingMap(e)),
-        (State::AcceptingMap(e), Command::GotMap(m)) => Some(State::Ready(e, m)),
-        (State::Ready(e, m), Command::Compute) => Some(State::Done(evaluate(e, &m))),
+        (State::AcceptingExpr, Command::GotExpr(e)) => Some(State::Ready(e)),
+        (State::Ready(e), Command::Compute) => Some(State::Done(naive_solve_sat(e))),
         (_, Command::End) => Some(State::Idle),
         (_, _) => None,
     }
@@ -40,6 +38,7 @@ fn process_commands(state: State, coms: Vec<Command>) -> Option<State> {
     }
 }
 
+#[test]
 fn example_process_commands() {
     let expr = Expr::Conj(
         Box::new(Expr::True),
@@ -49,10 +48,6 @@ fn example_process_commands() {
         )),
     );
 
-    let mut valuation = Map::new();
-    valuation.insert("X".to_string(), true);
-    //  valuation.insert("X".to_string(), false);
-
     // State
 
     let initial_state = State::Idle;
@@ -61,7 +56,6 @@ fn example_process_commands() {
         Command::End,
         Command::Begin,
         Command::GotExpr(expr),
-        Command::GotMap(valuation),
         Command::Compute,
     ];
 
@@ -72,10 +66,9 @@ fn example_process_commands() {
         None => println!("Processing commands failed."),
     }
 
-    assert!(result_state == Some(State::Done(Ok(true))));
+    assert!(format!("{result_state:?}") == "Some(Done(Some({\"X\": true})))");
 }
 
 fn main() {
-    example_process_commands();
     example_naive_solve_sat();
 }
