@@ -21,7 +21,7 @@ Inductive t_State : Type :=
 | State_Idle
 | State_AcceptingExpr
 | State_Ready : t_Expr -> _
-| State_Done : t_Option ((t_BTreeMap ((t_String)) ((bool)) ((t_Global)))) -> _.
+| State_Done : t_Option ((t_BTreeMap ((ascii)) ((bool)) ((t_Global)))) -> _.
 
 
 

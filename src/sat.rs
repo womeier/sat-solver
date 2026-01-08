@@ -2,7 +2,7 @@
 use crate::expr::*;
 
 // TODO improve performance (reduce cloning)
-fn naive_create_possible_valuations(vars: &[String]) -> Vec<Map> {
+fn naive_create_possible_valuations(vars: &[char]) -> Vec<Map> {
     if vars.is_empty() {
         return vec![Map::new()];
     }
@@ -16,7 +16,7 @@ fn naive_create_possible_valuations(vars: &[String]) -> Vec<Map> {
         .iter()
         .map(|e| {
             let mut e_new = e.clone();
-            e_new.insert(v.to_string(), true);
+            e_new.insert(*v, true);
             e_new
         })
         .collect();
@@ -25,7 +25,7 @@ fn naive_create_possible_valuations(vars: &[String]) -> Vec<Map> {
         .iter()
         .map(|e| {
             let mut e_new = e.clone();
-            e_new.insert(v.to_string(), false);
+            e_new.insert(*v, false);
             e_new
         })
         .collect();
@@ -49,11 +49,11 @@ pub fn naive_solve_sat(expr: Expr) -> Option<Map> {
 
 pub fn example_naive_solve_sat() {
     let expr = Expr::Neg(Box::new(Expr::Conj(
-        Box::new(Expr::Variable("Y".to_string())),
+        Box::new(Expr::Variable('Y')),
         Box::new(Expr::Conj(
             Box::new(Expr::True),
             Box::new(Expr::Disj(
-                Box::new(Expr::Variable("X".to_string())),
+                Box::new(Expr::Variable('X')),
                 Box::new(Expr::False),
             )),
         )),

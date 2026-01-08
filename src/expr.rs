@@ -2,13 +2,13 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
-pub type Map = BTreeMap<String, bool>;
+pub type Map = BTreeMap<char, bool>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     True,
     False,
-    Variable(String),
+    Variable(char),
     Conj(Box<Expr>, Box<Expr>),
     Disj(Box<Expr>, Box<Expr>),
     Neg(Box<Expr>),
@@ -37,7 +37,7 @@ pub fn evaluate(expr: Expr, valuation: &Map) -> Result<bool, String> {
         Expr::Variable(s) => valuation
             .get(&s)
             .copied()
-            .ok_or(format!("Variable not found: {s}").to_string()),
+            .ok_or(format!("Variable not found: {s}")),
     }
 }
 
@@ -46,21 +46,21 @@ fn example_eval() {
     let expr = Expr::Conj(
         Box::new(Expr::True),
         Box::new(Expr::Disj(
-            Box::new(Expr::Variable("X".to_string())),
+            Box::new(Expr::Variable('X')),
             Box::new(Expr::False),
         )),
     );
 
     let mut valuation = Map::new();
-    valuation.insert("X".to_string(), true);
-    valuation.insert("Y".to_string(), false);
+    valuation.insert('X', true);
+    valuation.insert('Y', false);
 
     let res = evaluate(expr, &valuation);
     assert!(res == Ok(true));
 }
 
 // TODO(performance): don't use Vec
-pub fn collect_vars(expr: Expr) -> Vec<String> {
+pub fn collect_vars(expr: Expr) -> Vec<char> {
     match expr {
         Expr::Variable(v) => vec![v],
         Expr::Neg(e) => collect_vars(*e),

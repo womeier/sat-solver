@@ -20,7 +20,7 @@ From Core Require Import Core.
 Inductive t_Expr : Type :=
 | Expr_True
 | Expr_False
-| Expr_Variable : t_String -> _
+| Expr_Variable : ascii -> _
 | Expr_Conj : t_Box ((t_Expr)) ((t_Global)) -> t_Box ((t_Expr)) ((t_Global)) -> _
 | Expr_Disj : t_Box ((t_Expr)) ((t_Global)) -> t_Box ((t_Expr)) ((t_Global)) -> _
 | Expr_Neg : t_Box ((t_Expr)) ((t_Global)) -> _.
@@ -39,7 +39,7 @@ Inductive t_Expr : Type :=
 
 
 
-Instance t_Display_467191594 : t_Display ((t_Expr)) :=
+Instance t_Display_128137783 : t_Display ((t_Expr)) :=
   {
     implaabbcc_t_Display_f_fmt := fun  (self : t_Expr) (f : t_Formatter)=>
       let (f,hax_temp_output) := match self with
@@ -79,7 +79,7 @@ Instance t_Display_467191594 : t_Display ((t_Expr)) :=
       (f,hax_temp_output);
   }.
 
-Fixpoint evaluate (expr : t_Expr) (valuation : t_BTreeMap ((t_String)) ((bool)) ((t_Global))) : t_Result ((bool)) ((t_String)) :=
+Fixpoint evaluate (expr : t_Expr) (valuation : t_BTreeMap ((ascii)) ((bool)) ((t_Global))) : t_Result ((bool)) ((t_String)) :=
   run (match expr with
   | Expr_True =>
     Result_Ok (Result_Ok ((true : bool)))
@@ -101,10 +101,10 @@ Fixpoint evaluate (expr : t_Expr) (valuation : t_BTreeMap ((t_String)) ((bool)) 
   | Expr_Variable (s) =>
     Result_Ok (let args := (s) in
     let args := [impl__new_display (args)] in
-    impl__ok_or (impl_2__copied (impl_20__get (valuation) (s))) ((* f_to_string *) (must_use (format (impl_1__new_v1 ([("Variable not found: "%string : string)]) (args))))))
+    impl__ok_or (impl_2__copied (impl_20__get (valuation) (s))) (must_use (format (impl_1__new_v1 ([("Variable not found: "%string : string)]) (args)))))
   end).
 
-Fixpoint collect_vars (expr : t_Expr) : t_Vec ((t_String)) ((t_Global)) :=
+Fixpoint collect_vars (expr : t_Expr) : t_Vec ((ascii)) ((t_Global)) :=
   match expr with
   | Expr_Variable (v) =>
     impl__into_vec (unsize (box_new ([v])))

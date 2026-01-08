@@ -15,7 +15,7 @@ From Core Require Import Core.
 
 
 
-Fixpoint naive_create_possible_valuations (vars : t_Slice t_String) : t_Vec ((t_BTreeMap ((t_String)) ((bool)) ((t_Global)))) ((t_Global)) :=
+Fixpoint naive_create_possible_valuations (vars : t_Slice ascii) : t_Vec ((t_BTreeMap ((ascii)) ((bool)) ((t_Global)))) ((t_Global)) :=
   run (let _ := if
     impl__is_empty (vars)
   then
@@ -28,24 +28,24 @@ Fixpoint naive_create_possible_valuations (vars : t_Slice t_String) : t_Vec ((t_
   let evals1 := naive_create_possible_valuations (vs) in
   let hoist8 := fun e =>
     let e_new := f_clone (e) in
-    let (tmp0,out) := impl_20__insert (e_new) ((* f_to_string *) (v)) ((true : bool)) in
+    let (tmp0,out) := impl_20__insert (e_new) (v) ((true : bool)) in
     let e_new := tmp0 in
     let _ := out in
     e_new in
   let hoist9 := f_map (impl__iter (f_deref (evals1))) (hoist8) in
-  let evals1 : t_Vec ((t_BTreeMap ((t_String)) ((bool)) ((t_Global)))) ((t_Global)) := f_collect (hoist9) in
+  let evals1 : t_Vec ((t_BTreeMap ((ascii)) ((bool)) ((t_Global)))) ((t_Global)) := f_collect (hoist9) in
   let hoist10 := fun e =>
     let e_new := f_clone (e) in
-    let (tmp0,out) := impl_20__insert (e_new) ((* f_to_string *) (v)) ((false : bool)) in
+    let (tmp0,out) := impl_20__insert (e_new) (v) ((false : bool)) in
     let e_new := tmp0 in
     let _ := out in
     e_new in
   let hoist11 := f_map (impl__iter (f_deref (evals1))) (hoist10) in
-  let evals2 : t_Vec ((t_BTreeMap ((t_String)) ((bool)) ((t_Global)))) ((t_Global)) := f_collect (hoist11) in
+  let evals2 : t_Vec ((t_BTreeMap ((ascii)) ((bool)) ((t_Global)))) ((t_Global)) := f_collect (hoist11) in
   let evals1 := f_extend (evals1) (evals2) in
   impl__to_vec (f_deref (evals1)))).
 
-Definition naive_solve_sat (expr : t_Expr) : t_Option ((t_BTreeMap ((t_String)) ((bool)) ((t_Global)))) :=
+Definition naive_solve_sat (expr : t_Expr) : t_Option ((t_BTreeMap ((ascii)) ((bool)) ((t_Global)))) :=
   let vars := collect_vars (f_clone (expr)) in
   let valuations := naive_create_possible_valuations (f_deref (vars)) in
   let _ := f_fold (f_into_iter (valuations)) (tt) (fun _ v =>
@@ -61,7 +61,7 @@ Definition naive_solve_sat (expr : t_Expr) : t_Option ((t_BTreeMap ((t_String)) 
   Option_None.
 
 Definition example_naive_solve_sat '(_ : unit) : unit :=
-  let expr := Expr_Neg (Expr_Conj (Expr_Variable ((* f_to_string *) (("Y"%string : string)))) (Expr_Conj (Expr_True) (Expr_Disj (Expr_Variable ((* f_to_string *) (("X"%string : string)))) (Expr_False)))) in
+  let expr := Expr_Neg (Expr_Conj (Expr_Variable (("Y"%char : ascii))) (Expr_Conj (Expr_True) (Expr_Disj (Expr_Variable (("X"%char : ascii))) (Expr_False)))) in
   let res := naive_solve_sat (f_clone (expr)) in
   let args := (expr,res) in
   let args := [impl__new_display ((fstargs)); impl__new_debug ((sndargs))] in
