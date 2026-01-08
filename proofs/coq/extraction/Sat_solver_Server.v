@@ -17,8 +17,6 @@ From Core Require Import Core.
 
 
 
-
-
 Inductive t_State : Type :=
 | State_Idle
 | State_AcceptingExpr
@@ -65,16 +63,12 @@ Definition process_command (state : t_State) (com : t_Command) : t_Option ((t_St
     Option_None
   end.
 
-Definition main '(_ : unit) : unit :=
-  let _ := example_naive_solve_sat (tt) in
-  tt.
-
 Fixpoint process_commands (state : t_State) (coms : t_Slice t_Command) : t_ControlFlow ((t_Option ((t_State)))) ((t_Option ((t_Option ((t_State)))))) :=
   let _ := if
     impl__is_empty (coms)
   then
-    let hoist1 := ControlFlow_Break (Option_Some (state)) in
-    ControlFlow_Continue (never_to_any (hoist1))
+    let hoist13 := ControlFlow_Break (Option_Some (state)) in
+    ControlFlow_Continue (never_to_any (hoist13))
   else
     ControlFlow_Continue (tt) in
   ControlFlow_Continue (let c := f_index (coms) ((0 : t_usize)) in
