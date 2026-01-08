@@ -28,14 +28,16 @@ fn process_command(state: State, com: Command) -> Option<State> {
     }
 }
 
-fn process_commands(state: State, coms: Vec<Command>) -> Option<State> {
-    match coms.as_slice() {
-        [] => Some(state),
-        [c, cs @ ..] => {
-            let new_state = process_command(state, c.clone())?;
-            process_commands(new_state, cs.to_vec().clone())
-        }
+fn process_commands(state: State, coms: &[Command]) -> Option<State> {
+    if coms.is_empty() {
+        return Some(state);
     }
+
+    let c = &coms[0];
+    let cs = &coms[1..];
+
+    let new_state = process_command(state, c.clone())?;
+    process_commands(new_state, cs)
 }
 
 #[test]
@@ -59,7 +61,7 @@ fn example_process_commands() {
         Command::Compute,
     ];
 
-    let result_state = process_commands(initial_state, comms.to_vec());
+    let result_state = process_commands(initial_state, &comms);
 
     match &result_state {
         Some(succ) => println!("Resulting state: {succ:?}"),

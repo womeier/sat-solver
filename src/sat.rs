@@ -1,25 +1,37 @@
 #![allow(dead_code)]
 use crate::expr::*;
 
-// TODO improve performance
+// TODO improve performance (reduce cloning)
 fn naive_create_possible_valuations(vars: &[String]) -> Vec<Map> {
-    match &vars {
-        [] => vec![Map::new()],
-        [v, vs @ ..] => {
-            let mut evals1 = naive_create_possible_valuations(vs);
-            let mut evals2 = evals1.clone();
-
-            for eval in evals1.iter_mut() {
-                eval.insert(v.to_string(), true);
-            }
-
-            for eval in evals2.iter_mut() {
-                eval.insert(v.to_string(), false);
-            }
-            evals1.extend(evals2);
-            evals1
-        }
+    if vars.is_empty() {
+        return vec![Map::new()];
     }
+
+    let v = &vars[0];
+    let vs = &vars[1..];
+
+    let evals1 = naive_create_possible_valuations(vs);
+
+    let mut evals1: Vec<Map> = evals1
+        .iter()
+        .map(|e| {
+            let mut e_new = e.clone();
+            e_new.insert(v.to_string(), true);
+            e_new
+        })
+        .collect();
+
+    let evals2: Vec<Map> = evals1
+        .iter()
+        .map(|e| {
+            let mut e_new = e.clone();
+            e_new.insert(v.to_string(), false);
+            e_new
+        })
+        .collect();
+
+    evals1.extend(evals2);
+    evals1.to_vec()
 }
 
 pub fn naive_solve_sat(expr: Expr) -> Option<Map> {
@@ -27,9 +39,8 @@ pub fn naive_solve_sat(expr: Expr) -> Option<Map> {
     let valuations = naive_create_possible_valuations(&vars);
 
     for v in valuations {
-        if let Ok(result) = evaluate(expr.clone(), &v)
-            && result
-        {
+        let result = evaluate(expr.clone(), &v);
+        if result.is_ok_and(|r| r) {
             return Some(v);
         }
     }
