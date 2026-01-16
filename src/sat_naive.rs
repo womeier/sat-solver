@@ -34,7 +34,7 @@ fn naive_create_possible_valuations(vars: &[char]) -> Vec<Map> {
     evals1.to_vec()
 }
 
-pub fn naive_solve_sat(expr: Expr) -> Option<Map> {
+pub fn solve_sat(expr: Expr) -> Option<Map> {
     let vars = collect_vars(expr.clone());
     let valuations = naive_create_possible_valuations(&vars);
 
@@ -47,7 +47,7 @@ pub fn naive_solve_sat(expr: Expr) -> Option<Map> {
     None
 }
 
-pub fn example_naive_solve_sat() {
+pub fn example_solve_sat_naive() {
     let expr = Expr::Neg(Box::new(Expr::Conj(
         Box::new(Expr::Variable('Y')),
         Box::new(Expr::Conj(
@@ -59,6 +59,6 @@ pub fn example_naive_solve_sat() {
         )),
     )));
 
-    let res = naive_solve_sat(expr.clone());
+    let res = solve_sat(expr.clone());
     println!("{expr}: {res:?}");
 }
