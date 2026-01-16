@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use crate::expr::*;
-use crate::sat::*;
+use crate::sat_naive::*;
 
 #[derive(Debug, Clone, PartialEq)]
 enum State {
