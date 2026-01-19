@@ -1,5 +1,0 @@
--R ./ TODO
--arg -w
--arg all
-
-Sat_solver.v

@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::fmt;
 
 pub type Map = BTreeMap<char, bool>;
@@ -27,15 +27,15 @@ impl fmt::Display for Expr {
     }
 }
 
-pub fn evaluate(expr: Expr, valuation: &Map) -> Result<bool, String> {
+pub fn evaluate(expr: &Expr, valuation: &Map) -> Result<bool, String> {
     match expr {
         Expr::True => Ok(true),
         Expr::False => Ok(false),
-        Expr::Neg(e) => evaluate(*e, valuation).map(|x| !x),
-        Expr::Conj(e1, e2) => Ok(evaluate(*e1, valuation)? && evaluate(*e2, valuation)?),
-        Expr::Disj(e1, e2) => Ok(evaluate(*e1, valuation)? || evaluate(*e2, valuation)?),
+        Expr::Neg(e) => evaluate(e, valuation).map(|x| !x),
+        Expr::Conj(e1, e2) => Ok(evaluate(e1, valuation)? && evaluate(e2, valuation)?),
+        Expr::Disj(e1, e2) => Ok(evaluate(e1, valuation)? || evaluate(e2, valuation)?),
         Expr::Variable(s) => valuation
-            .get(&s)
+            .get(s)
             .copied()
             .ok_or(format!("Variable not found: {s}")),
     }
@@ -55,21 +55,25 @@ fn example_eval() {
     valuation.insert('X', true);
     valuation.insert('Y', false);
 
-    let res = evaluate(expr, &valuation);
+    let res = evaluate(&expr, &valuation);
     assert!(res == Ok(true));
 }
 
-// TODO(performance): don't use Vec
-pub fn collect_vars(expr: Expr) -> Vec<char> {
+fn collect_vars_aux(expr: Expr) -> HashSet<char> {
     match expr {
-        Expr::Variable(v) => vec![v],
-        Expr::Neg(e) => collect_vars(*e),
+        Expr::Variable(v) => vec![v].into_iter().collect(),
+        Expr::Neg(e) => collect_vars_aux(*e),
         Expr::Disj(e1, e2) | Expr::Conj(e1, e2) => {
-            let mut vs1 = collect_vars(*e1);
-            let vs2 = collect_vars(*e2);
+            let mut vs1 = collect_vars_aux(*e1);
+            let vs2 = collect_vars_aux(*e2);
             vs1.extend(vs2);
             vs1
         }
-        Expr::True | Expr::False => Vec::new(),
+        Expr::True | Expr::False => HashSet::new(),
     }
+}
+
+pub fn collect_vars(expr: Expr) -> Vec<char> {
+    let vars = collect_vars_aux(expr);
+    vars.into_iter().collect()
 }

@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 use crate::expr::*;
+use crate::sat_naive::SAT_SOLVER_NAIVE;
 
 #[derive(Debug, Clone, PartialEq)]
 enum State {
@@ -21,7 +22,7 @@ fn process_command(state: State, com: Command) -> Option<State> {
     match (state, com) {
         (State::Idle, Command::Begin) => Some(State::AcceptingExpr),
         (State::AcceptingExpr, Command::GotExpr(e)) => Some(State::Ready(e)),
-        (State::Ready(e), Command::Compute) => Some(State::Done(crate::sat_naive::solve_sat(e))),
+        (State::Ready(e), Command::Compute) => Some(State::Done((SAT_SOLVER_NAIVE.solve)(&e))),
         (_, Command::End) => Some(State::Idle),
         (_, _) => None,
     }

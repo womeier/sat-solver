@@ -1,64 +1,50 @@
 #![allow(dead_code)]
 use crate::expr::*;
+use crate::sat::SatSolver;
 
-// TODO improve performance (reduce cloning)
-fn naive_create_possible_valuations(vars: &[char]) -> Vec<Map> {
+fn initial_valuation(vars: &[char]) -> Map {
+    let mut map = Map::new();
+
+    for v in vars {
+        map.insert(*v, false);
+    }
+
+    map
+}
+
+fn check_possible_valuations(expr: &Expr, vars: &[char], val: &mut Map) -> bool {
     if vars.is_empty() {
-        return vec![Map::new()];
+        return evaluate(expr, val).unwrap();
     }
 
     let v = &vars[0];
     let vs = &vars[1..];
 
-    let evals1 = naive_create_possible_valuations(vs);
-
-    let mut evals1: Vec<Map> = evals1
-        .iter()
-        .map(|e| {
-            let mut e_new = e.clone();
-            e_new.insert(*v, true);
-            e_new
-        })
-        .collect();
-
-    let evals2: Vec<Map> = evals1
-        .iter()
-        .map(|e| {
-            let mut e_new = e.clone();
-            e_new.insert(*v, false);
-            e_new
-        })
-        .collect();
-
-    evals1.extend(evals2);
-    evals1.to_vec()
-}
-
-pub fn solve_sat(expr: Expr) -> Option<Map> {
-    let vars = collect_vars(expr.clone());
-    let valuations = naive_create_possible_valuations(&vars);
-
-    for v in valuations {
-        let result = evaluate(expr.clone(), &v);
-        if result.is_ok_and(|r| r) {
-            return Some(v);
-        }
+    val.insert(*v, false);
+    if check_possible_valuations(expr, vs, val) {
+        return true;
     }
-    None
+
+    val.insert(*v, true);
+    if check_possible_valuations(expr, vs, val) {
+        return true;
+    }
+
+    false
 }
 
-pub fn example_solve_sat_naive() {
-    let expr = Expr::Neg(Box::new(Expr::Conj(
-        Box::new(Expr::Variable('Y')),
-        Box::new(Expr::Conj(
-            Box::new(Expr::True),
-            Box::new(Expr::Disj(
-                Box::new(Expr::Variable('X')),
-                Box::new(Expr::False),
-            )),
-        )),
-    )));
+fn solve_sat(expr: &Expr) -> Option<Map> {
+    let vars = collect_vars(expr.clone());
+    let mut val = initial_valuation(&vars);
 
-    let res = solve_sat(expr.clone());
-    println!("{expr}: {res:?}");
+    if check_possible_valuations(expr, &vars, &mut val) {
+        Some(val)
+    } else {
+        None
+    }
 }
+
+pub static SAT_SOLVER_NAIVE: SatSolver = SatSolver {
+    solve: solve_sat,
+    description: "naive",
+};
