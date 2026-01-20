@@ -6,6 +6,11 @@ open Core_models
 let _ =
   (* This module has implicit dependencies, here we make them explicit. *)
   (* The implicit dependencies arise from typeclasses instances. *)
+  let open Nom.Branch in
+  let open Nom.Error in
+  let open Nom.Internal in
+  let open Nom.Sequence in
+  let open Nom.Traits in
   let open Std.Collections.Hash.Set in
   let open Std.Hash.Random in
   ()
@@ -47,6 +52,96 @@ val impl_4': Core_models.Cmp.t_PartialEq t_Expr t_Expr
 
 unfold
 let impl_4 = impl_4'
+
+let parse_bool (i: string)
+    : Core_models.Result.t_Result (string & t_Expr)
+      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)) =
+  let
+  (_:
+    (string
+        -> Core_models.Result.t_Result (string & FStar.Char.char)
+            (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))),
+  (out:
+    Core_models.Result.t_Result (string & FStar.Char.char)
+      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))) =
+    Core_models.Ops.Function.f_call_mut #string
+      #FStar.Tactics.Typeclasses.solve
+      (Nom.Character.Complete.one_of #string #string #(Nom.Error.t_Error string) "⊤⊥TF"
+        <:
+        string
+          -> Core_models.Result.t_Result (string & FStar.Char.char)
+              (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+      (i <: string)
+  in
+  match
+    out
+    <:
+    Core_models.Result.t_Result (string & FStar.Char.char)
+      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))
+  with
+  | Core_models.Result.Result_Ok (i, t) ->
+    Core_models.Result.Result_Ok
+    (i,
+      (match t <: FStar.Char.char with
+        | 'F' | 'â' -> Expr_False <: t_Expr
+        | 'â' | 'T' -> Expr_True <: t_Expr
+        | _ ->
+          Rust_primitives.Hax.never_to_any (Core_models.Panicking.panic "internal error: entered unreachable code"
+
+              <:
+              Rust_primitives.Hax.t_Never))
+      <:
+      (string & t_Expr))
+    <:
+    Core_models.Result.t_Result (string & t_Expr)
+      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))
+  | Core_models.Result.Result_Err err ->
+    Core_models.Result.Result_Err err
+    <:
+    Core_models.Result.t_Result (string & t_Expr)
+      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))
+
+let parse_var (i: string)
+    : Core_models.Result.t_Result (string & t_Expr)
+      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)) =
+  let
+  (_:
+    Nom.Internal.t_Map
+      (string
+          -> Core_models.Result.t_Result (string & FStar.Char.char)
+              (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+      (FStar.Char.char -> t_Expr)),
+  (out:
+    Core_models.Result.t_Result (string & t_Expr)
+      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))) =
+    Nom.Internal.f_parse #(Nom.Internal.t_Map
+          (string
+              -> Core_models.Result.t_Result (string & FStar.Char.char)
+                  (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+          (FStar.Char.char -> t_Expr))
+      #string
+      #FStar.Tactics.Typeclasses.solve
+      (Nom.Combinator.map #string
+          #t_Expr
+          #(Nom.Error.t_Error string)
+          (Nom.Character.Complete.one_of #string
+              #string
+              #(Nom.Error.t_Error string)
+              "abcdefghijklmnopqrstuvwxyz"
+            <:
+            string
+              -> Core_models.Result.t_Result (string & FStar.Char.char)
+                  (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+          Expr_Variable
+        <:
+        Nom.Internal.t_Map
+          (string
+              -> Core_models.Result.t_Result (string & FStar.Char.char)
+                  (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+          (FStar.Char.char -> t_Expr))
+      i
+  in
+  out
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl: Core_models.Fmt.t_Display t_Expr =
@@ -370,6 +465,567 @@ let rec collect_vars_aux (expr: t_Expr)
     in
     vs1
   | Expr_True  | Expr_False  -> Std.Collections.Hash.Set.impl__new #FStar.Char.char ()
+
+let rec parse_neg (i: string)
+    : Core_models.Result.t_Result (string & t_Expr)
+      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)) =
+  let
+  (_:
+    Nom.Internal.t_Map
+      (Nom.Sequence.t_Preceded
+          (string
+              -> Core_models.Result.t_Result (string & FStar.Char.char)
+                  (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+          (string
+              -> Core_models.Result.t_Result (string & t_Expr)
+                  (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))))
+      (t_Expr -> t_Expr)),
+  (out:
+    Core_models.Result.t_Result (string & t_Expr)
+      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))) =
+    Nom.Internal.f_parse #(Nom.Internal.t_Map
+          (Nom.Sequence.t_Preceded
+              (string
+                  -> Core_models.Result.t_Result (string & FStar.Char.char)
+                      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+              (string
+                  -> Core_models.Result.t_Result (string & t_Expr)
+                      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))))
+          (t_Expr -> t_Expr))
+      #string
+      #FStar.Tactics.Typeclasses.solve
+      (Nom.Internal.f_map #(Nom.Sequence.t_Preceded
+              (string
+                  -> Core_models.Result.t_Result (string & FStar.Char.char)
+                      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+              (string
+                  -> Core_models.Result.t_Result (string & t_Expr)
+                      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))))
+          #string
+          #FStar.Tactics.Typeclasses.solve
+          #t_Expr
+          (Nom.Sequence.preceded #string
+              #t_Expr
+              #(Nom.Error.t_Error string)
+              (Nom.Character.Complete.one_of #string #string #(Nom.Error.t_Error string) "~¬"
+                <:
+                string
+                  -> Core_models.Result.t_Result (string & FStar.Char.char)
+                      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+              parse_expr
+            <:
+            Nom.Sequence.t_Preceded
+              (string
+                  -> Core_models.Result.t_Result (string & FStar.Char.char)
+                      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+              (string
+                  -> Core_models.Result.t_Result (string & t_Expr)
+                      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))))
+          (fun e ->
+              let e:t_Expr = e in
+              Expr_Neg e <: t_Expr)
+        <:
+        Nom.Internal.t_Map
+          (Nom.Sequence.t_Preceded
+              (string
+                  -> Core_models.Result.t_Result (string & FStar.Char.char)
+                      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+              (string
+                  -> Core_models.Result.t_Result (string & t_Expr)
+                      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))))
+          (t_Expr -> t_Expr))
+      i
+  in
+  out
+
+and parse_expr (i: string)
+    : Core_models.Result.t_Result (string & t_Expr)
+      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)) =
+  let
+  (_:
+    Nom.Sequence.t_Preceded
+      (string
+          -> Core_models.Result.t_Result (string & string)
+              (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+      (Nom.Sequence.t_Terminated
+          (Nom.Branch.t_Choice
+            (t_Array
+                (string
+                    -> Core_models.Result.t_Result (string & t_Expr)
+                        (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+                (mk_usize 5)))
+          (string
+              -> Core_models.Result.t_Result (string & string)
+                  (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))))),
+  (out:
+    Core_models.Result.t_Result (string & t_Expr)
+      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))) =
+    Nom.Internal.f_parse #(Nom.Sequence.t_Preceded
+          (string
+              -> Core_models.Result.t_Result (string & string)
+                  (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+          (Nom.Sequence.t_Terminated
+              (Nom.Branch.t_Choice
+                (t_Array
+                    (string
+                        -> Core_models.Result.t_Result (string & t_Expr)
+                            (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                (Nom.Error.t_Error string))) (mk_usize 5)))
+              (string
+                  -> Core_models.Result.t_Result (string & string)
+                      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))))
+      #string
+      #FStar.Tactics.Typeclasses.solve
+      (Nom.Sequence.delimited #string
+          #t_Expr
+          #(Nom.Error.t_Error string)
+          #(Nom.Branch.t_Choice
+            (t_Array
+                (string
+                    -> Core_models.Result.t_Result (string & t_Expr)
+                        (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+                (mk_usize 5)))
+          Nom.Character.Complete.multispace0
+          (Nom.Branch.alt #(t_Array
+                  (string
+                      -> Core_models.Result.t_Result (string & t_Expr)
+                          (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))
+                  ) (mk_usize 5))
+              (let list = [parse_conj; parse_disj; parse_neg; parse_var; parse_bool] in
+                FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 5);
+                Rust_primitives.Hax.array_of_list 5 list)
+            <:
+            Nom.Branch.t_Choice
+            (t_Array
+                (string
+                    -> Core_models.Result.t_Result (string & t_Expr)
+                        (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+                (mk_usize 5)))
+          Nom.Character.Complete.multispace0
+        <:
+        Nom.Sequence.t_Preceded
+          (string
+              -> Core_models.Result.t_Result (string & string)
+                  (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+          (Nom.Sequence.t_Terminated
+              (Nom.Branch.t_Choice
+                (t_Array
+                    (string
+                        -> Core_models.Result.t_Result (string & t_Expr)
+                            (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                (Nom.Error.t_Error string))) (mk_usize 5)))
+              (string
+                  -> Core_models.Result.t_Result (string & string)
+                      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))))
+      i
+  in
+  out
+
+and parse_disj (i: string)
+    : Core_models.Result.t_Result (string & t_Expr)
+      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)) =
+  let
+  (_:
+    Nom.Internal.t_Map
+      (Nom.Sequence.t_Preceded
+          (string
+              -> Core_models.Result.t_Result (string & FStar.Char.char)
+                  (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+          (Nom.Sequence.t_Terminated
+              (Nom.Internal.t_And
+                  (string
+                      -> Core_models.Result.t_Result (string & t_Expr)
+                          (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))
+                  )
+                  (Nom.Sequence.t_Preceded
+                      (string
+                          -> Core_models.Result.t_Result (string & FStar.Char.char)
+                              (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                  (Nom.Error.t_Error string)))
+                      (string
+                          -> Core_models.Result.t_Result (string & t_Expr)
+                              (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                  (Nom.Error.t_Error string)))))
+              (string
+                  -> Core_models.Result.t_Result (string & FStar.Char.char)
+                      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))))
+      ((t_Expr & t_Expr) -> t_Expr)),
+  (out:
+    Core_models.Result.t_Result (string & t_Expr)
+      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))) =
+    Nom.Internal.f_parse #(Nom.Internal.t_Map
+          (Nom.Sequence.t_Preceded
+              (string
+                  -> Core_models.Result.t_Result (string & FStar.Char.char)
+                      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+              (Nom.Sequence.t_Terminated
+                  (Nom.Internal.t_And
+                      (string
+                          -> Core_models.Result.t_Result (string & t_Expr)
+                              (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                  (Nom.Error.t_Error string)))
+                      (Nom.Sequence.t_Preceded
+                          (string
+                              -> Core_models.Result.t_Result (string & FStar.Char.char)
+                                  (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                      (Nom.Error.t_Error string)))
+                          (string
+                              -> Core_models.Result.t_Result (string & t_Expr)
+                                  (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                      (Nom.Error.t_Error string)))))
+                  (string
+                      -> Core_models.Result.t_Result (string & FStar.Char.char)
+                          (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))
+                  ))) ((t_Expr & t_Expr) -> t_Expr))
+      #string
+      #FStar.Tactics.Typeclasses.solve
+      (Nom.Internal.f_map #(Nom.Sequence.t_Preceded
+              (string
+                  -> Core_models.Result.t_Result (string & FStar.Char.char)
+                      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+              (Nom.Sequence.t_Terminated
+                  (Nom.Internal.t_And
+                      (string
+                          -> Core_models.Result.t_Result (string & t_Expr)
+                              (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                  (Nom.Error.t_Error string)))
+                      (Nom.Sequence.t_Preceded
+                          (string
+                              -> Core_models.Result.t_Result (string & FStar.Char.char)
+                                  (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                      (Nom.Error.t_Error string)))
+                          (string
+                              -> Core_models.Result.t_Result (string & t_Expr)
+                                  (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                      (Nom.Error.t_Error string)))))
+                  (string
+                      -> Core_models.Result.t_Result (string & FStar.Char.char)
+                          (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))
+                  )))
+          #string
+          #FStar.Tactics.Typeclasses.solve
+          #t_Expr
+          (Nom.Sequence.delimited #string
+              #(t_Expr & t_Expr)
+              #(Nom.Error.t_Error string)
+              #(Nom.Internal.t_And
+                  (string
+                      -> Core_models.Result.t_Result (string & t_Expr)
+                          (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))
+                  )
+                  (Nom.Sequence.t_Preceded
+                      (string
+                          -> Core_models.Result.t_Result (string & FStar.Char.char)
+                              (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                  (Nom.Error.t_Error string)))
+                      (string
+                          -> Core_models.Result.t_Result (string & t_Expr)
+                              (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                  (Nom.Error.t_Error string)))))
+              (Nom.Character.Complete.one_of #string #string #(Nom.Error.t_Error string) "("
+                <:
+                string
+                  -> Core_models.Result.t_Result (string & FStar.Char.char)
+                      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+              (Nom.Sequence.separated_pair #string
+                  #t_Expr
+                  #t_Expr
+                  #(Nom.Error.t_Error string)
+                  parse_expr
+                  (Nom.Character.Complete.one_of #string #string #(Nom.Error.t_Error string) "∨v|"
+                    <:
+                    string
+                      -> Core_models.Result.t_Result (string & FStar.Char.char)
+                          (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))
+                  )
+                  parse_expr
+                <:
+                Nom.Internal.t_And
+                  (string
+                      -> Core_models.Result.t_Result (string & t_Expr)
+                          (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))
+                  )
+                  (Nom.Sequence.t_Preceded
+                      (string
+                          -> Core_models.Result.t_Result (string & FStar.Char.char)
+                              (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                  (Nom.Error.t_Error string)))
+                      (string
+                          -> Core_models.Result.t_Result (string & t_Expr)
+                              (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                  (Nom.Error.t_Error string)))))
+              (Nom.Character.Complete.one_of #string #string #(Nom.Error.t_Error string) ")"
+                <:
+                string
+                  -> Core_models.Result.t_Result (string & FStar.Char.char)
+                      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+            <:
+            Nom.Sequence.t_Preceded
+              (string
+                  -> Core_models.Result.t_Result (string & FStar.Char.char)
+                      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+              (Nom.Sequence.t_Terminated
+                  (Nom.Internal.t_And
+                      (string
+                          -> Core_models.Result.t_Result (string & t_Expr)
+                              (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                  (Nom.Error.t_Error string)))
+                      (Nom.Sequence.t_Preceded
+                          (string
+                              -> Core_models.Result.t_Result (string & FStar.Char.char)
+                                  (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                      (Nom.Error.t_Error string)))
+                          (string
+                              -> Core_models.Result.t_Result (string & t_Expr)
+                                  (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                      (Nom.Error.t_Error string)))))
+                  (string
+                      -> Core_models.Result.t_Result (string & FStar.Char.char)
+                          (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))
+                  )))
+          (fun temp_0_ ->
+              let (e1: t_Expr), (e2: t_Expr) = temp_0_ in
+              Expr_Disj e1 e2 <: t_Expr)
+        <:
+        Nom.Internal.t_Map
+          (Nom.Sequence.t_Preceded
+              (string
+                  -> Core_models.Result.t_Result (string & FStar.Char.char)
+                      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+              (Nom.Sequence.t_Terminated
+                  (Nom.Internal.t_And
+                      (string
+                          -> Core_models.Result.t_Result (string & t_Expr)
+                              (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                  (Nom.Error.t_Error string)))
+                      (Nom.Sequence.t_Preceded
+                          (string
+                              -> Core_models.Result.t_Result (string & FStar.Char.char)
+                                  (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                      (Nom.Error.t_Error string)))
+                          (string
+                              -> Core_models.Result.t_Result (string & t_Expr)
+                                  (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                      (Nom.Error.t_Error string)))))
+                  (string
+                      -> Core_models.Result.t_Result (string & FStar.Char.char)
+                          (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))
+                  ))) ((t_Expr & t_Expr) -> t_Expr))
+      i
+  in
+  out
+
+and parse_conj (i: string)
+    : Core_models.Result.t_Result (string & t_Expr)
+      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)) =
+  let
+  (_:
+    Nom.Internal.t_Map
+      (Nom.Sequence.t_Preceded
+          (string
+              -> Core_models.Result.t_Result (string & FStar.Char.char)
+                  (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+          (Nom.Sequence.t_Terminated
+              (Nom.Internal.t_And
+                  (string
+                      -> Core_models.Result.t_Result (string & t_Expr)
+                          (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))
+                  )
+                  (Nom.Sequence.t_Preceded
+                      (string
+                          -> Core_models.Result.t_Result (string & FStar.Char.char)
+                              (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                  (Nom.Error.t_Error string)))
+                      (string
+                          -> Core_models.Result.t_Result (string & t_Expr)
+                              (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                  (Nom.Error.t_Error string)))))
+              (string
+                  -> Core_models.Result.t_Result (string & FStar.Char.char)
+                      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))))
+      ((t_Expr & t_Expr) -> t_Expr)),
+  (out:
+    Core_models.Result.t_Result (string & t_Expr)
+      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))) =
+    Nom.Internal.f_parse #(Nom.Internal.t_Map
+          (Nom.Sequence.t_Preceded
+              (string
+                  -> Core_models.Result.t_Result (string & FStar.Char.char)
+                      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+              (Nom.Sequence.t_Terminated
+                  (Nom.Internal.t_And
+                      (string
+                          -> Core_models.Result.t_Result (string & t_Expr)
+                              (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                  (Nom.Error.t_Error string)))
+                      (Nom.Sequence.t_Preceded
+                          (string
+                              -> Core_models.Result.t_Result (string & FStar.Char.char)
+                                  (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                      (Nom.Error.t_Error string)))
+                          (string
+                              -> Core_models.Result.t_Result (string & t_Expr)
+                                  (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                      (Nom.Error.t_Error string)))))
+                  (string
+                      -> Core_models.Result.t_Result (string & FStar.Char.char)
+                          (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))
+                  ))) ((t_Expr & t_Expr) -> t_Expr))
+      #string
+      #FStar.Tactics.Typeclasses.solve
+      (Nom.Internal.f_map #(Nom.Sequence.t_Preceded
+              (string
+                  -> Core_models.Result.t_Result (string & FStar.Char.char)
+                      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+              (Nom.Sequence.t_Terminated
+                  (Nom.Internal.t_And
+                      (string
+                          -> Core_models.Result.t_Result (string & t_Expr)
+                              (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                  (Nom.Error.t_Error string)))
+                      (Nom.Sequence.t_Preceded
+                          (string
+                              -> Core_models.Result.t_Result (string & FStar.Char.char)
+                                  (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                      (Nom.Error.t_Error string)))
+                          (string
+                              -> Core_models.Result.t_Result (string & t_Expr)
+                                  (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                      (Nom.Error.t_Error string)))))
+                  (string
+                      -> Core_models.Result.t_Result (string & FStar.Char.char)
+                          (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))
+                  )))
+          #string
+          #FStar.Tactics.Typeclasses.solve
+          #t_Expr
+          (Nom.Sequence.delimited #string
+              #(t_Expr & t_Expr)
+              #(Nom.Error.t_Error string)
+              #(Nom.Internal.t_And
+                  (string
+                      -> Core_models.Result.t_Result (string & t_Expr)
+                          (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))
+                  )
+                  (Nom.Sequence.t_Preceded
+                      (string
+                          -> Core_models.Result.t_Result (string & FStar.Char.char)
+                              (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                  (Nom.Error.t_Error string)))
+                      (string
+                          -> Core_models.Result.t_Result (string & t_Expr)
+                              (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                  (Nom.Error.t_Error string)))))
+              (Nom.Character.Complete.one_of #string #string #(Nom.Error.t_Error string) "("
+                <:
+                string
+                  -> Core_models.Result.t_Result (string & FStar.Char.char)
+                      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+              (Nom.Sequence.separated_pair #string
+                  #t_Expr
+                  #t_Expr
+                  #(Nom.Error.t_Error string)
+                  parse_expr
+                  (Nom.Character.Complete.one_of #string #string #(Nom.Error.t_Error string) "∧&"
+                    <:
+                    string
+                      -> Core_models.Result.t_Result (string & FStar.Char.char)
+                          (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))
+                  )
+                  parse_expr
+                <:
+                Nom.Internal.t_And
+                  (string
+                      -> Core_models.Result.t_Result (string & t_Expr)
+                          (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))
+                  )
+                  (Nom.Sequence.t_Preceded
+                      (string
+                          -> Core_models.Result.t_Result (string & FStar.Char.char)
+                              (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                  (Nom.Error.t_Error string)))
+                      (string
+                          -> Core_models.Result.t_Result (string & t_Expr)
+                              (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                  (Nom.Error.t_Error string)))))
+              (Nom.Character.Complete.one_of #string #string #(Nom.Error.t_Error string) ")"
+                <:
+                string
+                  -> Core_models.Result.t_Result (string & FStar.Char.char)
+                      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+            <:
+            Nom.Sequence.t_Preceded
+              (string
+                  -> Core_models.Result.t_Result (string & FStar.Char.char)
+                      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+              (Nom.Sequence.t_Terminated
+                  (Nom.Internal.t_And
+                      (string
+                          -> Core_models.Result.t_Result (string & t_Expr)
+                              (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                  (Nom.Error.t_Error string)))
+                      (Nom.Sequence.t_Preceded
+                          (string
+                              -> Core_models.Result.t_Result (string & FStar.Char.char)
+                                  (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                      (Nom.Error.t_Error string)))
+                          (string
+                              -> Core_models.Result.t_Result (string & t_Expr)
+                                  (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                      (Nom.Error.t_Error string)))))
+                  (string
+                      -> Core_models.Result.t_Result (string & FStar.Char.char)
+                          (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))
+                  )))
+          (fun temp_0_ ->
+              let (e1: t_Expr), (e2: t_Expr) = temp_0_ in
+              Expr_Conj e1 e2 <: t_Expr)
+        <:
+        Nom.Internal.t_Map
+          (Nom.Sequence.t_Preceded
+              (string
+                  -> Core_models.Result.t_Result (string & FStar.Char.char)
+                      (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string)))
+              (Nom.Sequence.t_Terminated
+                  (Nom.Internal.t_And
+                      (string
+                          -> Core_models.Result.t_Result (string & t_Expr)
+                              (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                  (Nom.Error.t_Error string)))
+                      (Nom.Sequence.t_Preceded
+                          (string
+                              -> Core_models.Result.t_Result (string & FStar.Char.char)
+                                  (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                      (Nom.Error.t_Error string)))
+                          (string
+                              -> Core_models.Result.t_Result (string & t_Expr)
+                                  (Nom.Internal.t_Err (Nom.Error.t_Error string)
+                                      (Nom.Error.t_Error string)))))
+                  (string
+                      -> Core_models.Result.t_Result (string & FStar.Char.char)
+                          (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))
+                  ))) ((t_Expr & t_Expr) -> t_Expr))
+      i
+  in
+  out
+
+let example_expr_sat (_: Prims.unit) : t_Expr =
+  (Core_models.Result.impl__unwrap #(string & t_Expr)
+      #(Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))
+      (parse_expr "((T & ~y) & (x | F))"
+        <:
+        Core_models.Result.t_Result (string & t_Expr)
+          (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))))
+    ._2
+
+let example_expr_unsat (_: Prims.unit) : t_Expr =
+  (Core_models.Result.impl__unwrap #(string & t_Expr)
+      #(Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))
+      (parse_expr "(T & (~x & x))"
+        <:
+        Core_models.Result.t_Result (string & t_Expr)
+          (Nom.Internal.t_Err (Nom.Error.t_Error string) (Nom.Error.t_Error string))))
+    ._2
 
 let collect_vars (expr: t_Expr) : Alloc.Vec.t_Vec FStar.Char.char Alloc.Alloc.t_Global =
   let vars:Std.Collections.Hash.Set.t_HashSet FStar.Char.char Std.Hash.Random.t_RandomState =

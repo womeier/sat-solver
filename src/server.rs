@@ -42,13 +42,7 @@ fn process_commands(state: State, coms: &[Command]) -> Option<State> {
 
 #[test]
 fn example_process_commands() {
-    let expr = Expr::Conj(
-        Box::new(Expr::True),
-        Box::new(Expr::Disj(
-            Box::new(Expr::Variable("X".to_string())),
-            Box::new(Expr::False),
-        )),
-    );
+    let expr = parse_expr("(T & (x | F))").unwrap().1;
 
     // State
 
@@ -68,5 +62,5 @@ fn example_process_commands() {
         None => println!("Processing commands failed."),
     }
 
-    assert!(format!("{result_state:?}") == "Some(Done(Some({\"X\": true})))");
+    assert!(format!("{result_state:?}") == "Some(Done(Some({'x': true})))");
 }
