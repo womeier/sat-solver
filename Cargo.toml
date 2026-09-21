@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-hax-lib = { git = "https://github.com/hacspec/hax", version = "0.3.5" }
+hax-lib = "0.4.0"
 nom = "8.0.0"

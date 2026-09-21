@@ -62,5 +62,5 @@ fn example_process_commands() {
         None => println!("Processing commands failed."),
     }
 
-    assert!(format!("{result_state:?}") == "Some(Done(Some({'x': true})))");
+    assert!(format!("{result_state:?}") == "Some(Done(Some(Map([Entry { key: 120, value: true }]))))");
 }

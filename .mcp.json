@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "lean-lsp-mcp": {
+      "command": "/home/wolfgang/Documents/sat-solver/.uv-tools/bin/lean-lsp-mcp",
+      "args": ["--lean-project-path", "/home/wolfgang/Documents/sat-solver/proofs/lean"],
+      "env": {
+        "ELAN_HOME": "/home/wolfgang/Documents/sat-solver/.elan-home"
+      }
+    }
+  }
+}

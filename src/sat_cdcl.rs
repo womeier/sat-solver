@@ -3,7 +3,7 @@ use crate::expr::*;
 use crate::sat::SatSolver;
 
 pub fn solve_sat(expr: &Expr) -> Option<Map> {
-    let _vars = collect_vars(expr.clone());
+    let _vars = collect_vars(expr);
 
     None
 }
