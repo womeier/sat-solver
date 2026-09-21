@@ -41,3 +41,15 @@ Makefile.coq.conf
 
 # FStar
 .fstar-cache
+
+.claude
+
+# uv-installed tools (lean-lsp-mcp, see .mcp.json / flake.nix shellHook)
+/.uv-tools
+/.uv-cache
+
+# Project-local toolchain homes (see flake.nix shellHook): $HOME isn't
+# executable in some sandboxes, so rustup/cargo/elan are redirected here.
+/.rustup-home
+/.cargo-home
+/.elan-home

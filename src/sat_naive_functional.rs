@@ -2,40 +2,35 @@ use crate::expr::*;
 use crate::sat::SatSolver;
 
 // TODO improve performance (reduce cloning)
-fn naive_create_possible_valuations(vars: &[char]) -> Vec<Map> {
+fn naive_create_possible_valuations(vars: &[u8]) -> Vec<Map> {
     if vars.is_empty() {
-        return vec![Map::new()];
+        let mut base = Vec::new();
+        base.push(Map::new());
+        return base;
     }
 
-    let v = &vars[0];
+    let v = vars[0];
     let vs = &vars[1..];
 
-    let evals1 = naive_create_possible_valuations(vs);
+    let rest = naive_create_possible_valuations(vs);
 
-    let mut evals1: Vec<Map> = evals1
-        .iter()
-        .map(|e| {
-            let mut e_new = e.clone();
-            e_new.insert(*v, true);
-            e_new
-        })
-        .collect();
+    let mut result: Vec<Map> = Vec::new();
 
-    let evals2: Vec<Map> = evals1
-        .iter()
-        .map(|e| {
-            let mut e_new = e.clone();
-            e_new.insert(*v, false);
-            e_new
-        })
-        .collect();
+    for e in rest.iter() {
+        let mut e_true = e.clone();
+        e_true.insert(v, true);
+        result.push(e_true);
 
-    evals1.extend(evals2);
-    evals1.to_vec()
+        let mut e_false = e.clone();
+        e_false.insert(v, false);
+        result.push(e_false);
+    }
+
+    result
 }
 
-fn solve_sat(expr: &Expr) -> Option<Map> {
-    let vars = collect_vars(expr.clone());
+pub fn solve_sat(expr: &Expr) -> Option<Map> {
+    let vars = collect_vars(expr);
     let valuations = naive_create_possible_valuations(&vars);
 
     for v in valuations {

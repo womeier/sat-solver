@@ -6,16 +6,47 @@ use nom::{
     sequence::{delimited, preceded, separated_pair},
     IResult, Parser,
 };
-use std::collections::{BTreeMap, HashSet};
 use std::fmt;
 
-pub type Map = BTreeMap<char, bool>;
+#[derive(Debug, Clone, PartialEq)]
+struct Entry {
+    key: u8,
+    value: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Map(Vec<Entry>);
+
+impl Map {
+    pub fn new() -> Self {
+        Map(Vec::new())
+    }
+
+    pub fn insert(&mut self, key: u8, value: bool) -> Option<bool> {
+        for entry in self.0.iter_mut() {
+            if entry.key == key {
+                return Some(std::mem::replace(&mut entry.value, value));
+            }
+        }
+        self.0.push(Entry { key, value });
+        None
+    }
+
+    pub fn get(&self, key: &u8) -> Option<&bool> {
+        for entry in self.0.iter() {
+            if entry.key == *key {
+                return Some(&entry.value);
+            }
+        }
+        None
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     True,
     False,
-    Variable(char),
+    Variable(u8),
     Conj(Box<Expr>, Box<Expr>),
     Disj(Box<Expr>, Box<Expr>),
     Neg(Box<Expr>),
@@ -27,7 +58,7 @@ impl fmt::Display for Expr {
             Self::Neg(e) => write!(f, "¬{}", *e),
             Self::True => write!(f, "⊤"),
             Self::False => write!(f, "⊥"),
-            Self::Variable(v) => write!(f, "{}", v),
+            Self::Variable(v) => write!(f, "{}", *v as char),
             Self::Conj(e1, e2) => write!(f, "({} ∧ {})", e1, e2),
             Self::Disj(e1, e2) => write!(f, "({} ∨ {})", e1, e2),
         }
@@ -50,7 +81,10 @@ fn parse_bool(i: &str) -> IResult<&str, Expr> {
 }
 
 fn parse_var(i: &str) -> IResult<&str, Expr> {
-    map(one_of("abcdefghijklmnopqrstuvwxyz"), Expr::Variable).parse(i)
+    map(one_of("abcdefghijklmnopqrstuvwxyz"), |c: char| {
+        Expr::Variable(c as u8)
+    })
+    .parse(i)
 }
 
 fn parse_neg(i: &str) -> IResult<&str, Expr> {
@@ -98,17 +132,17 @@ pub fn example_expr_unsat() -> Expr {
 
 // Evaluation
 
-pub fn evaluate(expr: &Expr, valuation: &Map) -> Result<bool, String> {
+pub fn evaluate(expr: &Expr, valuation: &Map) -> Result<bool, ()> {
     match expr {
         Expr::True => Ok(true),
         Expr::False => Ok(false),
         Expr::Neg(e) => evaluate(e, valuation).map(|x| !x),
         Expr::Conj(e1, e2) => Ok(evaluate(e1, valuation)? && evaluate(e2, valuation)?),
         Expr::Disj(e1, e2) => Ok(evaluate(e1, valuation)? || evaluate(e2, valuation)?),
-        Expr::Variable(s) => valuation
-            .get(s)
-            .copied()
-            .ok_or(format!("Variable not found: {s}")),
+        Expr::Variable(s) => match valuation.get(s) {
+            Some(b) => Ok(*b),
+            None => Err(()),
+        },
     }
 }
 
@@ -117,28 +151,48 @@ fn example_eval_sat() {
     let expr = example_expr_sat();
 
     let mut valuation = Map::new();
-    valuation.insert('x', true);
-    valuation.insert('y', false);
+    valuation.insert(b'x', true);
+    valuation.insert(b'y', false);
 
     let res = evaluate(&expr, &valuation);
     assert!(res == Ok(true));
 }
 
-fn collect_vars_aux(expr: Expr) -> HashSet<char> {
-    match expr {
-        Expr::Variable(v) => vec![v].into_iter().collect(),
-        Expr::Neg(e) => collect_vars_aux(*e),
-        Expr::Disj(e1, e2) | Expr::Conj(e1, e2) => {
-            let mut vs1 = collect_vars_aux(*e1);
-            let vs2 = collect_vars_aux(*e2);
-            vs1.extend(vs2);
-            vs1
+fn contains_var(vars: &[u8], v: u8) -> bool {
+    for x in vars.iter() {
+        if *x == v {
+            return true;
         }
-        Expr::True | Expr::False => HashSet::new(),
+    }
+    false
+}
+
+fn merge_vars(dst: &mut Vec<u8>, src: &[u8]) {
+    for v in src.iter() {
+        if !contains_var(dst, *v) {
+            dst.push(*v);
+        }
     }
 }
 
-pub fn collect_vars(expr: Expr) -> Vec<char> {
-    let vars = collect_vars_aux(expr);
-    vars.into_iter().collect()
+fn collect_vars_aux(expr: &Expr) -> Vec<u8> {
+    match expr {
+        Expr::Variable(v) => {
+            let mut vars = Vec::new();
+            vars.push(*v);
+            vars
+        }
+        Expr::Neg(e) => collect_vars_aux(e),
+        Expr::Disj(e1, e2) | Expr::Conj(e1, e2) => {
+            let mut vs1 = collect_vars_aux(e1);
+            let vs2 = collect_vars_aux(e2);
+            merge_vars(&mut vs1, &vs2);
+            vs1
+        }
+        Expr::True | Expr::False => Vec::new(),
+    }
+}
+
+pub fn collect_vars(expr: &Expr) -> Vec<u8> {
+    collect_vars_aux(expr)
 }

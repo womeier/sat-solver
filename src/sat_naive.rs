@@ -2,7 +2,7 @@
 use crate::expr::*;
 use crate::sat::SatSolver;
 
-fn initial_valuation(vars: &[char]) -> Map {
+fn initial_valuation(vars: &[u8]) -> Map {
     let mut map = Map::new();
 
     for v in vars {
@@ -12,7 +12,7 @@ fn initial_valuation(vars: &[char]) -> Map {
     map
 }
 
-fn check_possible_valuations(expr: &Expr, vars: &[char], val: &mut Map) -> bool {
+fn check_possible_valuations(expr: &Expr, vars: &[u8], val: &mut Map) -> bool {
     if vars.is_empty() {
         return evaluate(expr, val).unwrap();
     }
@@ -33,8 +33,8 @@ fn check_possible_valuations(expr: &Expr, vars: &[char], val: &mut Map) -> bool 
     false
 }
 
-fn solve_sat(expr: &Expr) -> Option<Map> {
-    let vars = collect_vars(expr.clone());
+pub fn solve_sat(expr: &Expr) -> Option<Map> {
+    let vars = collect_vars(expr);
     let mut val = initial_valuation(&vars);
 
     if check_possible_valuations(expr, &vars, &mut val) {
