@@ -11,5 +11,6 @@ import SatSolver.Verification.Prelude
 import SatSolver.Verification.MapLemmas
 import SatSolver.Verification.CollectVars
 import SatSolver.Verification.Semantics
+import SatSolver.Verification.Cnf
 import SatSolver.Verification.SatNaive
 import SatSolver.Verification.SatNaiveFunctional
