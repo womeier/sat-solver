@@ -153,3 +153,258 @@ fn to_cnf_distributes_disjunction() {
         assert_eq!(lits.len(), 2);
     }
 }
+
+#[test]
+fn clause_union_concatenates_literals() {
+    let x = Clause(vec![Literal {
+        var: b'x',
+        negated: false,
+    }]);
+    let y = Clause(vec![Literal {
+        var: b'y',
+        negated: true,
+    }]);
+    let Clause(lits) = clause_union(&x, &y);
+    assert_eq!(
+        lits,
+        vec![
+            Literal {
+                var: b'x',
+                negated: false,
+            },
+            Literal {
+                var: b'y',
+                negated: true,
+            },
+        ]
+    );
+}
+
+#[test]
+fn clause_union_with_empty_clause_is_identity() {
+    let x = Clause(vec![Literal {
+        var: b'x',
+        negated: false,
+    }]);
+    let empty = Clause(Vec::new());
+    assert_eq!(clause_union(&x, &empty), x);
+    assert_eq!(clause_union(&empty, &x), x);
+}
+
+#[test]
+fn conj_cnf_concatenates_clause_lists() {
+    let c1 = Cnf(vec![Clause(vec![Literal {
+        var: b'x',
+        negated: false,
+    }])]);
+    let c2 = Cnf(vec![
+        Clause(vec![Literal {
+            var: b'y',
+            negated: false,
+        }]),
+        Clause(vec![Literal {
+            var: b'z',
+            negated: true,
+        }]),
+    ]);
+    let Cnf(clauses) = conj_cnf(c1, c2);
+    assert_eq!(clauses.len(), 3);
+}
+
+#[test]
+fn distribute_cross_products_every_pair_of_clauses() {
+    let c1 = Cnf(vec![
+        Clause(vec![Literal {
+            var: b'a',
+            negated: false,
+        }]),
+        Clause(vec![Literal {
+            var: b'b',
+            negated: false,
+        }]),
+    ]);
+    let c2 = Cnf(vec![
+        Clause(vec![Literal {
+            var: b'c',
+            negated: false,
+        }]),
+        Clause(vec![Literal {
+            var: b'd',
+            negated: false,
+        }]),
+        Clause(vec![Literal {
+            var: b'e',
+            negated: false,
+        }]),
+    ]);
+    let Cnf(clauses) = distribute(&c1, &c2);
+    // 2 * 3 clauses, each the union of one literal from each side.
+    assert_eq!(clauses.len(), 6);
+    for Clause(lits) in &clauses {
+        assert_eq!(lits.len(), 2);
+    }
+}
+
+#[test]
+fn cnf_rec_pushes_negation_through_conjunction() {
+    // ¬(x ∧ y) should become ¬x ∨ ¬y -- a single clause with two negated
+    // literals (De Morgan, via the `negate` polarity flag rather than an
+    // explicit NNF pass).
+    let expr = Expr::Neg(Box::new(Expr::Conj(
+        Box::new(Expr::Variable(b'x')),
+        Box::new(Expr::Variable(b'y')),
+    )));
+    let Cnf(clauses) = cnf_rec(&expr, false);
+    assert_eq!(clauses.len(), 1);
+    let Clause(lits) = &clauses[0];
+    assert_eq!(
+        *lits,
+        vec![
+            Literal {
+                var: b'x',
+                negated: true,
+            },
+            Literal {
+                var: b'y',
+                negated: true,
+            },
+        ]
+    );
+}
+
+#[test]
+fn eval_literal_reads_and_negates() {
+    let mut valuation = Map::new();
+    valuation.insert(b'x', true);
+    let pos = Literal {
+        var: b'x',
+        negated: false,
+    };
+    let neg = Literal {
+        var: b'x',
+        negated: true,
+    };
+    assert_eq!(eval_literal(&pos, &valuation), Ok(true));
+    assert_eq!(eval_literal(&neg, &valuation), Ok(false));
+}
+
+#[test]
+fn eval_literal_missing_variable_errs() {
+    let valuation = Map::new();
+    let lit = Literal {
+        var: b'x',
+        negated: false,
+    };
+    assert_eq!(eval_literal(&lit, &valuation), Err(()));
+}
+
+#[test]
+fn eval_clause_true_if_any_literal_true() {
+    let mut valuation = Map::new();
+    valuation.insert(b'x', false);
+    valuation.insert(b'y', true);
+    let clause = Clause(vec![
+        Literal {
+            var: b'x',
+            negated: false,
+        },
+        Literal {
+            var: b'y',
+            negated: false,
+        },
+    ]);
+    assert_eq!(eval_clause(&clause, &valuation), Ok(true));
+}
+
+#[test]
+fn eval_clause_false_if_all_literals_false() {
+    let mut valuation = Map::new();
+    valuation.insert(b'x', false);
+    valuation.insert(b'y', false);
+    let clause = Clause(vec![
+        Literal {
+            var: b'x',
+            negated: false,
+        },
+        Literal {
+            var: b'y',
+            negated: false,
+        },
+    ]);
+    assert_eq!(eval_clause(&clause, &valuation), Ok(false));
+}
+
+#[test]
+fn eval_clause_short_circuits_before_a_missing_variable() {
+    // The first literal is already satisfied, so `y` (absent from the
+    // valuation) should never be looked up.
+    let mut valuation = Map::new();
+    valuation.insert(b'x', true);
+    let clause = Clause(vec![
+        Literal {
+            var: b'x',
+            negated: false,
+        },
+        Literal {
+            var: b'y',
+            negated: false,
+        },
+    ]);
+    assert_eq!(eval_clause(&clause, &valuation), Ok(true));
+}
+
+#[test]
+fn eval_clause_errs_on_missing_variable() {
+    let valuation = Map::new();
+    let clause = Clause(vec![Literal {
+        var: b'x',
+        negated: false,
+    }]);
+    assert_eq!(eval_clause(&clause, &valuation), Err(()));
+}
+
+#[test]
+fn eval_cnf_true_when_every_clause_true() {
+    let mut valuation = Map::new();
+    valuation.insert(b'x', true);
+    valuation.insert(b'y', true);
+    let cnf = Cnf(vec![
+        Clause(vec![Literal {
+            var: b'x',
+            negated: false,
+        }]),
+        Clause(vec![Literal {
+            var: b'y',
+            negated: false,
+        }]),
+    ]);
+    assert_eq!(eval_cnf(&cnf, &valuation), Ok(true));
+}
+
+#[test]
+fn eval_cnf_false_when_some_clause_false() {
+    let mut valuation = Map::new();
+    valuation.insert(b'x', true);
+    valuation.insert(b'y', false);
+    let cnf = Cnf(vec![
+        Clause(vec![Literal {
+            var: b'x',
+            negated: false,
+        }]),
+        Clause(vec![Literal {
+            var: b'y',
+            negated: false,
+        }]),
+    ]);
+    assert_eq!(eval_cnf(&cnf, &valuation), Ok(false));
+}
+
+#[test]
+fn eval_cnf_errs_on_missing_variable() {
+    let valuation = Map::new();
+    let cnf = Cnf(vec![Clause(vec![Literal {
+        var: b'x',
+        negated: false,
+    }])]);
+    assert_eq!(eval_cnf(&cnf, &valuation), Err(()));
+}
