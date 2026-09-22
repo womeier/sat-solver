@@ -53,3 +53,7 @@ Makefile.coq.conf
 /.rustup-home
 /.cargo-home
 /.elan-home
+
+# cargo-hax's downloaded charon/aeneas toolchains (see flake.nix shellHook's
+# XDG_CACHE_HOME redirect, same $HOME-may-be-noexec reasoning as above).
+/.cache

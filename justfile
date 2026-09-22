@@ -23,9 +23,22 @@ extract:
         --exclude crate::expr::example_expr_sat \
         --exclude crate::expr::example_expr_unsat \
         --exclude crate::sat \
+        --exclude crate::sat_naive::SAT_SOLVER_NAIVE \
+        --exclude crate::sat_naive_functional::SAT_SOLVER_NAIVE_FUNCTIONAL \
         --exclude crate::sat_dpll \
-        --exclude crate::sat_cdcl" \
+        --exclude crate::sat_cdcl \
+        --opaque 'crate::expr::{impl core::fmt::Debug for crate::expr::Entry}' \
+        --opaque 'crate::expr::{impl core::fmt::Debug for crate::expr::Map}' \
+        --opaque 'crate::expr::{impl core::fmt::Debug for crate::expr::Expr}' \
+        --opaque 'crate::expr::{impl core::fmt::Display for crate::expr::Expr}'" \
         --aeneas-args="-loops-to-rec"
+    # The --opaque flags above stop charon from attempting to translate the
+    # derived Debug impls / the handwritten Display impl for Entry/Map/Expr:
+    # doing so hits an internal "Unreachable" aeneas error (their bodies use
+    # unsupported alloc::fmt machinery anyway, same reason evaluate's error
+    # type is `()` instead of `String` -- see justfile history). Opaque items
+    # still get properly seeded into Assumptions/ as axiom stubs below; this
+    # just avoids the crash on the way there.
 
     # Work around a hax quirk: Extraction/{Types,Funs}.lean unconditionally
     # `import SatSolver.Extraction.{Types,Funs}External`, but hax sometimes skips

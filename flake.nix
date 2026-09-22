@@ -53,6 +53,11 @@
             export ELAN_HOME="$PWD/.elan-home"
             export PATH="$CARGO_HOME/bin:$ELAN_HOME/bin:$PATH"
 
+            # cargo-hax downloads charon/aeneas toolchains under
+            # $XDG_CACHE_HOME/hax (defaulting to $HOME/.cache/hax) and then
+            # execs them directly — same $HOME-may-be-noexec problem as above.
+            export XDG_CACHE_HOME="$PWD/.cache"
+
             if ! rustup show active-toolchain >/dev/null 2>&1; then
               rustup default stable >/dev/null 2>&1 || true
             fi
