@@ -1,3 +1,4 @@
+pub mod cnf;
 pub mod expr;
 pub mod sat;
 pub mod sat_cdcl;
