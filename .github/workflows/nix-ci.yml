@@ -24,10 +24,14 @@ jobs:
       # Nix store cache (rustup/elan/hax/lean itself, and anything else
       # built into the store while the devShell is active); cachix-action
       # degrades to read-only on PRs since forks don't see repo secrets.
+      # `extraPullNames: hax` additionally pulls (read-only) from upstream
+      # hax's own cache, so cargo-hax comes down prebuilt instead of being
+      # compiled from source on a cold cache.
       - uses: cachix/cachix-action@v17
         with:
           name: womeier
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+          extraPullNames: hax
 
       # rustup/cargo (hax's pinned nightly toolchain + crate deps) and the
       # cargo build cache. These live outside the Nix store (see flake.nix's
