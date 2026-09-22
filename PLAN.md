@@ -48,12 +48,11 @@ confirmed support in hax's core-models library while `Vec`/slices are its best-s
 territory. This is asymptotically free here: the parser only accepts single-character lowercase
 variables (`expr.rs`'s `parse_var`), so `Map` never holds more than 26 entries regardless of
 input size — `O(log 26)` vs `O(26)` is noise next to the solvers' `2^n` branching. `cargo build`
-and `cargo test` pass unchanged (one `Debug`-format assertion in `server.rs` updated to match the
-new representation's output). `Cargo.lock` also got re-resolved to match the already-pinned
+and `cargo test` pass unchanged. `Cargo.lock` also got re-resolved to match the already-pinned
 `hax-lib = "0.4.0"` in `Cargo.toml` (it was stale at 0.3.6) as a side effect of the first build.
 
 Only these items matter for the proof; everything else in the crate (the `nom` parser,
-`fmt::Display`, `server.rs`'s state machine, the `SatSolver` struct/fn-pointer wrapper, and the
+`fmt::Display`, the `SatSolver` struct/fn-pointer wrapper, and the
 still-stub `sat_dpll.rs`/`sat_cdcl.rs`) must be excluded so extraction isn't blocked by code hax
 can't/shouldn't handle:
 
@@ -170,7 +169,7 @@ final top-level soundness/completeness theorems for both solvers.
         flags, passed via `cargo hax into lean --charon-args="..."`. `--start-from` proved
         unreliable (path-resolution quirks, silent no-ops); `--exclude` on the specific
         unwanted items (the `nom` parser functions, `example_expr_sat`/`example_expr_unsat`,
-        and the `sat`/`sat_dpll`/`sat_cdcl`/`server` modules) is what actually works.
+        and the `sat`/`sat_dpll`/`sat_cdcl` modules) is what actually works.
       - **Critical, non-obvious finding**: when the package has both a `lib` and a `bin`
         target (main.rs), charon treats whichever target it's compiling as "primary" and
         gives it full bodies — the *other* target's items become opaque external references

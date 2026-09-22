@@ -24,8 +24,7 @@ extract:
         --exclude crate::expr::example_expr_unsat \
         --exclude crate::sat \
         --exclude crate::sat_dpll \
-        --exclude crate::sat_cdcl \
-        --exclude crate::server" \
+        --exclude crate::sat_cdcl" \
         --aeneas-args="-loops-to-rec"
 
     # Work around a hax quirk: Extraction/{Types,Funs}.lean unconditionally
