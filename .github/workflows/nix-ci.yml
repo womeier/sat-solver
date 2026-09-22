@@ -37,7 +37,7 @@ jobs:
       # cargo build cache. These live outside the Nix store (see flake.nix's
       # shellHook), so Cachix doesn't cover them.
       - name: Cache Rust toolchain and build artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             .rustup-home
@@ -49,7 +49,7 @@ jobs:
 
       # elan (Lean toolchain, pinned by proofs/lean/lean-toolchain).
       - name: Cache elan
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .elan-home
           key: elan-${{ runner.os }}-${{ hashFiles('proofs/lean/lean-toolchain') }}
@@ -59,7 +59,7 @@ jobs:
       # Lake's own build cache (compiled .olean files for aeneas, hax-lean,
       # mathlib and SatSolver itself).
       - name: Cache Lake build
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: proofs/lean/.lake
           key: lake-${{ runner.os }}-${{ hashFiles('proofs/lean/lake-manifest.json', 'proofs/lean/lean-toolchain') }}
@@ -88,3 +88,13 @@ jobs:
       # Build aeneas, hax-lean and the SatSolver proof.
       - name: Build Lean proof
         run: nix develop --command bash -c "cd proofs/lean && lake build"
+
+      # Print the axiom set each top-level theorem depends on (run directly via
+      # `lake env lean` rather than relying on `lake build`'s info-message output,
+      # since that's skipped whenever Lake's incremental cache considers the file
+      # already up to date). Should always be the standard propext/Classical.choice/
+      # Quot.sound trio — anything else (sorryAx, or one of the axiom-declared
+      # Debug/Display stubs in SatSolver/Assumptions/) means a theorem's proof
+      # secretly depends on something it shouldn't.
+      - name: Print axioms used by the top-level theorems
+        run: nix develop --command bash -c "cd proofs/lean && lake env lean SatSolver/PrintAxioms.lean"
