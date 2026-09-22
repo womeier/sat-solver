@@ -22,17 +22,24 @@ set_option maxRecDepth 2048
 
 namespace sat_solver
 
-/-- [sat_solver::expr::Entry]
-    Source: 'src/expr.rs', lines 12:0-15:1 -/
-structure expr.Entry where
-  key : Std.U8
-  value : Bool
+/-- [sat_solver::cnf::Literal]
+    Source: 'src/cnf.rs', lines 5:0-8:1
+    Visibility: public -/
+structure cnf.Literal where
+  var : Std.U8
+  negated : Bool
 
-/-- [sat_solver::expr::Map]
-    Source: 'src/expr.rs', lines 18:0-18:27
+/-- [sat_solver::cnf::Clause]
+    Source: 'src/cnf.rs', lines 11:0-11:32
     Visibility: public -/
 @[reducible]
-def expr.Map := alloc.vec.Vec expr.Entry
+def cnf.Clause := alloc.vec.Vec cnf.Literal
+
+/-- [sat_solver::cnf::Cnf]
+    Source: 'src/cnf.rs', lines 14:0-14:28
+    Visibility: public -/
+@[reducible]
+def cnf.Cnf := alloc.vec.Vec cnf.Clause
 
 /-- [sat_solver::expr::Expr]
     Source: 'src/expr.rs', lines 46:0-53:1
@@ -45,6 +52,18 @@ inductive expr.Expr where
 | Conj : expr.Expr → expr.Expr → expr.Expr
 | Disj : expr.Expr → expr.Expr → expr.Expr
 | Neg : expr.Expr → expr.Expr
+
+/-- [sat_solver::expr::Entry]
+    Source: 'src/expr.rs', lines 12:0-15:1 -/
+structure expr.Entry where
+  key : Std.U8
+  value : Bool
+
+/-- [sat_solver::expr::Map]
+    Source: 'src/expr.rs', lines 18:0-18:27
+    Visibility: public -/
+@[reducible]
+def expr.Map := alloc.vec.Vec expr.Entry
 
 /-- [sat_solver::expr::evaluate::closure]
     Source: 'src/expr.rs', lines 139:51-139:57 -/

@@ -26,6 +26,452 @@ noncomputable section
 
 namespace sat_solver
 
+/-- Trait implementation: [sat_solver::cnf::{impl core::fmt::Debug for sat_solver::cnf::Literal}]
+    Source: 'src/cnf.rs', lines 4:9-4:14 -/
+@[reducible]
+def cnf.Literal.Insts.CoreFmtDebug : core.fmt.Debug cnf.Literal := {
+  fmt := cnf.Literal.Insts.CoreFmtDebug.fmt
+}
+
+/-- [sat_solver::cnf::{impl core::clone::Clone for sat_solver::cnf::Literal}::clone]:
+    Source: 'src/cnf.rs', lines 4:16-4:21
+    Visibility: public -/
+def cnf.Literal.Insts.CoreCloneClone.clone
+  (self : cnf.Literal) : RustM cnf.Literal := do
+  let i ← core.U8.Insts.CoreCloneClone.clone self.var
+  let b ← core.Bool.Insts.CoreCloneClone.clone self.negated
+  ok { var := i, negated := b }
+
+/-- Trait implementation: [sat_solver::cnf::{impl core::clone::Clone for sat_solver::cnf::Literal}]
+    Source: 'src/cnf.rs', lines 4:16-4:21 -/
+@[reducible]
+impl_def cnf.Literal.Insts.CoreCloneClone : core.clone.Clone cnf.Literal := {
+  clone := cnf.Literal.Insts.CoreCloneClone.clone
+  clone_from := core.clone.Clone.clone_from.default
+    cnf.Literal.Insts.CoreCloneClone
+}
+
+/-- Trait implementation: [sat_solver::cnf::{impl core::marker::StructuralPartialEq for sat_solver::cnf::Literal}]
+    Source: 'src/cnf.rs', lines 4:23-4:32 -/
+@[reducible]
+def cnf.Literal.Insts.CoreMarkerStructuralPartialEq :
+  core.marker.StructuralPartialEq cnf.Literal := {
+}
+
+/-- [sat_solver::cnf::{impl core::cmp::PartialEq<sat_solver::cnf::Literal> for sat_solver::cnf::Literal}::eq]:
+    Source: 'src/cnf.rs', lines 4:23-4:32
+    Visibility: public -/
+def cnf.Literal.Insts.CoreCmpPartialEqLiteral.eq
+  (self : cnf.Literal) (other : cnf.Literal) : RustM Bool := do
+  if self.var = other.var
+  then ok (self.negated = other.negated)
+  else ok false
+
+/-- Trait implementation: [sat_solver::cnf::{impl core::cmp::PartialEq<sat_solver::cnf::Literal> for sat_solver::cnf::Literal}]
+    Source: 'src/cnf.rs', lines 4:23-4:32 -/
+@[reducible]
+impl_def cnf.Literal.Insts.CoreCmpPartialEqLiteral : core.cmp.PartialEq
+  cnf.Literal cnf.Literal := {
+  eq := cnf.Literal.Insts.CoreCmpPartialEqLiteral.eq
+  ne := core.cmp.PartialEq.ne.default cnf.Literal.Insts.CoreCmpPartialEqLiteral
+}
+
+/-- Trait implementation: [sat_solver::cnf::{impl core::fmt::Debug for sat_solver::cnf::Clause}]
+    Source: 'src/cnf.rs', lines 10:9-10:14 -/
+@[reducible]
+def cnf.Clause.Insts.CoreFmtDebug : core.fmt.Debug cnf.Clause := {
+  fmt := cnf.Clause.Insts.CoreFmtDebug.fmt
+}
+
+/-- [sat_solver::cnf::{impl core::clone::Clone for sat_solver::cnf::Clause}::clone]:
+    Source: 'src/cnf.rs', lines 10:16-10:21
+    Visibility: public -/
+def cnf.Clause.Insts.CoreCloneClone.clone
+  (self : cnf.Clause) : RustM cnf.Clause := do
+  let v ←
+    alloc.vec.Vec.Insts.CoreCloneClone.clone cnf.Literal.Insts.CoreCloneClone
+      self
+  ok v
+
+/-- Trait implementation: [sat_solver::cnf::{impl core::clone::Clone for sat_solver::cnf::Clause}]
+    Source: 'src/cnf.rs', lines 10:16-10:21 -/
+@[reducible]
+impl_def cnf.Clause.Insts.CoreCloneClone : core.clone.Clone cnf.Clause := {
+  clone := cnf.Clause.Insts.CoreCloneClone.clone
+  clone_from := core.clone.Clone.clone_from.default
+    cnf.Clause.Insts.CoreCloneClone
+}
+
+/-- Trait implementation: [sat_solver::cnf::{impl core::marker::StructuralPartialEq for sat_solver::cnf::Clause}]
+    Source: 'src/cnf.rs', lines 10:23-10:32 -/
+@[reducible]
+def cnf.Clause.Insts.CoreMarkerStructuralPartialEq :
+  core.marker.StructuralPartialEq cnf.Clause := {
+}
+
+/-- [sat_solver::cnf::{impl core::cmp::PartialEq<sat_solver::cnf::Clause> for sat_solver::cnf::Clause}::eq]:
+    Source: 'src/cnf.rs', lines 10:23-10:32
+    Visibility: public -/
+def cnf.Clause.Insts.CoreCmpPartialEqClause.eq
+  (self : cnf.Clause) (other : cnf.Clause) : RustM Bool := do
+  alloc.vec.Vec.Insts.CoreCmpPartialEqVec.eq
+    cnf.Literal.Insts.CoreCmpPartialEqLiteral self other
+
+/-- Trait implementation: [sat_solver::cnf::{impl core::cmp::PartialEq<sat_solver::cnf::Clause> for sat_solver::cnf::Clause}]
+    Source: 'src/cnf.rs', lines 10:23-10:32 -/
+@[reducible]
+impl_def cnf.Clause.Insts.CoreCmpPartialEqClause : core.cmp.PartialEq
+  cnf.Clause cnf.Clause := {
+  eq := cnf.Clause.Insts.CoreCmpPartialEqClause.eq
+  ne := core.cmp.PartialEq.ne.default cnf.Clause.Insts.CoreCmpPartialEqClause
+}
+
+/-- Trait implementation: [sat_solver::cnf::{impl core::fmt::Debug for sat_solver::cnf::Cnf}]
+    Source: 'src/cnf.rs', lines 13:9-13:14 -/
+@[reducible]
+def cnf.Cnf.Insts.CoreFmtDebug : core.fmt.Debug cnf.Cnf := {
+  fmt := cnf.Cnf.Insts.CoreFmtDebug.fmt
+}
+
+/-- [sat_solver::cnf::{impl core::clone::Clone for sat_solver::cnf::Cnf}::clone]:
+    Source: 'src/cnf.rs', lines 13:16-13:21
+    Visibility: public -/
+def cnf.Cnf.Insts.CoreCloneClone.clone (self : cnf.Cnf) : RustM cnf.Cnf := do
+  let v ←
+    alloc.vec.Vec.Insts.CoreCloneClone.clone cnf.Clause.Insts.CoreCloneClone
+      self
+  ok v
+
+/-- Trait implementation: [sat_solver::cnf::{impl core::clone::Clone for sat_solver::cnf::Cnf}]
+    Source: 'src/cnf.rs', lines 13:16-13:21 -/
+@[reducible]
+impl_def cnf.Cnf.Insts.CoreCloneClone : core.clone.Clone cnf.Cnf := {
+  clone := cnf.Cnf.Insts.CoreCloneClone.clone
+  clone_from := core.clone.Clone.clone_from.default
+    cnf.Cnf.Insts.CoreCloneClone
+}
+
+/-- Trait implementation: [sat_solver::cnf::{impl core::marker::StructuralPartialEq for sat_solver::cnf::Cnf}]
+    Source: 'src/cnf.rs', lines 13:23-13:32 -/
+@[reducible]
+def cnf.Cnf.Insts.CoreMarkerStructuralPartialEq :
+  core.marker.StructuralPartialEq cnf.Cnf := {
+}
+
+/-- [sat_solver::cnf::{impl core::cmp::PartialEq<sat_solver::cnf::Cnf> for sat_solver::cnf::Cnf}::eq]:
+    Source: 'src/cnf.rs', lines 13:23-13:32
+    Visibility: public -/
+def cnf.Cnf.Insts.CoreCmpPartialEqCnf.eq
+  (self : cnf.Cnf) (other : cnf.Cnf) : RustM Bool := do
+  alloc.vec.Vec.Insts.CoreCmpPartialEqVec.eq
+    cnf.Clause.Insts.CoreCmpPartialEqClause self other
+
+/-- Trait implementation: [sat_solver::cnf::{impl core::cmp::PartialEq<sat_solver::cnf::Cnf> for sat_solver::cnf::Cnf}]
+    Source: 'src/cnf.rs', lines 13:23-13:32 -/
+@[reducible]
+impl_def cnf.Cnf.Insts.CoreCmpPartialEqCnf : core.cmp.PartialEq cnf.Cnf cnf.Cnf
+  := {
+  eq := cnf.Cnf.Insts.CoreCmpPartialEqCnf.eq
+  ne := core.cmp.PartialEq.ne.default cnf.Cnf.Insts.CoreCmpPartialEqCnf
+}
+
+/-- [sat_solver::cnf::clause_union]: loop 0:
+    Source: 'src/cnf.rs', lines 18:4-20:5 -/
+@[rust_loop]
+def cnf.clause_union_loop0
+  (iter : core.slice.iter.Iter cnf.Literal) (lits : alloc.vec.Vec cnf.Literal)
+  :
+  RustM (alloc.vec.Vec cnf.Literal)
+  := do
+  let (o, iter1) ←
+    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
+  match o with
+  | core.option.Option.None => ok lits
+  | core.option.Option.Some l =>
+    let l1 ← cnf.Literal.Insts.CoreCloneClone.clone l
+    let lits1 ← alloc.vec.Vec.push lits l1
+    cnf.clause_union_loop0 iter1 lits1
+partial_fixpoint
+
+/-- [sat_solver::cnf::clause_union]: loop 1:
+    Source: 'src/cnf.rs', lines 21:4-23:5 -/
+@[rust_loop]
+def cnf.clause_union_loop1
+  (iter : core.slice.iter.Iter cnf.Literal) (lits : alloc.vec.Vec cnf.Literal)
+  :
+  RustM (alloc.vec.Vec cnf.Literal)
+  := do
+  let (o, iter1) ←
+    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
+  match o with
+  | core.option.Option.None => ok lits
+  | core.option.Option.Some l =>
+    let l1 ← cnf.Literal.Insts.CoreCloneClone.clone l
+    let lits1 ← alloc.vec.Vec.push lits l1
+    cnf.clause_union_loop1 iter1 lits1
+partial_fixpoint
+
+/-- [sat_solver::cnf::clause_union]:
+    Source: 'src/cnf.rs', lines 16:0-25:1 -/
+def cnf.clause_union
+  (c1 : cnf.Clause) (c2 : cnf.Clause) : RustM cnf.Clause := do
+  let lits ← alloc.vec.Vec.new cnf.Literal
+  let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref c1
+  let iter ← core.slice.Slice.iter s
+  let lits1 ← cnf.clause_union_loop0 iter lits
+  let s1 ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref c2
+  let iter1 ← core.slice.Slice.iter s1
+  let lits2 ← cnf.clause_union_loop1 iter1 lits1
+  ok lits2
+
+/-- [sat_solver::cnf::conj_cnf]: loop 0:
+    Source: 'src/cnf.rs', lines 31:4-33:5 -/
+@[rust_loop]
+def cnf.conj_cnf_loop
+  (iter : alloc.vec.into_iter.IntoIter cnf.Clause)
+  (clauses : alloc.vec.Vec cnf.Clause) :
+  RustM (alloc.vec.Vec cnf.Clause)
+  := do
+  let (o, iter1) ←
+    alloc.vec.into_iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.next iter
+  match o with
+  | core.option.Option.None => ok clauses
+  | core.option.Option.Some c =>
+    let clauses1 ← alloc.vec.Vec.push clauses c
+    cnf.conj_cnf_loop iter1 clauses1
+partial_fixpoint
+
+/-- [sat_solver::cnf::conj_cnf]:
+    Source: 'src/cnf.rs', lines 28:0-35:1 -/
+def cnf.conj_cnf (c1 : cnf.Cnf) (c2 : cnf.Cnf) : RustM cnf.Cnf := do
+  let iter ←
+    alloc.vec.Vec.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter c2
+  let clauses ← cnf.conj_cnf_loop iter c1
+  ok clauses
+
+/-- [sat_solver::cnf::distribute]: loop 1:
+    Source: 'src/cnf.rs', lines 42:8-44:9 -/
+@[rust_loop]
+def cnf.distribute_loop0_loop0
+  (iter : core.slice.iter.Iter cnf.Clause) (result : alloc.vec.Vec cnf.Clause)
+  (clause1 : cnf.Clause) :
+  RustM (alloc.vec.Vec cnf.Clause)
+  := do
+  let (o, iter1) ←
+    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
+  match o with
+  | core.option.Option.None => ok result
+  | core.option.Option.Some clause2 =>
+    let c ← cnf.clause_union clause1 clause2
+    let result1 ← alloc.vec.Vec.push result c
+    cnf.distribute_loop0_loop0 iter1 result1 clause1
+partial_fixpoint
+
+/-- [sat_solver::cnf::distribute]: loop 0:
+    Source: 'src/cnf.rs', lines 41:4-45:5 -/
+@[rust_loop]
+def cnf.distribute_loop0
+  (iter : core.slice.iter.Iter cnf.Clause) (c2 : cnf.Cnf)
+  (result : alloc.vec.Vec cnf.Clause) :
+  RustM (alloc.vec.Vec cnf.Clause)
+  := do
+  let (o, iter1) ←
+    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
+  match o with
+  | core.option.Option.None => ok result
+  | core.option.Option.Some clause1 =>
+    let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref c2
+    let iter2 ← core.slice.Slice.iter s
+    let result1 ← cnf.distribute_loop0_loop0 iter2 result clause1
+    cnf.distribute_loop0 iter1 c2 result1
+partial_fixpoint
+
+/-- [sat_solver::cnf::distribute]:
+    Source: 'src/cnf.rs', lines 39:0-47:1 -/
+def cnf.distribute (c1 : cnf.Cnf) (c2 : cnf.Cnf) : RustM cnf.Cnf := do
+  let result ← alloc.vec.Vec.new cnf.Clause
+  let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref c1
+  let iter ← core.slice.Slice.iter s
+  let result1 ← cnf.distribute_loop0 iter c2 result
+  ok result1
+
+/-- [sat_solver::cnf::cnf_rec]:
+    Source: 'src/cnf.rs', lines 54:0-90:1 -/
+def cnf.cnf_rec (expr1 : expr.Expr) (negate : Bool) : RustM cnf.Cnf := do
+  match expr1 with
+  | expr.Expr.True =>
+    if negate
+    then
+      let v ← alloc.vec.Vec.new cnf.Literal
+      let y ←
+        lift (Std.Array.to_slice (Array.make 1#usize [ v ] : Array cnf.Clause
+          1#usize))
+      let ret ← alloc.slice.Slice.into_vec y
+      ok ret
+    else let v ← alloc.vec.Vec.new cnf.Clause
+         ok v
+  | expr.Expr.False =>
+    if negate
+    then let v ← alloc.vec.Vec.new cnf.Clause
+         ok v
+    else
+      let v ← alloc.vec.Vec.new cnf.Literal
+      let y ←
+        lift (Std.Array.to_slice (Array.make 1#usize [ v ] : Array cnf.Clause
+          1#usize))
+      let ret ← alloc.slice.Slice.into_vec y
+      ok ret
+  | expr.Expr.Variable v =>
+    let y ←
+      lift (Std.Array.to_slice
+        (Array.make 1#usize [ { var := v, negated := negate } ] : Array
+        cnf.Literal 1#usize))
+    let ret ← alloc.slice.Slice.into_vec y
+    let y1 ←
+      lift (Std.Array.to_slice (Array.make 1#usize [ ret ] : Array cnf.Clause
+        1#usize))
+    let ret1 ← alloc.slice.Slice.into_vec y1
+    ok ret1
+  | expr.Expr.Conj e1 e2 =>
+    if negate
+    then
+      let c ← cnf.cnf_rec e1 true
+      let c1 ← cnf.cnf_rec e2 true
+      cnf.distribute c c1
+    else
+      let c ← cnf.cnf_rec e1 false
+      let c1 ← cnf.cnf_rec e2 false
+      cnf.conj_cnf c c1
+  | expr.Expr.Disj e1 e2 =>
+    if negate
+    then
+      let c ← cnf.cnf_rec e1 true
+      let c1 ← cnf.cnf_rec e2 true
+      cnf.conj_cnf c c1
+    else
+      let c ← cnf.cnf_rec e1 false
+      let c1 ← cnf.cnf_rec e2 false
+      cnf.distribute c c1
+  | expr.Expr.Neg e => cnf.cnf_rec e (¬ negate)
+partial_fixpoint
+
+/-- [sat_solver::cnf::to_cnf]:
+    Source: 'src/cnf.rs', lines 92:0-94:1
+    Visibility: public -/
+def cnf.to_cnf (expr1 : expr.Expr) : RustM cnf.Cnf := do
+  cnf.cnf_rec expr1 false
+
+/-- [sat_solver::expr::{sat_solver::expr::Map}::get]: loop 0:
+    Source: 'src/expr.rs', lines 36:8-42:5
+    Visibility: public -/
+@[rust_loop]
+def expr.Map.get_loop
+  (iter : core.slice.iter.Iter expr.Entry) (key : Std.U8) :
+  RustM (core.option.Option Bool)
+  := do
+  let (o, iter1) ←
+    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
+  match o with
+  | core.option.Option.None => ok core.option.Option.None
+  | core.option.Option.Some entry =>
+    if entry.key = key
+    then ok (core.option.Option.Some entry.value)
+    else expr.Map.get_loop iter1 key
+partial_fixpoint
+
+/-- [sat_solver::expr::{sat_solver::expr::Map}::get]:
+    Source: 'src/expr.rs', lines 35:4-42:5
+    Visibility: public -/
+def expr.Map.get
+  (self : expr.Map) (key : Std.U8) : RustM (core.option.Option Bool) := do
+  let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref self
+  let iter ← core.slice.Slice.iter s
+  expr.Map.get_loop iter key
+
+/-- [sat_solver::cnf::eval_literal]:
+    Source: 'src/cnf.rs', lines 99:0-104:1 -/
+def cnf.eval_literal
+  (lit : cnf.Literal) (valuation : expr.Map) :
+  RustM (core.result.Result Bool Unit)
+  := do
+  let o ← expr.Map.get valuation lit.var
+  match o with
+  | core.option.Option.None => ok (core.result.Result.Err ())
+  | core.option.Option.Some b =>
+    if lit.negated
+    then ok (core.result.Result.Ok (¬ b))
+    else ok (core.result.Result.Ok b)
+
+/-- [sat_solver::cnf::eval_clause]: loop 0:
+    Source: 'src/cnf.rs', lines 107:4-113:1 -/
+@[rust_loop]
+def cnf.eval_clause_loop
+  (iter : core.slice.iter.Iter cnf.Literal) (valuation : expr.Map) :
+  RustM (core.result.Result Bool Unit)
+  := do
+  let (o, iter1) ←
+    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
+  match o with
+  | core.option.Option.None => ok (core.result.Result.Ok false)
+  | core.option.Option.Some lit =>
+    let r ← cnf.eval_literal lit valuation
+    let cf ← core.result.Result.Insts.CoreOpsTry_traitTry.branch r
+    match cf with
+    | core.ops.control_flow.ControlFlow.Continue val =>
+      if val
+      then ok (core.result.Result.Ok true)
+      else cnf.eval_clause_loop iter1 valuation
+    | core.ops.control_flow.ControlFlow.Break residual =>
+      core.result.Result.Insts.CoreOpsTry_traitFromResidualResultInfallibleE.from_residual
+        Bool (core.convert.From.Blanket Unit) residual
+partial_fixpoint
+
+/-- [sat_solver::cnf::eval_clause]:
+    Source: 'src/cnf.rs', lines 106:0-113:1 -/
+def cnf.eval_clause
+  (clause : cnf.Clause) (valuation : expr.Map) :
+  RustM (core.result.Result Bool Unit)
+  := do
+  let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref clause
+  let iter ← core.slice.Slice.iter s
+  cnf.eval_clause_loop iter valuation
+
+/-- [sat_solver::cnf::eval_cnf]: loop 0:
+    Source: 'src/cnf.rs', lines 116:4-122:1
+    Visibility: public -/
+@[rust_loop]
+def cnf.eval_cnf_loop
+  (iter : core.slice.iter.Iter cnf.Clause) (valuation : expr.Map) :
+  RustM (core.result.Result Bool Unit)
+  := do
+  let (o, iter1) ←
+    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
+  match o with
+  | core.option.Option.None => ok (core.result.Result.Ok true)
+  | core.option.Option.Some clause =>
+    let r ← cnf.eval_clause clause valuation
+    let cf ← core.result.Result.Insts.CoreOpsTry_traitTry.branch r
+    match cf with
+    | core.ops.control_flow.ControlFlow.Continue val =>
+      if val
+      then cnf.eval_cnf_loop iter1 valuation
+      else ok (core.result.Result.Ok false)
+    | core.ops.control_flow.ControlFlow.Break residual =>
+      core.result.Result.Insts.CoreOpsTry_traitFromResidualResultInfallibleE.from_residual
+        Bool (core.convert.From.Blanket Unit) residual
+partial_fixpoint
+
+/-- [sat_solver::cnf::eval_cnf]:
+    Source: 'src/cnf.rs', lines 115:0-122:1
+    Visibility: public -/
+def cnf.eval_cnf
+  (cnf1 : cnf.Cnf) (valuation : expr.Map) :
+  RustM (core.result.Result Bool Unit)
+  := do
+  let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref cnf1
+  let iter ← core.slice.Slice.iter s
+  cnf.eval_cnf_loop iter valuation
+
 /-- Trait implementation: [sat_solver::expr::{impl core::fmt::Debug for sat_solver::expr::Entry}]
     Source: 'src/expr.rs', lines 11:9-11:14 -/
 @[reducible]
@@ -183,33 +629,6 @@ def expr.Map.insert
     expr.Map.insert_loop deref_mut_back iter_mut_back iter (fun im => im) key
       value
   ok (o, v)
-
-/-- [sat_solver::expr::{sat_solver::expr::Map}::get]: loop 0:
-    Source: 'src/expr.rs', lines 36:8-42:5
-    Visibility: public -/
-@[rust_loop]
-def expr.Map.get_loop
-  (iter : core.slice.iter.Iter expr.Entry) (key : Std.U8) :
-  RustM (core.option.Option Bool)
-  := do
-  let (o, iter1) ←
-    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
-  match o with
-  | core.option.Option.None => ok core.option.Option.None
-  | core.option.Option.Some entry =>
-    if entry.key = key
-    then ok (core.option.Option.Some entry.value)
-    else expr.Map.get_loop iter1 key
-partial_fixpoint
-
-/-- [sat_solver::expr::{sat_solver::expr::Map}::get]:
-    Source: 'src/expr.rs', lines 35:4-42:5
-    Visibility: public -/
-def expr.Map.get
-  (self : expr.Map) (key : Std.U8) : RustM (core.option.Option Bool) := do
-  let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref self
-  let iter ← core.slice.Slice.iter s
-  expr.Map.get_loop iter key
 
 /-- Trait implementation: [sat_solver::expr::{impl core::fmt::Debug for sat_solver::expr::Expr}]
     Source: 'src/expr.rs', lines 45:9-45:14 -/

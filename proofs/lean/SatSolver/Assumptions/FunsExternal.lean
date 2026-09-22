@@ -22,6 +22,30 @@ set_option maxHeartbeats 1000000
 set_option maxRecDepth 2048
 open sat_solver
 
+/-- [sat_solver::cnf::{impl core::fmt::Debug for sat_solver::cnf::Literal}::fmt]:
+    Source: 'src/cnf.rs', lines 4:9-4:14
+    Visibility: public -/
+axiom cnf.Literal.Insts.CoreFmtDebug.fmt
+  :
+  cnf.Literal → core.fmt.Formatter → RustM ((core.result.Result Unit
+    core.fmt.Error) × core.fmt.Formatter)
+
+/-- [sat_solver::cnf::{impl core::fmt::Debug for sat_solver::cnf::Clause}::fmt]:
+    Source: 'src/cnf.rs', lines 10:9-10:14
+    Visibility: public -/
+axiom cnf.Clause.Insts.CoreFmtDebug.fmt
+  :
+  cnf.Clause → core.fmt.Formatter → RustM ((core.result.Result Unit
+    core.fmt.Error) × core.fmt.Formatter)
+
+/-- [sat_solver::cnf::{impl core::fmt::Debug for sat_solver::cnf::Cnf}::fmt]:
+    Source: 'src/cnf.rs', lines 13:9-13:14
+    Visibility: public -/
+axiom cnf.Cnf.Insts.CoreFmtDebug.fmt
+  :
+  cnf.Cnf → core.fmt.Formatter → RustM ((core.result.Result Unit
+    core.fmt.Error) × core.fmt.Formatter)
+
 /-- [sat_solver::expr::{impl core::fmt::Debug for sat_solver::expr::Entry}::fmt]:
     Source: 'src/expr.rs', lines 11:9-11:14
     Visibility: public -/

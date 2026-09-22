@@ -30,15 +30,19 @@ extract:
         --opaque 'crate::expr::{impl core::fmt::Debug for crate::expr::Entry}' \
         --opaque 'crate::expr::{impl core::fmt::Debug for crate::expr::Map}' \
         --opaque 'crate::expr::{impl core::fmt::Debug for crate::expr::Expr}' \
-        --opaque 'crate::expr::{impl core::fmt::Display for crate::expr::Expr}'" \
+        --opaque 'crate::expr::{impl core::fmt::Display for crate::expr::Expr}' \
+        --opaque 'crate::cnf::{impl core::fmt::Debug for crate::cnf::Literal}' \
+        --opaque 'crate::cnf::{impl core::fmt::Debug for crate::cnf::Clause}' \
+        --opaque 'crate::cnf::{impl core::fmt::Debug for crate::cnf::Cnf}'" \
         --aeneas-args="-loops-to-rec"
     # The --opaque flags above stop charon from attempting to translate the
-    # derived Debug impls / the handwritten Display impl for Entry/Map/Expr:
-    # doing so hits an internal "Unreachable" aeneas error (their bodies use
-    # unsupported alloc::fmt machinery anyway, same reason evaluate's error
-    # type is `()` instead of `String` -- see justfile history). Opaque items
-    # still get properly seeded into Assumptions/ as axiom stubs below; this
-    # just avoids the crash on the way there.
+    # derived Debug impls / the handwritten Display impl for Entry/Map/Expr
+    # (and, same story, the derived Debug impls for cnf.rs's Literal/Clause/
+    # Cnf): doing so hits an internal "Unreachable" aeneas error (their
+    # bodies use unsupported alloc::fmt machinery anyway, same reason
+    # evaluate's error type is `()` instead of `String` -- see justfile
+    # history). Opaque items still get properly seeded into Assumptions/ as
+    # axiom stubs below; this just avoids the crash on the way there.
 
     # Work around a hax quirk: Extraction/{Types,Funs}.lean unconditionally
     # `import SatSolver.Extraction.{Types,Funs}External`, but hax sometimes skips
