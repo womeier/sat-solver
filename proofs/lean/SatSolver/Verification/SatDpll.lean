@@ -351,7 +351,7 @@ theorem cnfSize_assignCnf_lt {c : List (List cnf.Literal)} {var : Std.U16} (valu
         scalar_tac
 
 /-- Inserting never *removes* a key: presence is monotone along the search. -/
-theorem Map.lookupList_upsertList_ne_none (l : List expr.Entry) (k key : Std.U16) (value : Bool)
+theorem Map.lookupList_upsertList_ne_none (l : List (Option Bool)) (k key : Std.U16) (value : Bool)
     (h : Map.lookupList l k ≠ none) :
     Map.lookupList (Map.upsertList l key value) k ≠ none := by
   by_cases hk : k = key
@@ -698,11 +698,12 @@ theorem sat_dpll.assign_cnf.spec (cnf1 : cnf.Cnf) (var : Std.U16) (value : Bool)
        This is what protects the literals decided at outer recursion levels, and
        it composes down the recursion because `assign_cnf` only ever shrinks the
        variable set (`cnfVars_assignCnf_subset`).
-    2. *Presence is monotone*: a key already in the map stays in it. Together with
-       `hpresent` this keeps `expr.Map.insert`'s disjunctive `hlen` side-condition
-       discharged on the "already present, pure overwrite" side all the way down,
-       so no `Usize.max` growth room is ever needed inside the search (same trick
-       as `sat_naive.check_possible_valuations.spec`).
+    2. *Presence is monotone*: a key already in the map stays in it. This is what
+       `solve_sat`'s soundness proof needs in order to read the returned map back
+       as a total valuation (`Map.represents_readback`). It used to carry a second
+       job -- discharging `expr.Map.insert`'s `Usize.max` side-condition on the
+       "already present, pure overwrite" side -- which the slot-array `Map` makes
+       unnecessary: indexing by the key bounds the array by the key type itself.
     3. *Soundness*: on success, *every* valuation agreeing with the returned map on
        the residual CNF's variables satisfies that CNF. Phrasing it for all such
        valuations rather than producing one witness is what lets `solve_sat`
@@ -823,12 +824,6 @@ theorem sat_dpll.dpll.spec (cnf1 : cnf.Cnf) (val : expr.Map)
           rw [c_post] at heval
           rw [← Cnf.eval_assignCnf w (Cnf.contents cc) v true hwv]
           exact heval
-      · /- Second insert of the same variable: already present, so it needs no
-           `Usize.max` headroom. -/
-        left
-        refine b2_post2 v ?_
-        rw [‹val1.val = Map.upsertList m.val v true›]
-        simp
       · rw [c1_post]
         have := cnfSize_assignCnf_lt (value := false) (o1_post1 v ‹o1 = some v›)
         scalar_tac
@@ -888,12 +883,6 @@ theorem sat_dpll.dpll.spec (cnf1 : cnf.Cnf) (val : expr.Map)
             refine bres_post4 x ?_
             rw [c1_post, Cnf.eval_assignCnf x (Cnf.contents cc) v false hxv]
             exact hx
-      · /- Unit propagation: the forced literal's variable is in the CNF, hence
-           already present in the map. -/
-        left
-        exact hpres lit.var (by
-          refine List.mem_flatMap.mpr ⟨[lit], o_post1 lit ‹o = some lit›, ?_⟩
-          simp [clauseVars])
       · rw [c_post]
         have := cnfSize_assignCnf_lt (value := (decide ¬lit.negated = true))
           (c := Cnf.contents cc) (var := lit.var) (by

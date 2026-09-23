@@ -292,8 +292,8 @@ fn dpll_finds_an_assignment_that_needs_backtracking() {
     ]);
     let mut val = Map::new();
     assert!(dpll(&cnf, &mut val));
-    assert_eq!(val.get(&letter('x')), Some(&false));
-    assert_eq!(val.get(&letter('y')), Some(&true));
+    assert_eq!(val.get(&letter('x')), Some(false));
+    assert_eq!(val.get(&letter('y')), Some(true));
 }
 
 #[test]

@@ -361,32 +361,19 @@ partial_fixpoint
 def cnf.to_cnf (expr1 : expr.Expr) : RustM cnf.Cnf := do
   cnf.cnf_rec expr1 false
 
-/-- [sat_solver::expr::{sat_solver::expr::Map}::get]: loop 0:
-    Source: 'src/expr.rs', lines 36:8-42:5
-    Visibility: public -/
-@[rust_loop]
-def expr.Map.get_loop
-  (iter : core.slice.iter.Iter expr.Entry) (key : Std.U16) :
-  RustM (core.option.Option Bool)
-  := do
-  let (o, iter1) ←
-    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
-  match o with
-  | core.option.Option.None => ok core.option.Option.None
-  | core.option.Option.Some entry =>
-    if entry.key = key
-    then ok (core.option.Option.Some entry.value)
-    else expr.Map.get_loop iter1 key
-partial_fixpoint
-
 /-- [sat_solver::expr::{sat_solver::expr::Map}::get]:
-    Source: 'src/expr.rs', lines 35:4-42:5
+    Source: 'src/expr.rs', lines 42:4-49:5
     Visibility: public -/
 def expr.Map.get
   (self : expr.Map) (key : Std.U16) : RustM (core.option.Option Bool) := do
-  let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref self
-  let iter ← core.slice.Slice.iter s
-  expr.Map.get_loop iter key
+  let i ← lift (UScalar.cast .Usize key)
+  let i1 ← alloc.vec.Vec.len self
+  if i < i1
+  then
+    alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+      (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT (core.option.Option
+      Bool)) self i
+  else ok core.option.Option.None
 
 /-- [sat_solver::cnf::eval_literal]:
     Source: 'src/cnf.rs', lines 103:0-108:1 -/
@@ -472,75 +459,26 @@ def cnf.eval_cnf
   let iter ← core.slice.Slice.iter s
   cnf.eval_cnf_loop iter valuation
 
-/-- Trait implementation: [sat_solver::expr::{impl core::fmt::Debug for sat_solver::expr::Entry}]
-    Source: 'src/expr.rs', lines 11:9-11:14 -/
-@[reducible]
-def expr.Entry.Insts.CoreFmtDebug : core.fmt.Debug expr.Entry := {
-  fmt := expr.Entry.Insts.CoreFmtDebug.fmt
-}
-
-/-- [sat_solver::expr::{impl core::clone::Clone for sat_solver::expr::Entry}::clone]:
-    Source: 'src/expr.rs', lines 11:16-11:21
-    Visibility: public -/
-def expr.Entry.Insts.CoreCloneClone.clone
-  (self : expr.Entry) : RustM expr.Entry := do
-  let i ← core.U16.Insts.CoreCloneClone.clone self.key
-  let b ← core.Bool.Insts.CoreCloneClone.clone self.value
-  ok { key := i, value := b }
-
-/-- Trait implementation: [sat_solver::expr::{impl core::clone::Clone for sat_solver::expr::Entry}]
-    Source: 'src/expr.rs', lines 11:16-11:21 -/
-@[reducible]
-impl_def expr.Entry.Insts.CoreCloneClone : core.clone.Clone expr.Entry := {
-  clone := expr.Entry.Insts.CoreCloneClone.clone
-  clone_from := core.clone.Clone.clone_from.default
-    expr.Entry.Insts.CoreCloneClone
-}
-
-/-- Trait implementation: [sat_solver::expr::{impl core::marker::StructuralPartialEq for sat_solver::expr::Entry}]
-    Source: 'src/expr.rs', lines 11:23-11:32 -/
-@[reducible]
-def expr.Entry.Insts.CoreMarkerStructuralPartialEq :
-  core.marker.StructuralPartialEq expr.Entry := {
-}
-
-/-- [sat_solver::expr::{impl core::cmp::PartialEq<sat_solver::expr::Entry> for sat_solver::expr::Entry}::eq]:
-    Source: 'src/expr.rs', lines 11:23-11:32
-    Visibility: public -/
-def expr.Entry.Insts.CoreCmpPartialEqEntry.eq
-  (self : expr.Entry) (other : expr.Entry) : RustM Bool := do
-  if self.key = other.key
-  then ok (self.value = other.value)
-  else ok false
-
-/-- Trait implementation: [sat_solver::expr::{impl core::cmp::PartialEq<sat_solver::expr::Entry> for sat_solver::expr::Entry}]
-    Source: 'src/expr.rs', lines 11:23-11:32 -/
-@[reducible]
-impl_def expr.Entry.Insts.CoreCmpPartialEqEntry : core.cmp.PartialEq expr.Entry
-  expr.Entry := {
-  eq := expr.Entry.Insts.CoreCmpPartialEqEntry.eq
-  ne := core.cmp.PartialEq.ne.default expr.Entry.Insts.CoreCmpPartialEqEntry
-}
-
 /-- Trait implementation: [sat_solver::expr::{impl core::fmt::Debug for sat_solver::expr::Map}]
-    Source: 'src/expr.rs', lines 17:9-17:14 -/
+    Source: 'src/expr.rs', lines 24:9-24:14 -/
 @[reducible]
 def expr.Map.Insts.CoreFmtDebug : core.fmt.Debug expr.Map := {
   fmt := expr.Map.Insts.CoreFmtDebug.fmt
 }
 
 /-- [sat_solver::expr::{impl core::clone::Clone for sat_solver::expr::Map}::clone]:
-    Source: 'src/expr.rs', lines 17:16-17:21
+    Source: 'src/expr.rs', lines 24:16-24:21
     Visibility: public -/
 def expr.Map.Insts.CoreCloneClone.clone
   (self : expr.Map) : RustM expr.Map := do
   let v ←
-    alloc.vec.Vec.Insts.CoreCloneClone.clone expr.Entry.Insts.CoreCloneClone
+    alloc.vec.Vec.Insts.CoreCloneClone.clone
+      (core.option.Option.Insts.CoreCloneClone core.Bool.Insts.CoreCloneClone)
       self
   ok v
 
 /-- Trait implementation: [sat_solver::expr::{impl core::clone::Clone for sat_solver::expr::Map}]
-    Source: 'src/expr.rs', lines 17:16-17:21 -/
+    Source: 'src/expr.rs', lines 24:16-24:21 -/
 @[reducible]
 impl_def expr.Map.Insts.CoreCloneClone : core.clone.Clone expr.Map := {
   clone := expr.Map.Insts.CoreCloneClone.clone
@@ -549,22 +487,23 @@ impl_def expr.Map.Insts.CoreCloneClone : core.clone.Clone expr.Map := {
 }
 
 /-- Trait implementation: [sat_solver::expr::{impl core::marker::StructuralPartialEq for sat_solver::expr::Map}]
-    Source: 'src/expr.rs', lines 17:23-17:32 -/
+    Source: 'src/expr.rs', lines 24:23-24:32 -/
 @[reducible]
 def expr.Map.Insts.CoreMarkerStructuralPartialEq :
   core.marker.StructuralPartialEq expr.Map := {
 }
 
 /-- [sat_solver::expr::{impl core::cmp::PartialEq<sat_solver::expr::Map> for sat_solver::expr::Map}::eq]:
-    Source: 'src/expr.rs', lines 17:23-17:32
+    Source: 'src/expr.rs', lines 24:23-24:32
     Visibility: public -/
 def expr.Map.Insts.CoreCmpPartialEqMap.eq
   (self : expr.Map) (other : expr.Map) : RustM Bool := do
   alloc.vec.Vec.Insts.CoreCmpPartialEqVec.eq
-    expr.Entry.Insts.CoreCmpPartialEqEntry self other
+    (core.option.Option.Insts.CoreCmpPartialEqOption
+    core.Bool.Insts.CoreCmpPartialEqBool) self other
 
 /-- Trait implementation: [sat_solver::expr::{impl core::cmp::PartialEq<sat_solver::expr::Map> for sat_solver::expr::Map}]
-    Source: 'src/expr.rs', lines 17:23-17:32 -/
+    Source: 'src/expr.rs', lines 24:23-24:32 -/
 @[reducible]
 impl_def expr.Map.Insts.CoreCmpPartialEqMap : core.cmp.PartialEq expr.Map
   expr.Map := {
@@ -573,72 +512,57 @@ impl_def expr.Map.Insts.CoreCmpPartialEqMap : core.cmp.PartialEq expr.Map
 }
 
 /-- [sat_solver::expr::{sat_solver::expr::Map}::new]:
-    Source: 'src/expr.rs', lines 21:4-23:5
+    Source: 'src/expr.rs', lines 28:4-30:5
     Visibility: public -/
 def expr.Map.new : RustM expr.Map := do
-  let v ← alloc.vec.Vec.new expr.Entry
+  let v ← alloc.vec.Vec.new (core.option.Option Bool)
   ok v
 
 /-- [sat_solver::expr::{sat_solver::expr::Map}::insert]: loop 0:
-    Source: 'src/expr.rs', lines 26:8-33:5
+    Source: 'src/expr.rs', lines 34:8-36:9
     Visibility: public -/
 @[rust_loop]
 def expr.Map.insert_loop
-  (deref_mut_back : Slice expr.Entry → alloc.vec.Vec expr.Entry)
-  (iter_mut_back : core.slice.iter.IterMut expr.Entry → Slice expr.Entry)
-  (iter : core.slice.iter.IterMut expr.Entry)
-  (back : core.slice.iter.IterMut expr.Entry → core.slice.iter.IterMut
-  expr.Entry) (key : Std.U16) (value : Bool) :
-  RustM ((core.option.Option Bool) × (alloc.vec.Vec expr.Entry))
+  (self : expr.Map) (i : Std.Usize) :
+  RustM (alloc.vec.Vec (core.option.Option Bool))
   := do
-  let (o, iter1, next_back) ←
-    core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT.next iter
-  match o with
-  | core.option.Option.None =>
-    let iter2 := next_back iter1 core.option.Option.None
-    let s := iter_mut_back (back iter2)
-    let v := deref_mut_back s
-    let v1 ← alloc.vec.Vec.push v ({ key, value } : expr.Entry)
-    ok (core.option.Option.None, v1)
-  | core.option.Option.Some entry =>
-    if entry.key = key
-    then
-      let (b, b1) ← core.mem.replace entry.value value
-      let im :=
-        next_back iter1 (core.option.Option.Some { entry with value := b1 })
-      let s := iter_mut_back (back im)
-      let v := deref_mut_back s
-      ok (core.option.Option.Some b, v)
-    else
-      expr.Map.insert_loop deref_mut_back iter_mut_back iter1
-        (fun im => let im1 := next_back im o
-                   back im1) key value
+  let i1 ← alloc.vec.Vec.len self
+  if i1 <= i
+  then
+    let v ← alloc.vec.Vec.push self core.option.Option.None
+    expr.Map.insert_loop v i
+  else ok self
 partial_fixpoint
 
 /-- [sat_solver::expr::{sat_solver::expr::Map}::insert]:
-    Source: 'src/expr.rs', lines 25:4-33:5
+    Source: 'src/expr.rs', lines 32:4-40:5
     Visibility: public -/
 def expr.Map.insert
   (self : expr.Map) (key : Std.U16) (value : Bool) :
   RustM ((core.option.Option Bool) × expr.Map)
   := do
-  let (s, deref_mut_back) ←
-    alloc.vec.Vec.Insts.CoreOpsDerefDerefMutSlice.deref_mut self
-  let (iter, iter_mut_back) ← core.slice.Slice.iter_mut s
-  let (o, v) ←
-    expr.Map.insert_loop deref_mut_back iter_mut_back iter (fun im => im) key
-      value
-  ok (o, v)
+  let i ← lift (UScalar.cast .Usize key)
+  let v ← expr.Map.insert_loop self i
+  let old ←
+    alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+      (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT (core.option.Option
+      Bool)) v i
+  let (_, index_mut_back) ←
+    alloc.vec.Vec.Insts.CoreOpsIndexIndexMut.index_mut
+      (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT (core.option.Option
+      Bool)) v i
+  let v1 := index_mut_back (core.option.Option.Some value)
+  ok (old, v1)
 
 /-- Trait implementation: [sat_solver::expr::{impl core::fmt::Debug for sat_solver::expr::Expr}]
-    Source: 'src/expr.rs', lines 45:9-45:14 -/
+    Source: 'src/expr.rs', lines 52:9-52:14 -/
 @[reducible]
 def expr.Expr.Insts.CoreFmtDebug : core.fmt.Debug expr.Expr := {
   fmt := expr.Expr.Insts.CoreFmtDebug.fmt
 }
 
 /-- [sat_solver::expr::{impl core::clone::Clone for sat_solver::expr::Expr}::clone]:
-    Source: 'src/expr.rs', lines 45:16-45:21
+    Source: 'src/expr.rs', lines 52:16-52:21
     Visibility: public -/
 def expr.Expr.Insts.CoreCloneClone.clone
   (self : expr.Expr) : RustM expr.Expr := do
@@ -662,7 +586,7 @@ def expr.Expr.Insts.CoreCloneClone.clone
 partial_fixpoint
 
 /-- Trait implementation: [sat_solver::expr::{impl core::clone::Clone for sat_solver::expr::Expr}]
-    Source: 'src/expr.rs', lines 45:16-45:21 -/
+    Source: 'src/expr.rs', lines 52:16-52:21 -/
 @[reducible]
 impl_def expr.Expr.Insts.CoreCloneClone : core.clone.Clone expr.Expr := {
   clone := expr.Expr.Insts.CoreCloneClone.clone
@@ -671,14 +595,14 @@ impl_def expr.Expr.Insts.CoreCloneClone : core.clone.Clone expr.Expr := {
 }
 
 /-- Trait implementation: [sat_solver::expr::{impl core::marker::StructuralPartialEq for sat_solver::expr::Expr}]
-    Source: 'src/expr.rs', lines 45:23-45:32 -/
+    Source: 'src/expr.rs', lines 52:23-52:32 -/
 @[reducible]
 def expr.Expr.Insts.CoreMarkerStructuralPartialEq :
   core.marker.StructuralPartialEq expr.Expr := {
 }
 
 /-- [sat_solver::expr::{impl core::cmp::PartialEq<sat_solver::expr::Expr> for sat_solver::expr::Expr}::eq]:
-    Source: 'src/expr.rs', lines 45:23-45:32
+    Source: 'src/expr.rs', lines 52:23-52:32
     Visibility: public -/
 def expr.Expr.Insts.CoreCmpPartialEqExpr.eq
   (self : expr.Expr) (other : expr.Expr) : RustM Bool := do
@@ -735,7 +659,7 @@ def expr.Expr.Insts.CoreCmpPartialEqExpr.eq
 partial_fixpoint
 
 /-- Trait implementation: [sat_solver::expr::{impl core::cmp::PartialEq<sat_solver::expr::Expr> for sat_solver::expr::Expr}]
-    Source: 'src/expr.rs', lines 45:23-45:32 -/
+    Source: 'src/expr.rs', lines 52:23-52:32 -/
 @[reducible]
 impl_def expr.Expr.Insts.CoreCmpPartialEqExpr : core.cmp.PartialEq expr.Expr
   expr.Expr := {
@@ -744,20 +668,20 @@ impl_def expr.Expr.Insts.CoreCmpPartialEqExpr : core.cmp.PartialEq expr.Expr
 }
 
 /-- Trait implementation: [sat_solver::expr::{impl core::fmt::Display for sat_solver::expr::Expr}]
-    Source: 'src/expr.rs', lines 55:0-72:1 -/
+    Source: 'src/expr.rs', lines 62:0-79:1 -/
 @[reducible]
 def expr.Expr.Insts.CoreFmtDisplay : core.fmt.Display expr.Expr := {
   fmt := expr.Expr.Insts.CoreFmtDisplay.fmt
 }
 
 /-- [sat_solver::expr::evaluate::{impl core::ops::function::FnOnce<(bool,), bool> for sat_solver::expr::evaluate::closure}::call_once]:
-    Source: 'src/expr.rs', lines 145:51-145:57 -/
+    Source: 'src/expr.rs', lines 152:51-152:57 -/
 def expr.evaluate.closure.Insts.CoreOpsFunctionFnOnceTupleBoolBool.call_once
   (c : expr.evaluate.closure) (tupled_args : Bool) : RustM Bool := do
   ok (¬ tupled_args)
 
 /-- Trait implementation: [sat_solver::expr::evaluate::{impl core::ops::function::FnOnce<(bool,), bool> for sat_solver::expr::evaluate::closure}]
-    Source: 'src/expr.rs', lines 145:51-145:57 -/
+    Source: 'src/expr.rs', lines 152:51-152:57 -/
 @[reducible]
 def expr.evaluate.closure.Insts.CoreOpsFunctionFnOnceTupleBoolBool :
   core.ops.function.FnOnce expr.evaluate.closure Bool Bool := {
@@ -766,7 +690,7 @@ def expr.evaluate.closure.Insts.CoreOpsFunctionFnOnceTupleBoolBool :
 }
 
 /-- [sat_solver::expr::evaluate]:
-    Source: 'src/expr.rs', lines 141:0-153:1
+    Source: 'src/expr.rs', lines 148:0-160:1
     Visibility: public -/
 def expr.evaluate
   (expr1 : expr.Expr) (valuation : expr.Map) :
@@ -825,7 +749,7 @@ def expr.evaluate
 partial_fixpoint
 
 /-- [sat_solver::expr::contains_var]: loop 0:
-    Source: 'src/expr.rs', lines 175:4-181:1 -/
+    Source: 'src/expr.rs', lines 182:4-188:1 -/
 @[rust_loop]
 def expr.contains_var_loop
   (iter : core.slice.iter.Iter Std.U16) (v : Std.U16) : RustM Bool := do
@@ -840,13 +764,13 @@ def expr.contains_var_loop
 partial_fixpoint
 
 /-- [sat_solver::expr::contains_var]:
-    Source: 'src/expr.rs', lines 174:0-181:1 -/
+    Source: 'src/expr.rs', lines 181:0-188:1 -/
 def expr.contains_var (vars : Slice Std.U16) (v : Std.U16) : RustM Bool := do
   let iter ← core.slice.Slice.iter vars
   expr.contains_var_loop iter v
 
 /-- [sat_solver::expr::merge_vars]: loop 0:
-    Source: 'src/expr.rs', lines 184:4-188:5 -/
+    Source: 'src/expr.rs', lines 191:4-195:5 -/
 @[rust_loop]
 def expr.merge_vars_loop
   (iter : core.slice.iter.Iter Std.U16) (dst : alloc.vec.Vec Std.U16) :
@@ -866,7 +790,7 @@ def expr.merge_vars_loop
 partial_fixpoint
 
 /-- [sat_solver::expr::merge_vars]:
-    Source: 'src/expr.rs', lines 183:0-189:1 -/
+    Source: 'src/expr.rs', lines 190:0-196:1 -/
 def expr.merge_vars
   (dst : alloc.vec.Vec Std.U16) (src : Slice Std.U16) :
   RustM (alloc.vec.Vec Std.U16)
@@ -875,7 +799,7 @@ def expr.merge_vars
   expr.merge_vars_loop iter dst
 
 /-- [sat_solver::expr::collect_vars_aux]:
-    Source: 'src/expr.rs', lines 191:0-207:1 -/
+    Source: 'src/expr.rs', lines 198:0-214:1 -/
 def expr.collect_vars_aux
   (expr1 : expr.Expr) : RustM (alloc.vec.Vec Std.U16) := do
   match expr1 with
@@ -898,7 +822,7 @@ def expr.collect_vars_aux
 partial_fixpoint
 
 /-- [sat_solver::expr::collect_vars]:
-    Source: 'src/expr.rs', lines 209:0-211:1
+    Source: 'src/expr.rs', lines 216:0-218:1
     Visibility: public -/
 def expr.collect_vars (expr1 : expr.Expr) : RustM (alloc.vec.Vec Std.U16) := do
   expr.collect_vars_aux expr1

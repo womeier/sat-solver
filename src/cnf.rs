@@ -102,7 +102,7 @@ pub fn to_cnf(expr: &Expr) -> Cnf {
 
 fn eval_literal(lit: &Literal, valuation: &Map) -> Result<bool, ()> {
     match valuation.get(&lit.var) {
-        Some(b) => Ok(if lit.negated { !*b } else { *b }),
+        Some(b) => Ok(if lit.negated { !b } else { b }),
         None => Err(()),
     }
 }

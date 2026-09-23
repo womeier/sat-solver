@@ -46,14 +46,6 @@ axiom cnf.Cnf.Insts.CoreFmtDebug.fmt
   cnf.Cnf → core.fmt.Formatter → RustM ((core.result.Result Unit
     core.fmt.Error) × core.fmt.Formatter)
 
-/-- [sat_solver::expr::{impl core::fmt::Debug for sat_solver::expr::Entry}::fmt]:
-    Source: 'src/expr.rs', lines 11:9-11:14
-    Visibility: public -/
-axiom expr.Entry.Insts.CoreFmtDebug.fmt
-  :
-  expr.Entry → core.fmt.Formatter → RustM ((core.result.Result Unit
-    core.fmt.Error) × core.fmt.Formatter)
-
 /-- [sat_solver::expr::{impl core::fmt::Debug for sat_solver::expr::Map}::fmt]:
     Source: 'src/expr.rs', lines 17:9-17:14
     Visibility: public -/

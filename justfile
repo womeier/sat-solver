@@ -57,7 +57,6 @@ extract:
         --exclude crate::sat_naive::SAT_SOLVER_NAIVE \
         --exclude crate::sat_dpll::SAT_SOLVER_DPLL \
         --exclude crate::sat_cdcl \
-        --opaque 'crate::expr::{impl core::fmt::Debug for crate::expr::Entry}' \
         --opaque 'crate::expr::{impl core::fmt::Debug for crate::expr::Map}' \
         --opaque 'crate::expr::{impl core::fmt::Debug for crate::expr::Expr}' \
         --opaque 'crate::expr::{impl core::fmt::Display for crate::expr::Expr}' \
