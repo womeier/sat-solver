@@ -74,6 +74,54 @@ theorem not_satBy_iff {var : Std.U8} {value : Bool} {cl : List cnf.Literal} :
     clauseSatBy var value cl = false ↔ ∀ lit ∈ cl, lit.var = var → lit.negated = value := by
   simp [clauseSatBy]
 
+theorem assignClause_inv_none {var : Std.U8} {value : Bool} {cl : List cnf.Literal}
+    (h : assignClause var value cl = none) : clauseSatBy var value cl = true := by
+  by_cases hsat : clauseSatBy var value cl = true
+  · exact hsat
+  · rw [Bool.not_eq_true] at hsat
+    rw [assignClause_of_not_satBy hsat] at h
+    simp at h
+
+theorem assignClause_inv_some {var : Std.U8} {value : Bool} {cl cl' : List cnf.Literal}
+    (h : assignClause var value cl = some cl') :
+    clauseSatBy var value cl = false ∧ cl' = cl.filter (fun lit => lit.var != var) := by
+  by_cases hsat : clauseSatBy var value cl = true
+  · rw [assignClause_of_satBy hsat] at h; simp at h
+  · rw [Bool.not_eq_true] at hsat
+    rw [assignClause_of_not_satBy hsat, Option.some.injEq] at h
+    exact ⟨hsat, h.symm⟩
+
+/-! Cons-level rewrites for `assignClause`, mirroring the three cases
+`assign_clause`'s loop body distinguishes as it scans. -/
+
+theorem assignClause_cons_sat {var : Std.U8} {value : Bool} {lit : cnf.Literal}
+    (rest : List cnf.Literal) (hvar : lit.var = var) (hneg : lit.negated ≠ value) :
+    assignClause var value (lit :: rest) = none := by
+  refine assignClause_of_satBy (satBy_iff.mpr ⟨lit, by simp, hvar, hneg⟩)
+
+theorem assignClause_cons_drop {var : Std.U8} {value : Bool} {lit : cnf.Literal}
+    (rest : List cnf.Literal) (hvar : lit.var = var) (hneg : lit.negated = value) :
+    assignClause var value (lit :: rest) = assignClause var value rest := by
+  have hcons : clauseSatBy var value (lit :: rest) = clauseSatBy var value rest := by
+    simp [clauseSatBy, hvar, hneg]
+  by_cases hsat : clauseSatBy var value rest = true
+  · rw [assignClause_of_satBy hsat, assignClause_of_satBy (hcons.trans hsat)]
+  · rw [Bool.not_eq_true] at hsat
+    rw [assignClause_of_not_satBy hsat, assignClause_of_not_satBy (hcons.trans hsat)]
+    simp [hvar]
+
+theorem assignClause_cons_keep {var : Std.U8} {value : Bool} {lit : cnf.Literal}
+    (rest : List cnf.Literal) (hvar : lit.var ≠ var) :
+    assignClause var value (lit :: rest) =
+      Option.map (fun cl => lit :: cl) (assignClause var value rest) := by
+  have hcons : clauseSatBy var value (lit :: rest) = clauseSatBy var value rest := by
+    simp [clauseSatBy, hvar]
+  by_cases hsat : clauseSatBy var value rest = true
+  · rw [assignClause_of_satBy hsat, assignClause_of_satBy (hcons.trans hsat)]; rfl
+  · rw [Bool.not_eq_true] at hsat
+    rw [assignClause_of_not_satBy hsat, assignClause_of_not_satBy (hcons.trans hsat)]
+    simp [hvar]
+
 /-- Pure reference semantics for `sat_dpll::assign_cnf`: simplify every clause,
     dropping the ones that became satisfied. -/
 def assignCnf (var : Std.U8) (value : Bool) (c : List (List cnf.Literal)) :
@@ -102,12 +150,7 @@ theorem assignCnf_mem_inv {c : List (List cnf.Literal)} {var : Std.U8} {value : 
     {cl' : List cnf.Literal} (h : cl' ∈ assignCnf var value c) :
     ∃ cl ∈ c, cl' = cl.filter (fun lit => lit.var != var) := by
   obtain ⟨cl, hcl, hassign⟩ := mem_assignCnf.mp h
-  refine ⟨cl, hcl, ?_⟩
-  by_cases hsat : clauseSatBy var value cl = true
-  · rw [assignClause_of_satBy hsat] at hassign; simp at hassign
-  · rw [Bool.not_eq_true] at hsat
-    rw [assignClause_of_not_satBy hsat, Option.some.injEq] at hassign
-    exact hassign.symm
+  exact ⟨cl, hcl, (assignClause_inv_some hassign).2⟩
 
 /-! Cons-level rewrites for `assignCnf`, so the inductions below never have to
 touch `List.filterMap` or case on the `Option`. -/
@@ -322,7 +365,7 @@ theorem Map.represents_readback (m : expr.Map) (ks : List Std.U8)
   simp only [Map.readback]
   cases h : Map.lookupList m.val k with
   | none => exact absurd h (hpresent k hk)
-  | some b => simp [h]
+  | some b => simp
 
 /-! ### Extraction-matching layer -/
 
@@ -416,7 +459,9 @@ theorem sat_dpll.find_unit_literal.spec (cnf1 : cnf.Cnf) :
     sat_dpll.find_unit_literal cnf1 ⦃ (r : core.option.Option cnf.Literal) =>
       (∀ lit, r = some lit → [lit] ∈ Cnf.contents cnf1) ∧
       (r = none → ∀ cl ∈ Cnf.contents cnf1, cl.length ≠ 1) ⦄ := by
-  sorry
+  unfold sat_dpll.find_unit_literal
+  step*
+  simp_all
 
 /-- **Spec theorem for `sat_solver::sat_dpll::find_branch_var`'s loop.** -/
 @[step]
@@ -424,7 +469,42 @@ theorem sat_dpll.find_branch_var_loop.spec (iter : core.slice.iter.Iter cnf.Clau
     sat_dpll.find_branch_var_loop iter ⦃ (r : core.option.Option Std.U8) =>
       (∀ v, r = some v → v ∈ cnfVars (iter.val.map (·.val))) ∧
       (r = none → ∀ cl ∈ iter.val.map (·.val), cl = []) ⦄ := by
-  sorry
+  unfold sat_dpll.find_branch_var_loop
+  step*
+  · obtain ⟨ls, hls⟩ := iter
+    cases ls with
+    | nil => simp_all
+    | cons e es => simp_all
+  · obtain ⟨ls, hls⟩ := iter
+    cases ls with
+    | nil => simp_all
+    | cons e es =>
+      /- The head clause is empty, so it contributes no variables: both conjuncts
+         come straight from the recursive call's. -/
+      simp_all
+      intro v hv
+      simpa [cnfVars, clauseVars] using r_post1 v hv
+  · /- The `hi` side-condition of indexing: the clause isn't empty. -/
+    rename_i hb
+    have hne : clause.val ≠ [] := fun h => hb (b_post.mpr h)
+    have := List.length_pos_iff.mpr hne
+    scalar_tac
+  · obtain ⟨ls, hls⟩ := iter
+    cases ls with
+    | nil => simp_all
+    | cons e es =>
+      /- `l` is the first literal of the first non-empty clause, so its variable
+         is one of the CNF's. -/
+      simp_all
+      have hmem : l ∈ e.val := List.mem_of_getElem? l_post
+      simp only [cnfVars, List.flatMap_cons, List.mem_append, clauseVars, List.mem_map]
+      exact Or.inl ⟨l, hmem, rfl⟩
+termination_by iter.val.length
+decreasing_by
+  obtain ⟨ls, hls⟩ := iter
+  cases ls with
+  | nil => simp_all
+  | cons e es => simp_all
 
 /-- **Spec theorem for `sat_solver::sat_dpll::find_branch_var`**: the decision
     heuristic is unconstrained (any variable of `cnf1` is a sound and complete
@@ -438,7 +518,9 @@ theorem sat_dpll.find_branch_var.spec (cnf1 : cnf.Cnf) :
     sat_dpll.find_branch_var cnf1 ⦃ (r : core.option.Option Std.U8) =>
       (∀ v, r = some v → v ∈ cnfVars (Cnf.contents cnf1)) ∧
       (r = none → ∀ cl ∈ Cnf.contents cnf1, cl = []) ⦄ := by
-  sorry
+  unfold sat_dpll.find_branch_var
+  step*
+  simp_all
 
 /-- **Spec theorem for `sat_solver::sat_dpll::assign_clause`'s loop**, generalized
     over the already-accumulated prefix `lits`.
@@ -453,7 +535,70 @@ theorem sat_dpll.assign_clause_loop.spec (iter : core.slice.iter.Iter cnf.Litera
     sat_dpll.assign_clause_loop iter var value lits ⦃ (r : core.option.Option cnf.Clause) =>
       Option.map (fun (cl : cnf.Clause) => cl.val) r =
         Option.map (fun rest => lits.val ++ rest) (assignClause var value iter.val) ⦄ := by
-  sorry
+  unfold sat_dpll.assign_clause_loop
+  step*
+  · /- Iterator exhausted: nothing of `var` was ever seen, so the clause survives
+       as the accumulated prefix. -/
+    obtain ⟨ls, hls⟩ := iter
+    cases ls with
+    | nil => simp_all [assignClause, clauseSatBy]
+    | cons e es => simp_all
+  · /- A literal of `var` that `value` makes true: the clause is satisfied. -/
+    obtain ⟨ls, hls⟩ := iter
+    cases ls with
+    | nil => simp_all
+    | cons e es =>
+      simp_all
+      exact assignClause_cons_sat es ‹e.var = var› ‹¬e.negated = value›
+  · obtain ⟨ls, hls⟩ := iter
+    cases ls with
+    | nil => simp_all
+    | cons e es =>
+      simp_all
+      all_goals scalar_tac
+  · /- A literal of `var` that `value` makes false: it drops out. -/
+    obtain ⟨ls, hls⟩ := iter
+    cases ls with
+    | nil => simp_all
+    | cons e es =>
+      simp_all
+      rw [assignClause_cons_drop es ‹e.var = var› (by simp_all)]
+  · /- `Vec.push`'s headroom: one more literal fits, since the whole clause does. -/
+    obtain ⟨ls, hls⟩ := iter
+    cases ls with
+    | nil => simp_all
+    | cons e es =>
+      simp_all
+      all_goals scalar_tac
+  · obtain ⟨ls, hls⟩ := iter
+    cases ls with
+    | nil => simp_all
+    | cons e es =>
+      simp_all
+      all_goals scalar_tac
+  · /- A literal of another variable: it is kept, and the accumulated prefix grows
+       by exactly it. Done without `simp_all` on the way in: it normalizes
+       `lit.var ≠ var` to a `U8.val` inequality, which no longer matches
+       `assignClause_cons_keep`'s hypothesis. -/
+    rcases hiter : iter.val with _ | ⟨e, es⟩
+    · simp_all
+    · simp only [hiter] at o_post
+      obtain ⟨hoe, hiter1⟩ := o_post
+      have hlit : lit = e := Option.some.inj ((‹o = some lit›).symm.trans hoe)
+      subst hlit
+      rw [assignClause_cons_keep es ‹¬lit.var = var›, Option.map_map, r_post, hiter1]
+      simp [Function.comp_def, lits1_post, l_post]
+termination_by iter.val.length
+decreasing_by
+  /- Two recursive calls (the drop and the keep branch), same argument for both:
+     the iterator lost its head. -/
+  all_goals
+    rcases hiter : iter.val with _ | ⟨e, es⟩
+    · simp_all
+    · simp only [hiter] at o_post
+      obtain ⟨-, hrest⟩ := o_post
+      rw [hrest]
+      simp
 
 /-- **Spec theorem for `sat_solver::sat_dpll::assign_clause`**: matches
     `assignClause`. -/
@@ -461,7 +606,9 @@ theorem sat_dpll.assign_clause_loop.spec (iter : core.slice.iter.Iter cnf.Litera
 theorem sat_dpll.assign_clause.spec (clause : cnf.Clause) (var : Std.U8) (value : Bool) :
     sat_dpll.assign_clause clause var value ⦃ (r : core.option.Option cnf.Clause) =>
       Option.map (fun (cl : cnf.Clause) => cl.val) r = assignClause var value clause.val ⦄ := by
-  sorry
+  unfold sat_dpll.assign_clause
+  step*
+  simp_all
 
 /-- **Spec theorem for `sat_solver::sat_dpll::assign_cnf`'s loop**, generalized
     over the already-accumulated prefix `clauses`. -/
@@ -471,14 +618,70 @@ theorem sat_dpll.assign_cnf_loop.spec (iter : core.slice.iter.Iter cnf.Clause)
     (hlen : clauses.val.length + iter.val.length ≤ Usize.max) :
     sat_dpll.assign_cnf_loop iter var value clauses ⦃ (r : alloc.vec.Vec cnf.Clause) =>
       Cnf.contents r = Cnf.contents clauses ++ assignCnf var value (iter.val.map (·.val)) ⦄ := by
-  sorry
+  unfold sat_dpll.assign_cnf_loop
+  step*
+  · /- Iterator exhausted. -/
+    obtain ⟨ls, hls⟩ := iter
+    cases ls with
+    | nil => simp_all [assignCnf]
+    | cons e es => simp_all
+  · obtain ⟨ls, hls⟩ := iter
+    cases ls with
+    | nil => simp_all
+    | cons e es =>
+      simp_all
+      all_goals scalar_tac
+  · /- The head clause was satisfied outright, so it disappears. -/
+    rcases hiter : iter.val with _ | ⟨e, es⟩
+    · simp_all
+    · simp only [hiter] at o_post
+      obtain ⟨hoe, hiter1⟩ := o_post
+      have hcl : clause = e := Option.some.inj ((‹o = some clause›).symm.trans hoe)
+      subst hcl
+      rw [List.map_cons, assignCnf_cons_of_satBy _ (assignClause_inv_none (by simp_all)),
+        r_post, hiter1]
+  · obtain ⟨ls, hls⟩ := iter
+    cases ls with
+    | nil => simp_all
+    | cons e es =>
+      simp_all
+      all_goals scalar_tac
+  · obtain ⟨ls, hls⟩ := iter
+    cases ls with
+    | nil => simp_all
+    | cons e es =>
+      simp_all
+      all_goals scalar_tac
+  · /- The head clause survived, simplified: it is prepended to the rest. -/
+    rcases hiter : iter.val with _ | ⟨e, es⟩
+    · simp_all
+    · simp only [hiter] at o_post
+      obtain ⟨hoe, hiter1⟩ := o_post
+      have hcl : clause = e := Option.some.inj ((‹o = some clause›).symm.trans hoe)
+      subst hcl
+      have heq : assignClause var value clause.val = some c.val := by
+        rw [← o1_post, ‹o1 = some c›]; rfl
+      obtain ⟨hsat, hc⟩ := assignClause_inv_some heq
+      rw [List.map_cons, assignCnf_cons_of_not_satBy _ hsat, r_post, hiter1, ← hc]
+      simp [Cnf.contents, clauses1_post]
+termination_by iter.val.length
+decreasing_by
+  all_goals
+    rcases hiter : iter.val with _ | ⟨e, es⟩
+    · simp_all
+    · simp only [hiter] at o_post
+      obtain ⟨-, hrest⟩ := o_post
+      rw [hrest]
+      simp
 
 /-- **Spec theorem for `sat_solver::sat_dpll::assign_cnf`**: matches `assignCnf`. -/
 @[step]
 theorem sat_dpll.assign_cnf.spec (cnf1 : cnf.Cnf) (var : Std.U8) (value : Bool) :
     sat_dpll.assign_cnf cnf1 var value ⦃ (r : cnf.Cnf) =>
       Cnf.contents r = assignCnf var value (Cnf.contents cnf1) ⦄ := by
-  sorry
+  unfold sat_dpll.assign_cnf
+  step*
+  simp_all
 
 /-- **Spec theorem for `sat_solver::sat_dpll::dpll`** -- the search invariant, and
     the one substantial proof in this file. Four clauses, in the order the
