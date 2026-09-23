@@ -27,14 +27,14 @@ noncomputable section
 namespace sat_solver
 
 /-- Trait implementation: [sat_solver::cnf::{impl core::fmt::Debug for sat_solver::cnf::Literal}]
-    Source: 'src/cnf.rs', lines 4:9-4:14 -/
+    Source: 'src/cnf.rs', lines 6:9-6:14 -/
 @[reducible]
 def cnf.Literal.Insts.CoreFmtDebug : core.fmt.Debug cnf.Literal := {
   fmt := cnf.Literal.Insts.CoreFmtDebug.fmt
 }
 
 /-- [sat_solver::cnf::{impl core::clone::Clone for sat_solver::cnf::Literal}::clone]:
-    Source: 'src/cnf.rs', lines 4:16-4:21
+    Source: 'src/cnf.rs', lines 6:16-6:21
     Visibility: public -/
 def cnf.Literal.Insts.CoreCloneClone.clone
   (self : cnf.Literal) : RustM cnf.Literal := do
@@ -43,7 +43,7 @@ def cnf.Literal.Insts.CoreCloneClone.clone
   ok { var := i, negated := b }
 
 /-- Trait implementation: [sat_solver::cnf::{impl core::clone::Clone for sat_solver::cnf::Literal}]
-    Source: 'src/cnf.rs', lines 4:16-4:21 -/
+    Source: 'src/cnf.rs', lines 6:16-6:21 -/
 @[reducible]
 impl_def cnf.Literal.Insts.CoreCloneClone : core.clone.Clone cnf.Literal := {
   clone := cnf.Literal.Insts.CoreCloneClone.clone
@@ -52,14 +52,14 @@ impl_def cnf.Literal.Insts.CoreCloneClone : core.clone.Clone cnf.Literal := {
 }
 
 /-- Trait implementation: [sat_solver::cnf::{impl core::marker::StructuralPartialEq for sat_solver::cnf::Literal}]
-    Source: 'src/cnf.rs', lines 4:23-4:32 -/
+    Source: 'src/cnf.rs', lines 6:23-6:32 -/
 @[reducible]
 def cnf.Literal.Insts.CoreMarkerStructuralPartialEq :
   core.marker.StructuralPartialEq cnf.Literal := {
 }
 
 /-- [sat_solver::cnf::{impl core::cmp::PartialEq<sat_solver::cnf::Literal> for sat_solver::cnf::Literal}::eq]:
-    Source: 'src/cnf.rs', lines 4:23-4:32
+    Source: 'src/cnf.rs', lines 6:23-6:32
     Visibility: public -/
 def cnf.Literal.Insts.CoreCmpPartialEqLiteral.eq
   (self : cnf.Literal) (other : cnf.Literal) : RustM Bool := do
@@ -68,7 +68,7 @@ def cnf.Literal.Insts.CoreCmpPartialEqLiteral.eq
   else ok false
 
 /-- Trait implementation: [sat_solver::cnf::{impl core::cmp::PartialEq<sat_solver::cnf::Literal> for sat_solver::cnf::Literal}]
-    Source: 'src/cnf.rs', lines 4:23-4:32 -/
+    Source: 'src/cnf.rs', lines 6:23-6:32 -/
 @[reducible]
 impl_def cnf.Literal.Insts.CoreCmpPartialEqLiteral : core.cmp.PartialEq
   cnf.Literal cnf.Literal := {
@@ -77,14 +77,14 @@ impl_def cnf.Literal.Insts.CoreCmpPartialEqLiteral : core.cmp.PartialEq
 }
 
 /-- Trait implementation: [sat_solver::cnf::{impl core::fmt::Debug for sat_solver::cnf::Clause}]
-    Source: 'src/cnf.rs', lines 10:9-10:14 -/
+    Source: 'src/cnf.rs', lines 12:9-12:14 -/
 @[reducible]
 def cnf.Clause.Insts.CoreFmtDebug : core.fmt.Debug cnf.Clause := {
   fmt := cnf.Clause.Insts.CoreFmtDebug.fmt
 }
 
 /-- [sat_solver::cnf::{impl core::clone::Clone for sat_solver::cnf::Clause}::clone]:
-    Source: 'src/cnf.rs', lines 10:16-10:21
+    Source: 'src/cnf.rs', lines 12:16-12:21
     Visibility: public -/
 def cnf.Clause.Insts.CoreCloneClone.clone
   (self : cnf.Clause) : RustM cnf.Clause := do
@@ -94,7 +94,7 @@ def cnf.Clause.Insts.CoreCloneClone.clone
   ok v
 
 /-- Trait implementation: [sat_solver::cnf::{impl core::clone::Clone for sat_solver::cnf::Clause}]
-    Source: 'src/cnf.rs', lines 10:16-10:21 -/
+    Source: 'src/cnf.rs', lines 12:16-12:21 -/
 @[reducible]
 impl_def cnf.Clause.Insts.CoreCloneClone : core.clone.Clone cnf.Clause := {
   clone := cnf.Clause.Insts.CoreCloneClone.clone
@@ -103,14 +103,14 @@ impl_def cnf.Clause.Insts.CoreCloneClone : core.clone.Clone cnf.Clause := {
 }
 
 /-- Trait implementation: [sat_solver::cnf::{impl core::marker::StructuralPartialEq for sat_solver::cnf::Clause}]
-    Source: 'src/cnf.rs', lines 10:23-10:32 -/
+    Source: 'src/cnf.rs', lines 12:23-12:32 -/
 @[reducible]
 def cnf.Clause.Insts.CoreMarkerStructuralPartialEq :
   core.marker.StructuralPartialEq cnf.Clause := {
 }
 
 /-- [sat_solver::cnf::{impl core::cmp::PartialEq<sat_solver::cnf::Clause> for sat_solver::cnf::Clause}::eq]:
-    Source: 'src/cnf.rs', lines 10:23-10:32
+    Source: 'src/cnf.rs', lines 12:23-12:32
     Visibility: public -/
 def cnf.Clause.Insts.CoreCmpPartialEqClause.eq
   (self : cnf.Clause) (other : cnf.Clause) : RustM Bool := do
@@ -118,7 +118,7 @@ def cnf.Clause.Insts.CoreCmpPartialEqClause.eq
     cnf.Literal.Insts.CoreCmpPartialEqLiteral self other
 
 /-- Trait implementation: [sat_solver::cnf::{impl core::cmp::PartialEq<sat_solver::cnf::Clause> for sat_solver::cnf::Clause}]
-    Source: 'src/cnf.rs', lines 10:23-10:32 -/
+    Source: 'src/cnf.rs', lines 12:23-12:32 -/
 @[reducible]
 impl_def cnf.Clause.Insts.CoreCmpPartialEqClause : core.cmp.PartialEq
   cnf.Clause cnf.Clause := {
@@ -127,14 +127,14 @@ impl_def cnf.Clause.Insts.CoreCmpPartialEqClause : core.cmp.PartialEq
 }
 
 /-- Trait implementation: [sat_solver::cnf::{impl core::fmt::Debug for sat_solver::cnf::Cnf}]
-    Source: 'src/cnf.rs', lines 13:9-13:14 -/
+    Source: 'src/cnf.rs', lines 15:9-15:14 -/
 @[reducible]
 def cnf.Cnf.Insts.CoreFmtDebug : core.fmt.Debug cnf.Cnf := {
   fmt := cnf.Cnf.Insts.CoreFmtDebug.fmt
 }
 
 /-- [sat_solver::cnf::{impl core::clone::Clone for sat_solver::cnf::Cnf}::clone]:
-    Source: 'src/cnf.rs', lines 13:16-13:21
+    Source: 'src/cnf.rs', lines 15:16-15:21
     Visibility: public -/
 def cnf.Cnf.Insts.CoreCloneClone.clone (self : cnf.Cnf) : RustM cnf.Cnf := do
   let v ←
@@ -143,7 +143,7 @@ def cnf.Cnf.Insts.CoreCloneClone.clone (self : cnf.Cnf) : RustM cnf.Cnf := do
   ok v
 
 /-- Trait implementation: [sat_solver::cnf::{impl core::clone::Clone for sat_solver::cnf::Cnf}]
-    Source: 'src/cnf.rs', lines 13:16-13:21 -/
+    Source: 'src/cnf.rs', lines 15:16-15:21 -/
 @[reducible]
 impl_def cnf.Cnf.Insts.CoreCloneClone : core.clone.Clone cnf.Cnf := {
   clone := cnf.Cnf.Insts.CoreCloneClone.clone
@@ -152,14 +152,14 @@ impl_def cnf.Cnf.Insts.CoreCloneClone : core.clone.Clone cnf.Cnf := {
 }
 
 /-- Trait implementation: [sat_solver::cnf::{impl core::marker::StructuralPartialEq for sat_solver::cnf::Cnf}]
-    Source: 'src/cnf.rs', lines 13:23-13:32 -/
+    Source: 'src/cnf.rs', lines 15:23-15:32 -/
 @[reducible]
 def cnf.Cnf.Insts.CoreMarkerStructuralPartialEq :
   core.marker.StructuralPartialEq cnf.Cnf := {
 }
 
 /-- [sat_solver::cnf::{impl core::cmp::PartialEq<sat_solver::cnf::Cnf> for sat_solver::cnf::Cnf}::eq]:
-    Source: 'src/cnf.rs', lines 13:23-13:32
+    Source: 'src/cnf.rs', lines 15:23-15:32
     Visibility: public -/
 def cnf.Cnf.Insts.CoreCmpPartialEqCnf.eq
   (self : cnf.Cnf) (other : cnf.Cnf) : RustM Bool := do
@@ -167,7 +167,7 @@ def cnf.Cnf.Insts.CoreCmpPartialEqCnf.eq
     cnf.Clause.Insts.CoreCmpPartialEqClause self other
 
 /-- Trait implementation: [sat_solver::cnf::{impl core::cmp::PartialEq<sat_solver::cnf::Cnf> for sat_solver::cnf::Cnf}]
-    Source: 'src/cnf.rs', lines 13:23-13:32 -/
+    Source: 'src/cnf.rs', lines 15:23-15:32 -/
 @[reducible]
 impl_def cnf.Cnf.Insts.CoreCmpPartialEqCnf : core.cmp.PartialEq cnf.Cnf cnf.Cnf
   := {
@@ -176,7 +176,7 @@ impl_def cnf.Cnf.Insts.CoreCmpPartialEqCnf : core.cmp.PartialEq cnf.Cnf cnf.Cnf
 }
 
 /-- [sat_solver::cnf::clause_union]: loop 0:
-    Source: 'src/cnf.rs', lines 18:4-20:5 -/
+    Source: 'src/cnf.rs', lines 20:4-22:5 -/
 @[rust_loop]
 def cnf.clause_union_loop0
   (iter : core.slice.iter.Iter cnf.Literal) (lits : alloc.vec.Vec cnf.Literal)
@@ -194,7 +194,7 @@ def cnf.clause_union_loop0
 partial_fixpoint
 
 /-- [sat_solver::cnf::clause_union]: loop 1:
-    Source: 'src/cnf.rs', lines 21:4-23:5 -/
+    Source: 'src/cnf.rs', lines 23:4-25:5 -/
 @[rust_loop]
 def cnf.clause_union_loop1
   (iter : core.slice.iter.Iter cnf.Literal) (lits : alloc.vec.Vec cnf.Literal)
@@ -212,7 +212,7 @@ def cnf.clause_union_loop1
 partial_fixpoint
 
 /-- [sat_solver::cnf::clause_union]:
-    Source: 'src/cnf.rs', lines 16:0-25:1 -/
+    Source: 'src/cnf.rs', lines 18:0-27:1 -/
 def cnf.clause_union
   (c1 : cnf.Clause) (c2 : cnf.Clause) : RustM cnf.Clause := do
   let lits ← alloc.vec.Vec.new cnf.Literal
@@ -225,7 +225,7 @@ def cnf.clause_union
   ok lits2
 
 /-- [sat_solver::cnf::conj_cnf]: loop 0:
-    Source: 'src/cnf.rs', lines 31:4-33:5 -/
+    Source: 'src/cnf.rs', lines 33:4-35:5 -/
 @[rust_loop]
 def cnf.conj_cnf_loop
   (iter : alloc.vec.into_iter.IntoIter cnf.Clause)
@@ -242,7 +242,7 @@ def cnf.conj_cnf_loop
 partial_fixpoint
 
 /-- [sat_solver::cnf::conj_cnf]:
-    Source: 'src/cnf.rs', lines 28:0-35:1 -/
+    Source: 'src/cnf.rs', lines 30:0-37:1 -/
 def cnf.conj_cnf (c1 : cnf.Cnf) (c2 : cnf.Cnf) : RustM cnf.Cnf := do
   let iter ←
     alloc.vec.Vec.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter c2
@@ -250,7 +250,7 @@ def cnf.conj_cnf (c1 : cnf.Cnf) (c2 : cnf.Cnf) : RustM cnf.Cnf := do
   ok clauses
 
 /-- [sat_solver::cnf::distribute]: loop 1:
-    Source: 'src/cnf.rs', lines 42:8-44:9 -/
+    Source: 'src/cnf.rs', lines 44:8-46:9 -/
 @[rust_loop]
 def cnf.distribute_loop0_loop0
   (iter : core.slice.iter.Iter cnf.Clause) (result : alloc.vec.Vec cnf.Clause)
@@ -268,7 +268,7 @@ def cnf.distribute_loop0_loop0
 partial_fixpoint
 
 /-- [sat_solver::cnf::distribute]: loop 0:
-    Source: 'src/cnf.rs', lines 41:4-45:5 -/
+    Source: 'src/cnf.rs', lines 43:4-47:5 -/
 @[rust_loop]
 def cnf.distribute_loop0
   (iter : core.slice.iter.Iter cnf.Clause) (c2 : cnf.Cnf)
@@ -287,7 +287,7 @@ def cnf.distribute_loop0
 partial_fixpoint
 
 /-- [sat_solver::cnf::distribute]:
-    Source: 'src/cnf.rs', lines 39:0-47:1 -/
+    Source: 'src/cnf.rs', lines 41:0-49:1 -/
 def cnf.distribute (c1 : cnf.Cnf) (c2 : cnf.Cnf) : RustM cnf.Cnf := do
   let result ← alloc.vec.Vec.new cnf.Clause
   let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref c1
@@ -296,7 +296,7 @@ def cnf.distribute (c1 : cnf.Cnf) (c2 : cnf.Cnf) : RustM cnf.Cnf := do
   ok result1
 
 /-- [sat_solver::cnf::cnf_rec]:
-    Source: 'src/cnf.rs', lines 54:0-90:1 -/
+    Source: 'src/cnf.rs', lines 56:0-92:1 -/
 def cnf.cnf_rec (expr1 : expr.Expr) (negate : Bool) : RustM cnf.Cnf := do
   match expr1 with
   | expr.Expr.True =>
@@ -356,7 +356,7 @@ def cnf.cnf_rec (expr1 : expr.Expr) (negate : Bool) : RustM cnf.Cnf := do
 partial_fixpoint
 
 /-- [sat_solver::cnf::to_cnf]:
-    Source: 'src/cnf.rs', lines 92:0-94:1
+    Source: 'src/cnf.rs', lines 94:0-96:1
     Visibility: public -/
 def cnf.to_cnf (expr1 : expr.Expr) : RustM cnf.Cnf := do
   cnf.cnf_rec expr1 false
@@ -389,7 +389,7 @@ def expr.Map.get
   expr.Map.get_loop iter key
 
 /-- [sat_solver::cnf::eval_literal]:
-    Source: 'src/cnf.rs', lines 99:0-104:1 -/
+    Source: 'src/cnf.rs', lines 101:0-106:1 -/
 def cnf.eval_literal
   (lit : cnf.Literal) (valuation : expr.Map) :
   RustM (core.result.Result Bool Unit)
@@ -403,7 +403,7 @@ def cnf.eval_literal
     else ok (core.result.Result.Ok b)
 
 /-- [sat_solver::cnf::eval_clause]: loop 0:
-    Source: 'src/cnf.rs', lines 107:4-113:1 -/
+    Source: 'src/cnf.rs', lines 109:4-115:1 -/
 @[rust_loop]
 def cnf.eval_clause_loop
   (iter : core.slice.iter.Iter cnf.Literal) (valuation : expr.Map) :
@@ -427,7 +427,7 @@ def cnf.eval_clause_loop
 partial_fixpoint
 
 /-- [sat_solver::cnf::eval_clause]:
-    Source: 'src/cnf.rs', lines 106:0-113:1 -/
+    Source: 'src/cnf.rs', lines 108:0-115:1 -/
 def cnf.eval_clause
   (clause : cnf.Clause) (valuation : expr.Map) :
   RustM (core.result.Result Bool Unit)
@@ -437,7 +437,7 @@ def cnf.eval_clause
   cnf.eval_clause_loop iter valuation
 
 /-- [sat_solver::cnf::eval_cnf]: loop 0:
-    Source: 'src/cnf.rs', lines 116:4-122:1
+    Source: 'src/cnf.rs', lines 118:4-124:1
     Visibility: public -/
 @[rust_loop]
 def cnf.eval_cnf_loop
@@ -462,7 +462,7 @@ def cnf.eval_cnf_loop
 partial_fixpoint
 
 /-- [sat_solver::cnf::eval_cnf]:
-    Source: 'src/cnf.rs', lines 115:0-122:1
+    Source: 'src/cnf.rs', lines 117:0-124:1
     Visibility: public -/
 def cnf.eval_cnf
   (cnf1 : cnf.Cnf) (valuation : expr.Map) :
@@ -903,8 +903,201 @@ partial_fixpoint
 def expr.collect_vars (expr1 : expr.Expr) : RustM (alloc.vec.Vec Std.U8) := do
   expr.collect_vars_aux expr1
 
+/-- [sat_solver::sat_dpll::is_satisfied]:
+    Source: 'src/sat_dpll.rs', lines 9:0-11:1 -/
+def sat_dpll.is_satisfied (cnf1 : cnf.Cnf) : RustM Bool := do
+  alloc.vec.Vec.is_empty cnf1
+
+/-- [sat_solver::sat_dpll::has_empty_clause]: loop 0:
+    Source: 'src/sat_dpll.rs', lines 17:4-23:1 -/
+@[rust_loop]
+def sat_dpll.has_empty_clause_loop
+  (iter : core.slice.iter.Iter cnf.Clause) : RustM Bool := do
+  let (o, iter1) ←
+    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
+  match o with
+  | core.option.Option.None => ok false
+  | core.option.Option.Some clause =>
+    let b ← alloc.vec.Vec.is_empty clause
+    if b
+    then ok true
+    else sat_dpll.has_empty_clause_loop iter1
+partial_fixpoint
+
+/-- [sat_solver::sat_dpll::has_empty_clause]:
+    Source: 'src/sat_dpll.rs', lines 16:0-23:1 -/
+def sat_dpll.has_empty_clause (cnf1 : cnf.Cnf) : RustM Bool := do
+  let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref cnf1
+  let iter ← core.slice.Slice.iter s
+  sat_dpll.has_empty_clause_loop iter
+
+/-- [sat_solver::sat_dpll::find_unit_literal]: loop 0:
+    Source: 'src/sat_dpll.rs', lines 30:4-36:1 -/
+@[rust_loop]
+def sat_dpll.find_unit_literal_loop
+  (iter : core.slice.iter.Iter cnf.Clause) :
+  RustM (core.option.Option cnf.Literal)
+  := do
+  let (o, iter1) ←
+    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
+  match o with
+  | core.option.Option.None => ok core.option.Option.None
+  | core.option.Option.Some clause =>
+    let i ← alloc.vec.Vec.len clause
+    if i = 1#usize
+    then
+      let l ←
+        alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+          (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT cnf.Literal) clause
+          0#usize
+      let l1 ← cnf.Literal.Insts.CoreCloneClone.clone l
+      ok (core.option.Option.Some l1)
+    else sat_dpll.find_unit_literal_loop iter1
+partial_fixpoint
+
+/-- [sat_solver::sat_dpll::find_unit_literal]:
+    Source: 'src/sat_dpll.rs', lines 29:0-36:1 -/
+def sat_dpll.find_unit_literal
+  (cnf1 : cnf.Cnf) : RustM (core.option.Option cnf.Literal) := do
+  let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref cnf1
+  let iter ← core.slice.Slice.iter s
+  sat_dpll.find_unit_literal_loop iter
+
+/-- [sat_solver::sat_dpll::find_branch_var]: loop 0:
+    Source: 'src/sat_dpll.rs', lines 44:4-50:1 -/
+@[rust_loop]
+def sat_dpll.find_branch_var_loop
+  (iter : core.slice.iter.Iter cnf.Clause) :
+  RustM (core.option.Option Std.U8)
+  := do
+  let (o, iter1) ←
+    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
+  match o with
+  | core.option.Option.None => ok core.option.Option.None
+  | core.option.Option.Some clause =>
+    let b ← alloc.vec.Vec.is_empty clause
+    if b
+    then sat_dpll.find_branch_var_loop iter1
+    else
+      let l ←
+        alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+          (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT cnf.Literal) clause
+          0#usize
+      ok (core.option.Option.Some l.var)
+partial_fixpoint
+
+/-- [sat_solver::sat_dpll::find_branch_var]:
+    Source: 'src/sat_dpll.rs', lines 43:0-50:1 -/
+def sat_dpll.find_branch_var
+  (cnf1 : cnf.Cnf) : RustM (core.option.Option Std.U8) := do
+  let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref cnf1
+  let iter ← core.slice.Slice.iter s
+  sat_dpll.find_branch_var_loop iter
+
+/-- [sat_solver::sat_dpll::assign_clause]: loop 0:
+    Source: 'src/sat_dpll.rs', lines 58:4-70:1 -/
+@[rust_loop]
+def sat_dpll.assign_clause_loop
+  (iter : core.slice.iter.Iter cnf.Literal) (var : Std.U8) (value : Bool)
+  (lits : alloc.vec.Vec cnf.Literal) :
+  RustM (core.option.Option cnf.Clause)
+  := do
+  let (o, iter1) ←
+    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
+  match o with
+  | core.option.Option.None => ok (core.option.Option.Some lits)
+  | core.option.Option.Some lit =>
+    if lit.var = var
+    then
+      if lit.negated != value
+      then ok core.option.Option.None
+      else sat_dpll.assign_clause_loop iter1 var value lits
+    else
+      let l ← cnf.Literal.Insts.CoreCloneClone.clone lit
+      let lits1 ← alloc.vec.Vec.push lits l
+      sat_dpll.assign_clause_loop iter1 var value lits1
+partial_fixpoint
+
+/-- [sat_solver::sat_dpll::assign_clause]:
+    Source: 'src/sat_dpll.rs', lines 56:0-70:1 -/
+def sat_dpll.assign_clause
+  (clause : cnf.Clause) (var : Std.U8) (value : Bool) :
+  RustM (core.option.Option cnf.Clause)
+  := do
+  let lits ← alloc.vec.Vec.new cnf.Literal
+  let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref clause
+  let iter ← core.slice.Slice.iter s
+  sat_dpll.assign_clause_loop iter var value lits
+
+/-- [sat_solver::sat_dpll::assign_cnf]: loop 0:
+    Source: 'src/sat_dpll.rs', lines 78:4-82:5 -/
+@[rust_loop]
+def sat_dpll.assign_cnf_loop
+  (iter : core.slice.iter.Iter cnf.Clause) (var : Std.U8) (value : Bool)
+  (clauses : alloc.vec.Vec cnf.Clause) :
+  RustM (alloc.vec.Vec cnf.Clause)
+  := do
+  let (o, iter1) ←
+    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
+  match o with
+  | core.option.Option.None => ok clauses
+  | core.option.Option.Some clause =>
+    let o1 ← sat_dpll.assign_clause clause var value
+    match o1 with
+    | core.option.Option.None =>
+      sat_dpll.assign_cnf_loop iter1 var value clauses
+    | core.option.Option.Some c =>
+      let clauses1 ← alloc.vec.Vec.push clauses c
+      sat_dpll.assign_cnf_loop iter1 var value clauses1
+partial_fixpoint
+
+/-- [sat_solver::sat_dpll::assign_cnf]:
+    Source: 'src/sat_dpll.rs', lines 76:0-84:1 -/
+def sat_dpll.assign_cnf
+  (cnf1 : cnf.Cnf) (var : Std.U8) (value : Bool) : RustM cnf.Cnf := do
+  let clauses ← alloc.vec.Vec.new cnf.Clause
+  let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref cnf1
+  let iter ← core.slice.Slice.iter s
+  let clauses1 ← sat_dpll.assign_cnf_loop iter var value clauses
+  ok clauses1
+
+/-- [sat_solver::sat_dpll::dpll]:
+    Source: 'src/sat_dpll.rs', lines 97:0-125:1 -/
+def sat_dpll.dpll
+  (cnf1 : cnf.Cnf) (val : expr.Map) : RustM (Bool × expr.Map) := do
+  let b ← sat_dpll.is_satisfied cnf1
+  if b
+  then ok (true, val)
+  else
+    let b1 ← sat_dpll.has_empty_clause cnf1
+    if b1
+    then ok (false, val)
+    else
+      let o ← sat_dpll.find_unit_literal cnf1
+      match o with
+      | core.option.Option.None =>
+        let o1 ← sat_dpll.find_branch_var cnf1
+        match o1 with
+        | core.option.Option.None => ok (false, val)
+        | core.option.Option.Some v =>
+          let (_, val1) ← expr.Map.insert val v true
+          let c ← sat_dpll.assign_cnf cnf1 v true
+          let (b2, val2) ← sat_dpll.dpll c val1
+          if b2
+          then ok (true, val2)
+          else
+            let (_, val3) ← expr.Map.insert val2 v false
+            let c1 ← sat_dpll.assign_cnf cnf1 v false
+            sat_dpll.dpll c1 val3
+      | core.option.Option.Some lit =>
+        let (_, val1) ← expr.Map.insert val lit.var (¬ lit.negated)
+        let c ← sat_dpll.assign_cnf cnf1 lit.var (¬ lit.negated)
+        sat_dpll.dpll c val1
+partial_fixpoint
+
 /-- [sat_solver::sat_naive::initial_valuation]: loop 0:
-    Source: 'src/sat_naive.rs', lines 8:4-10:5 -/
+    Source: 'src/sat_naive.rs', lines 10:4-12:5
+    Visibility: public -/
 @[rust_loop]
 def sat_naive.initial_valuation_loop
   (iter : core.slice.iter.Iter Std.U8) (map : expr.Map) : RustM expr.Map := do
@@ -918,7 +1111,8 @@ def sat_naive.initial_valuation_loop
 partial_fixpoint
 
 /-- [sat_solver::sat_naive::initial_valuation]:
-    Source: 'src/sat_naive.rs', lines 5:0-13:1 -/
+    Source: 'src/sat_naive.rs', lines 7:0-15:1
+    Visibility: public -/
 def sat_naive.initial_valuation (vars : Slice Std.U8) : RustM expr.Map := do
   let map ← expr.Map.new
   let iter ←
@@ -926,8 +1120,22 @@ def sat_naive.initial_valuation (vars : Slice Std.U8) : RustM expr.Map := do
       vars
   sat_naive.initial_valuation_loop iter map
 
+/-- [sat_solver::sat_dpll::solve_sat]:
+    Source: 'src/sat_dpll.rs', lines 127:0-140:1
+    Visibility: public -/
+def sat_dpll.solve_sat
+  (expr1 : expr.Expr) : RustM (core.option.Option expr.Map) := do
+  let vars ← expr.collect_vars expr1
+  let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref vars
+  let val ← sat_naive.initial_valuation s
+  let cnf1 ← cnf.to_cnf expr1
+  let (b, val1) ← sat_dpll.dpll cnf1 val
+  if b
+  then ok (core.option.Option.Some val1)
+  else ok core.option.Option.None
+
 /-- [sat_solver::sat_naive::check_possible_valuations]:
-    Source: 'src/sat_naive.rs', lines 15:0-34:1 -/
+    Source: 'src/sat_naive.rs', lines 17:0-36:1 -/
 def sat_naive.check_possible_valuations
   (expr1 : expr.Expr) (vars : Slice Std.U8) (val : expr.Map) :
   RustM (Bool × expr.Map)
@@ -957,7 +1165,7 @@ def sat_naive.check_possible_valuations
 partial_fixpoint
 
 /-- [sat_solver::sat_naive::solve_sat]:
-    Source: 'src/sat_naive.rs', lines 36:0-45:1
+    Source: 'src/sat_naive.rs', lines 38:0-47:1
     Visibility: public -/
 def sat_naive.solve_sat
   (expr1 : expr.Expr) : RustM (core.option.Option expr.Map) := do

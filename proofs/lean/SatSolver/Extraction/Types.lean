@@ -23,20 +23,20 @@ set_option maxRecDepth 2048
 namespace sat_solver
 
 /-- [sat_solver::cnf::Literal]
-    Source: 'src/cnf.rs', lines 5:0-8:1
+    Source: 'src/cnf.rs', lines 7:0-10:1
     Visibility: public -/
 structure cnf.Literal where
   var : Std.U8
   negated : Bool
 
 /-- [sat_solver::cnf::Clause]
-    Source: 'src/cnf.rs', lines 11:0-11:32
+    Source: 'src/cnf.rs', lines 13:0-13:36
     Visibility: public -/
 @[reducible]
 def cnf.Clause := alloc.vec.Vec cnf.Literal
 
 /-- [sat_solver::cnf::Cnf]
-    Source: 'src/cnf.rs', lines 14:0-14:28
+    Source: 'src/cnf.rs', lines 16:0-16:32
     Visibility: public -/
 @[reducible]
 def cnf.Cnf := alloc.vec.Vec cnf.Clause
