@@ -22,7 +22,7 @@ competitions check solver output — all 3000 verdicts are correct.
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/benchmarks-dark.svg">
   <img src="docs/benchmarks.svg" width="780"
-       alt="Mean solve time per instance, log scale, 100 instances per set. On uf20-91 (20 variables, satisfiable) dpll averages 0.14 ms (worst 0.45 ms) and naive 124 ms (worst 359 ms). On uf50-218 dpll averages 4.44 ms (worst 16.8 ms) and on the unsatisfiable uuf50-218 12.1 ms (worst 42.3 ms); naive is out of reach on the 50-variable sets because it enumerates all 2^50 valuations.">
+       alt="Mean solve time per instance, log scale, 100 instances per set. On uf20-91 (20 variables, satisfiable) dpll averages 0.14 ms (worst 0.43 ms) and naive 131 ms (worst 386 ms). On uf50-218 dpll averages 4.32 ms (worst 16.5 ms) and on the unsatisfiable uuf50-218 12.0 ms (worst 41.4 ms); naive is out of reach on the 50-variable sets because it enumerates all 2^50 valuations.">
 </picture>
 
 `just satlib-figure` re-measures and prints the dataset as CSV;
@@ -52,8 +52,15 @@ redraws the two SVGs from it.
 
 Known limits worth fixing (or at least documenting) alongside the above:
 
-- [ ] **`Map` is a linear-scan assoc list**, so every lookup is O(vars) — now
-      the binding constraint on instance size, with the variable ceiling lifted.
+- [x] **`Map` is a linear-scan assoc list.** ~~Every lookup is O(vars).~~ Now a
+      slot array indexed by the variable itself (`Vec<Option<bool>>`, grown on
+      demand), so `get` and `insert` are both O(1). This is *not* measurable at
+      SATLIB sizes — 20–50 slots fit in a cache line either way, and `evaluate`
+      short-circuits before doing many lookups — so it was worth doing for the
+      asymptotics and for the proofs, not for the benchmark. It removed
+      `Map.insert`'s `&mut`-iterator encoding (three nested backward
+      continuations) and every `Usize.max` headroom hypothesis in `SatNaive.lean`
+      and `SatDpll.lean`: indexing by the key bounds the array by the key type.
 - [ ] **DPLL allocates a fresh residual CNF per node.** That is what makes the
       correctness proof clean (each recursive call is self-contained), and it is
       also the performance ceiling. Watched literals would fix it at a

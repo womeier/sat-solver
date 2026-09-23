@@ -28,8 +28,6 @@ namespace sat_solver
 theorem sat_naive.check_possible_valuations.spec
     (e : expr.Expr) (vars : Slice Std.U16) (val0 : expr.Map) (w0 : Std.U16 → Bool)
     (hsub : ∀ k ∈ vars.val, k ∈ varsOf e) (hnodup : vars.val.Nodup)
-    (hlen : (∀ k ∈ vars.val, Map.lookupList val0.val k ≠ none) ∨
-      val0.val.length + vars.val.length < Usize.max)
     (hagree : ∀ k, k ∈ varsOf e → k ∉ vars.val → Map.lookupList val0.val k = some (w0 k)) :
     sat_naive.check_possible_valuations e vars val0 ⦃ (b : Bool) (val1 : expr.Map) =>
       -- val1 is unchanged outside `vars`, regardless of the outcome
@@ -75,16 +73,6 @@ theorem sat_naive.check_possible_valuations.spec
     cases l with
     | nil => simp_all
     | cons e es => simp_all
-  · -- hlen precondition for the first insert (val0.insert vars[0] false):
-    -- either vars[0] is already present in val0 (no growth room needed), or
-    -- there's genuine growth room since val0.length + vars.length < Usize.max
-    rcases hlen with hpresent | hlen'
-    · left
-      apply hpresent
-      rw [v_post2]
-      exact List.getElem_mem v
-    · right
-      scalar_tac
   · -- hsub for the recursive call
     intro k hk
     apply hsub
@@ -97,24 +85,6 @@ theorem sat_naive.check_possible_valuations.spec
     | cons e es =>
       rw [vs_post]
       simp_all
-  · -- hlen for the recursive call (val1, vs)
-    obtain ⟨l, hl⟩ := vars
-    cases l with
-    | nil => simp_all
-    | cons e es =>
-      rw [vs_post]
-      rcases hlen with hpresent | hlen'
-      · left
-        intro k hk
-        rw [__post2, v_post2]
-        simp only [List.getElem_cons_zero]
-        have hke : k ≠ e := fun hc => (List.nodup_cons.mp hnodup).1 (hc ▸ hk)
-        rw [Map.lookupList_upsertList_other _ _ _ _ hke]
-        exact hpresent k (List.mem_cons_of_mem e hk)
-      · right
-        rw [__post2]
-        simp only [Map.upsertList_length, List.tail_cons]
-        split_ifs <;> scalar_tac
   · -- hagree for the recursive call
     rw [v_post2] at __post2
     intro k hk hknotin
@@ -181,11 +151,6 @@ theorem sat_naive.check_possible_valuations.spec
         · -- witness for the second recursive call's own w0 parameter: w0 updated
           -- at the branch variable to `true`
           exact fun k => if k = e then true else w0 k
-        · -- hlen precondition for the second insert (val2.insert e true): e is
-          -- already present in val2 (frame, since e ∉ vs), no growth needed
-          left
-          rw [v_post2, b1_post1 e (hsub e (by simp)) (by rw [vs_post]; exact (List.nodup_cons.mp hnodup).1)]
-          simp
         · -- hsub for the second recursive call
           intro k hk
           apply hsub
@@ -194,15 +159,6 @@ theorem sat_naive.check_possible_valuations.spec
         · -- hnodup for the second recursive call
           rw [vs_post]
           simp_all
-        · -- hlen for the second recursive call (val3, vs): every key in vs is
-          -- already present in val3 (it was already present in val2, from
-          -- `b1_post2`, and the second insert only touches e ∉ vs)
-          left
-          intro k hk
-          have hk' : k ∈ es := by rw [vs_post] at hk; exact hk
-          have hke : k ≠ e := fun hc => (List.nodup_cons.mp hnodup).1 (hc ▸ hk')
-          rw [__post2, v_post2, Map.lookupList_upsertList_other _ _ _ _ hke]
-          exact b1_post2 k hk
         · -- hagree for the second recursive call
           rw [v_post2] at __post2
           intro k hk hknotin
@@ -293,13 +249,11 @@ decreasing_by
 
 /-- **Spec theorem for `sat_naive::initial_valuation`'s loop.**
 Every key visited along the way gets set to `false`; keys never visited are left
-untouched. Mirrors `check_possible_valuations.spec`'s disjunctive `hlen`: a key
-that's already present needs no fresh growth room to be overwritten. -/
+untouched. No headroom hypothesis: `Map.insert` indexes by the key itself and
+grows at most to 65536 slots, so there is no `Usize.max` obligation to thread. -/
 @[step]
 theorem sat_naive.initial_valuation_loop.spec
-    (iter : core.slice.iter.Iter Std.U16) (map : expr.Map)
-    (hlen : (∀ k ∈ iter.val, Map.lookupList map.val k ≠ none) ∨
-      map.val.length + iter.val.length < Usize.max) :
+    (iter : core.slice.iter.Iter Std.U16) (map : expr.Map) :
     sat_naive.initial_valuation_loop iter map ⦃ (m : expr.Map) =>
       (∀ k, k ∉ iter.val → Map.lookupList m.val k = Map.lookupList map.val k) ∧
       (∀ k ∈ iter.val, Map.lookupList m.val k = some false) ⦄ := by
@@ -310,40 +264,6 @@ theorem sat_naive.initial_valuation_loop.spec
     cases l with
     | nil => simp_all
     | cons e es => simp_all
-  · -- hlen for Map.insert (v false)
-    obtain ⟨l, hl⟩ := iter
-    cases l with
-    | nil => simp_all
-    | cons e es =>
-      obtain ⟨ho, hiter1⟩ := o_post
-      have hve : v = e := by simp_all
-      rcases hlen with hpresent | hlen'
-      · left
-        rw [hve]
-        exact hpresent e (by simp)
-      · right
-        scalar_tac
-  · -- hlen for the recursive call
-    obtain ⟨l, hl⟩ := iter
-    cases l with
-    | nil => simp_all
-    | cons e es =>
-      obtain ⟨ho, hiter1⟩ := o_post
-      have hve : v = e := by simp_all
-      rcases hlen with hpresent | hlen'
-      · left
-        intro k hk
-        rw [hiter1] at hk
-        rw [__post2, hve]
-        by_cases hke : k = e
-        · rw [hke, Map.lookupList_upsertList_self]
-          simp
-        · rw [Map.lookupList_upsertList_other _ _ _ _ hke]
-          exact hpresent k (by simp [hk])
-      · right
-        rw [hiter1, __post2, hve]
-        simp only [Map.upsertList_length]
-        split_ifs <;> scalar_tac
   · -- final result
     obtain ⟨l, hl⟩ := iter
     cases l with
@@ -375,7 +295,7 @@ decreasing_by
 /-- **Spec theorem for `sat_naive::initial_valuation`**
 Sets every variable in `vars` to `false` in a fresh map. -/
 @[step]
-theorem sat_naive.initial_valuation.spec (vars : Slice Std.U16) (hlen : vars.val.length < Usize.max) :
+theorem sat_naive.initial_valuation.spec (vars : Slice Std.U16) :
     sat_naive.initial_valuation vars ⦃ (m : expr.Map) =>
       ∀ k ∈ vars.val, Map.lookupList m.val k = some false ⦄ := by
   unfold sat_naive.initial_valuation expr.Map.new
@@ -393,11 +313,6 @@ theorem sat_naive.solve_sat_sound (e : expr.Expr) (hbound : exprSize e < Usize.m
   · -- witness for check_possible_valuations' own w0 parameter: irrelevant, since
     -- s.val = varsOf e as a set, so `hagree`'s premise is always vacuous
     exact fun _ => false
-  · -- hlen: every key in s is already present in val (initial_valuation.spec)
-    left
-    intro k hk
-    rw [val_post k hk]
-    simp
   · -- hagree: vacuous, since k ∈ varsOf e → k ∈ s.val always
     intro k hk hknotin
     exact absurd (by rw [s_post]; exact (vars_post1 k).mpr hk) hknotin
@@ -426,11 +341,6 @@ theorem sat_naive.solve_sat_complete (e : expr.Expr) (w : Std.U16 → Bool)
   · -- witness for check_possible_valuations' own w0 parameter: the given
     -- satisfying valuation
     exact w
-  · -- hlen: every key in s is already present in val (initial_valuation.spec)
-    left
-    intro k hk
-    rw [val_post k hk]
-    simp
   · -- hagree: vacuous, since k ∈ varsOf e → k ∈ s.val always
     intro k hk hknotin
     exact absurd (by rw [s_post]; exact (vars_post1 k).mpr hk) hknotin

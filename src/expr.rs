@@ -8,14 +8,21 @@ use nom::{
 };
 use std::fmt;
 
+/// A valuation, stored as a slot array indexed by the variable itself: slot `i`
+/// holds `Some(b)` if variable `i` is assigned `b`, and `None` if it is unset.
+/// Both operations are O(1).
+///
+/// The array grows on demand rather than being pre-sized to the full `u16`
+/// range: `initial_valuation` inserts every variable of the formula up front, so
+/// the growth loop only runs while that is building, and every later insert is a
+/// single indexed store. Pre-allocating all 65536 slots instead would cost more
+/// per call than DPLL spends solving a 20-variable instance.
+///
+/// Slots below the highest-numbered variable that are never inserted stay
+/// `None`, so a `Map` still distinguishes "unset" from "false" -- `evaluate`
+/// relies on that to report `Err` on an incomplete valuation.
 #[derive(Debug, Clone, PartialEq)]
-struct Entry {
-    key: u16,
-    value: bool,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Map(Vec<Entry>);
+pub struct Map(Vec<Option<bool>>);
 
 impl Map {
     pub fn new() -> Self {
@@ -23,22 +30,22 @@ impl Map {
     }
 
     pub fn insert(&mut self, key: u16, value: bool) -> Option<bool> {
-        for entry in self.0.iter_mut() {
-            if entry.key == key {
-                return Some(std::mem::replace(&mut entry.value, value));
-            }
+        let i = key as usize;
+        while self.0.len() <= i {
+            self.0.push(None);
         }
-        self.0.push(Entry { key, value });
-        None
+        let old = self.0[i];
+        self.0[i] = Some(value);
+        old
     }
 
-    pub fn get(&self, key: &u16) -> Option<&bool> {
-        for entry in self.0.iter() {
-            if entry.key == *key {
-                return Some(&entry.value);
-            }
+    pub fn get(&self, key: &u16) -> Option<bool> {
+        let i = *key as usize;
+        if i < self.0.len() {
+            self.0[i]
+        } else {
+            None
         }
-        None
     }
 }
 
@@ -146,7 +153,7 @@ pub fn evaluate(expr: &Expr, valuation: &Map) -> Result<bool, ()> {
         Expr::Conj(e1, e2) => Ok(evaluate(e1, valuation)? && evaluate(e2, valuation)?),
         Expr::Disj(e1, e2) => Ok(evaluate(e1, valuation)? || evaluate(e2, valuation)?),
         Expr::Variable(s) => match valuation.get(s) {
-            Some(b) => Ok(*b),
+            Some(b) => Ok(b),
             None => Err(()),
         },
     }

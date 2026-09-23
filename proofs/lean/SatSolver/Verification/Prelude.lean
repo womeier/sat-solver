@@ -258,4 +258,30 @@ theorem alloc.vec.Vec.Insts.CoreOpsIndexIndex.index.usize.spec
   step*
   simp_all
 
+/-- Mutable indexing of a `Vec` at a `Usize`: the element, plus a backward
+function that writes a replacement into that one slot and leaves the rest alone.
+`Vec`'s `index_mut` bottoms out at `Slice.index_mut_usize`, whose `Aeneas.Std`
+spec is already `@[step]`-registered; the two layers above it (`seq_to_slice_mut`
+and the `SliceIndex usize` instance) are both identities. -/
+@[step]
+theorem alloc.vec.Vec.Insts.CoreOpsIndexIndexMut.index_mut.usize.spec
+    {T : Type} (self : alloc.vec.Vec T) (i : Std.Usize) (hi : i.val < self.val.length) :
+    alloc.vec.Vec.Insts.CoreOpsIndexIndexMut.index_mut
+      (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT T) self i ⦃
+      (x : T) (back : T → alloc.vec.Vec T) =>
+      self.val[i.val]? = some x ∧ ∀ y, (back y).val = self.val.set i.val y ⦄ := by
+  unfold alloc.vec.Vec.Insts.CoreOpsIndexIndexMut.index_mut
+    core.Slice.Insts.CoreOpsIndexIndexMut.index_mut
+    core.Usize.Insts.CoreSliceIndexSliceIndexSliceT
+    core.Usize.Insts.CoreSliceIndexSliceIndexSliceT.get_unchecked_mut
+    rust_primitives.slice.slice_index_mut
+    rust_primitives.sequence.seq_to_slice_mut
+  step*
+  refine ⟨?_, ?_⟩
+  · rw [t_post2]
+    exact List.getElem?_eq_getElem (by scalar_tac)
+  · intro y
+    rw [t_post3]
+    simp [Slice.set, Slice.setAtNat]
+
 end sat_solver

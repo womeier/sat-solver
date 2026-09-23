@@ -42,7 +42,7 @@ def cnf.Clause := alloc.vec.Vec cnf.Literal
 def cnf.Cnf := alloc.vec.Vec cnf.Clause
 
 /-- [sat_solver::expr::Expr]
-    Source: 'src/expr.rs', lines 46:0-53:1
+    Source: 'src/expr.rs', lines 53:0-60:1
     Visibility: public -/
 @[discriminant isize]
 inductive expr.Expr where
@@ -53,20 +53,14 @@ inductive expr.Expr where
 | Disj : expr.Expr → expr.Expr → expr.Expr
 | Neg : expr.Expr → expr.Expr
 
-/-- [sat_solver::expr::Entry]
-    Source: 'src/expr.rs', lines 12:0-15:1 -/
-structure expr.Entry where
-  key : Std.U16
-  value : Bool
-
 /-- [sat_solver::expr::Map]
-    Source: 'src/expr.rs', lines 18:0-18:27
+    Source: 'src/expr.rs', lines 25:0-25:34
     Visibility: public -/
 @[reducible]
-def expr.Map := alloc.vec.Vec expr.Entry
+def expr.Map := alloc.vec.Vec (core.option.Option Bool)
 
 /-- [sat_solver::expr::evaluate::closure]
-    Source: 'src/expr.rs', lines 145:51-145:57 -/
+    Source: 'src/expr.rs', lines 152:51-152:57 -/
 @[reducible]
 def expr.evaluate.closure := Unit
 
