@@ -1,4 +1,5 @@
 pub mod cnf;
+pub mod dimacs;
 pub mod expr;
 pub mod sat;
 pub mod sat_cdcl;

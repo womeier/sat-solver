@@ -1,6 +1,36 @@
 claude *args:
     nix develop --command claude-sandbox {{args}}
 
+# Download the SATLIB uniform-random-3-SAT benchmark sets into benchmarks/
+# (gitignored). Three sets of 1000 instances each, at the clause/variable ratio
+# 4.26 where random 3-SAT is hardest: uf20-91 and uf50-218 are satisfiable,
+# uuf50-218 unsatisfiable. 50 variables is the largest that fits comfortably in
+# `Expr::Variable(u8)`'s 255-variable ceiling.
+satlib:
+    #!/usr/bin/env bash
+    set -eu
+    base=https://www.cs.ubc.ca/~hoos/SATLIB/Benchmarks/SAT/RND3SAT
+    mkdir -p benchmarks/satlib
+    cd benchmarks/satlib
+    for set in uf20-91 uf50-218 uuf50-218; do
+        if [ -d "$set" ]; then
+            echo "$set: already present"
+            continue
+        fi
+        echo "$set: downloading"
+        curl -sS -o "$set.tar.gz" "$base/$set.tar.gz"
+        mkdir -p "$set"
+        tar xzf "$set.tar.gz" -C "$set"
+        rm "$set.tar.gz"
+    done
+    echo "instances: $(find . -name '*.cnf' | wc -l)"
+
+# Run the solvers over the SATLIB sets. Release mode: a debug build is ~20x
+# slower, which matters for the naive solvers (~0.2 s per 20-variable instance
+# optimized, so ~4 s unoptimized).
+satlib-test *args:
+    cargo test --release --test satlib -- --ignored --nocapture --test-threads=1 {{args}}
+
 # Extract sat_naive/sat_naive_functional/sat_dpll (and their dependencies) to
 # proofs/lean.
 # main.rs is moved aside for the duration: charon treats whichever cargo target it
@@ -23,6 +53,7 @@ extract:
         --exclude crate::expr::parse_expr \
         --exclude crate::expr::example_expr_sat \
         --exclude crate::expr::example_expr_unsat \
+        --exclude crate::dimacs \
         --exclude crate::sat \
         --exclude crate::sat_naive::SAT_SOLVER_NAIVE \
         --exclude crate::sat_naive_functional::SAT_SOLVER_NAIVE_FUNCTIONAL \
