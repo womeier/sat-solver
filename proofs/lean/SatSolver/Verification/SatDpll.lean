@@ -1,10 +1,9 @@
 /- Soundness + completeness for `sat_dpll::solve_sat` (DPLL: unit propagation plus
 splitting, run on the CNF that `cnf::to_cnf` produces).
 
-**Status: statements only.** Every proof below is `sorry`, following the same
-top-down-then-bottom-up workflow the other proof files in this directory went
-through (see `PLAN.md`): state the whole theorem tree first, so the shapes are
-fixed and mutually consistent, then discharge it from the leaves up.
+Written the way the other proof files in this directory were (see `PLAN.md`): the
+whole theorem tree stated top-down first, so the shapes are fixed and mutually
+consistent, then discharged from the leaves up. It is now `sorry`-free.
 
 The structure mirrors `Cnf.lean`: a pure reference layer (`assignClause`/`assignCnf`
 over plain lists, with the pure lemmas that carry the actual mathematical content),
@@ -967,7 +966,38 @@ theorem sat_dpll.solve_sat_sound (e : expr.Expr) (hbound : 2 ^ exprSize e ≤ Us
       ∀ v, result = some v →
         expr.evaluate e v ⦃ (r : core.result.Result Bool Unit) =>
           r = core.result.Result.Ok true ⦄ ⦄ := by
-  sorry
+  have hsize : exprSize e ≤ Usize.max := le_trans Nat.lt_two_pow_self.le hbound
+  have hsize' : exprSize e < Usize.max := lt_of_lt_of_le Nat.lt_two_pow_self hbound
+  unfold sat_dpll.solve_sat
+  step*
+  · /- `dpll`'s presence precondition: `initial_valuation` covers every variable
+       of `e`, and the CNF only mentions those. -/
+    intro k hk
+    rw [cnf1_post] at hk
+    rw [val_post k (by rw [s_post]; exact (vars_post1 k).mpr (cnfVars_cnfPure_subset e false k hk))]
+    simp
+  · intro v hv
+    have hv' : val1 = v := by injection hv
+    subst hv'
+    /- The returned map still covers every variable of `e` (the search only
+       overwrites), so reading it back gives a total valuation it represents. -/
+    have htotal : ∀ k ∈ varsOf e, Map.lookupList val1.val k ≠ none := by
+      intro k hk
+      refine b_post2 k ?_
+      rw [val_post k (by rw [s_post]; exact (vars_post1 k).mpr hk)]
+      simp
+    have hrepr : Map.represents val1 (varsOf e) (Map.readback val1) :=
+      Map.represents_readback val1 (varsOf e) htotal
+    have heval : Cnf.eval (Map.readback val1) (Cnf.contents cnf1) = true := by
+      refine b_post3 ‹b = true› (Map.readback val1) fun k hk => ?_
+      rw [cnf1_post] at hk
+      exact hrepr k (cnfVars_cnfPure_subset e false k hk)
+    /- `to_cnf` is equivalence-preserving, so satisfying the CNF *is* satisfying `e`. -/
+    have hpure : evalPure (Map.readback val1) e = true := by
+      rw [cnf1_post, Cnf.eval_cnfPure] at heval
+      simpa using heval
+    have hev := expr.evaluate.spec_of_represents e val1 (Map.readback val1) hrepr
+    rwa [hpure] at hev
 
 /-- **Completeness**: if `e` has a satisfying valuation at all, `sat_dpll::solve_sat`
     finds one.
@@ -982,6 +1012,19 @@ theorem sat_dpll.solve_sat_sound (e : expr.Expr) (hbound : 2 ^ exprSize e ≤ Us
 theorem sat_dpll.solve_sat_complete (e : expr.Expr) (w : Std.U8 → Bool)
     (hbound : 2 ^ exprSize e ≤ Usize.max) (hsat : evalPure w e = true) :
     sat_dpll.solve_sat e ⦃ (result : core.option.Option expr.Map) => result ≠ none ⦄ := by
-  sorry
+  have hsize : exprSize e ≤ Usize.max := le_trans Nat.lt_two_pow_self.le hbound
+  have hsize' : exprSize e < Usize.max := lt_of_lt_of_le Nat.lt_two_pow_self hbound
+  unfold sat_dpll.solve_sat
+  step*
+  · /- `dpll`'s presence precondition, as in the soundness proof. -/
+    intro k hk
+    rw [cnf1_post] at hk
+    rw [val_post k (by rw [s_post]; exact (vars_post1 k).mpr (cnfVars_cnfPure_subset e false k hk))]
+    simp
+  · /- `w` satisfies `e`, hence the CNF, so the search cannot have failed. -/
+    have hcnf : Cnf.eval w (Cnf.contents cnf1) = true := by
+      rw [cnf1_post, Cnf.eval_cnfPure, hsat]
+      simp
+    exact absurd (b_post4 w hcnf) ‹¬b = true›
 
 end sat_solver

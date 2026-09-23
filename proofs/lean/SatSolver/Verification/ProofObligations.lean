@@ -6,9 +6,8 @@ about, e.g. `import SatSolver.Extraction`.
 
 The soundness + completeness theorems live in `SatNaive.lean` (for
 `sat_naive::solve_sat`), `SatNaiveFunctional.lean` (for
-`sat_naive_functional::solve_sat`) and `SatDpll.lean` (for `sat_dpll::solve_sat`
--- statements only so far, still `sorry`). See `PLAN.md` for the overall proof
-plan. -/
+`sat_naive_functional::solve_sat`) and `SatDpll.lean` (for
+`sat_dpll::solve_sat`). See `PLAN.md` for the overall proof plan. -/
 import SatSolver.Verification.Prelude
 import SatSolver.Verification.MapLemmas
 import SatSolver.Verification.CollectVars
