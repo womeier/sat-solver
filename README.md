@@ -1,7 +1,7 @@
 # sat-solver
 
-WIP verification of a simplistic SAT solver in Rust, extracted to Lean 4 with
-[hax](https://github.com/hacspec/hax) (`just extract`).
+Implementation of various SAT solving algorithms in Rust,
+extracted to and verified in Lean 4 with [hax](https://github.com/hacspec/hax).
 
 The specification — soundness and completeness for all three solvers — lives in
 [`proofs/lean/SatSolver/Verification/ProofObligations.lean`](proofs/lean/SatSolver/Verification/ProofObligations.lean),
@@ -15,10 +15,7 @@ rests on the CNF transformation proved correct in
 ## Benchmarks
 
 `just satlib` downloads the [SATLIB](https://www.cs.ubc.ca/~hoos/SATLIB/benchm.html)
-uniform-random-3-SAT sets into `benchmarks/` (gitignored); `just satlib-test`
-runs the solvers over them. All three sets sit at the clause/variable ratio
-≈ 4.26 where random 3-SAT is hardest. Every `SAT` answer is model-checked with
-`expr::evaluate`, the way SAT competitions check solver output.
+uniform-random-3-SAT sets into `benchmarks/`; `just satlib-test` runs the solvers over them.
 
 Measured over all 3000 instances (release build, mean per instance):
 
@@ -34,14 +31,6 @@ DPLL is ~1000x faster on the instances all three can attempt.
 
 ## Todo
 
-Testing, roughly in dependency order:
-
-- [x] **DIMACS reader** ([`src/dimacs.rs`](src/dimacs.rs)) — the format every
-      benchmark suite speaks. Handles comments, sloppy headers, clauses split
-      across lines and SATLIB's trailing `%`/`0` (which would otherwise read as
-      an extra empty clause and make every instance unsatisfiable).
-- [x] **SATLIB harness** ([`tests/satlib.rs`](tests/satlib.rs)) — `uf20-91`,
-      `uf50-218`, `uuf50-218`, with model checking on every `SAT` answer.
 - [ ] **CLI front end** — read a `.cnf` from a path or stdin, print the standard
       `s SATISFIABLE` / `v <model>` lines, exit 10/20/0. Unlocks `hyperfine` and
       any third-party harness.
