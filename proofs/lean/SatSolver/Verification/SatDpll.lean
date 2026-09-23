@@ -351,6 +351,14 @@ theorem cnfSize_assignCnf_lt {c : List (List cnf.Literal)} {var : Std.U8} (value
           at hlt hfilter_le ⊢
         scalar_tac
 
+/-- Inserting never *removes* a key: presence is monotone along the search. -/
+theorem Map.lookupList_upsertList_ne_none (l : List expr.Entry) (k key : Std.U8) (value : Bool)
+    (h : Map.lookupList l k ≠ none) :
+    Map.lookupList (Map.upsertList l key value) k ≠ none := by
+  by_cases hk : k = key
+  · subst hk; simp
+  · rw [Map.lookupList_upsertList_other l key k value hk]; exact h
+
 /-- Reads a `Map` back as a total valuation, defaulting the keys it doesn't hold
     to `false`. `solve_sat`'s soundness proof needs *some* total valuation to
     instantiate `dpll.spec`'s soundness clause with, and this is the one the
@@ -706,10 +714,12 @@ theorem sat_dpll.assign_cnf.spec (cnf1 : cnf.Cnf) (var : Std.U8) (value : Bool) 
        behind by a failed branch are harmless.
     4. *Completeness*: a satisfiable residual CNF always returns `true`.
 
-    `sat_dpll.dpll` is a `partial_fixpoint` definition, so this has to be proved
-    by strong induction on `cnfVarCount (Cnf.contents cnf1)`
-    (`cnfVarCount_assignCnf_lt` supplies the decrease), not by `unfold` +
-    `step*` alone. -/
+    `sat_dpll.dpll` is a `partial_fixpoint` definition and `WP.spec` maps `div` to
+    `False`, so this is proved by strong induction on `cnfSize (Cnf.contents cnf1)`
+    (`cnfSize_assignCnf_lt` supplies the decrease) rather than by `unfold` +
+    `step*` alone -- the termination argument has to be internalized. `step*` does
+    pick the induction hypothesis up from the context by itself for all three
+    recursive calls. -/
 @[step]
 theorem sat_dpll.dpll.spec (cnf1 : cnf.Cnf) (val : expr.Map)
     (hpresent : ∀ k ∈ cnfVars (Cnf.contents cnf1), Map.lookupList val.val k ≠ none) :
@@ -721,7 +731,225 @@ theorem sat_dpll.dpll.spec (cnf1 : cnf.Cnf) (val : expr.Map)
         (∀ k ∈ cnfVars (Cnf.contents cnf1), Map.lookupList val1.val k = some (w k)) →
         Cnf.eval w (Cnf.contents cnf1) = true) ∧
       ((∃ w : Std.U8 → Bool, Cnf.eval w (Cnf.contents cnf1) = true) → b = true) ⦄ := by
-  sorry
+  /- Strong induction on the literal-count measure, phrased with `< n` so the base
+     case is vacuous: a CNF of measure 0 is still a real case (`[]`, or a CNF of
+     empty clauses), it just never recurses.
+
+     The variables are named `cc`/`m`/`mres` rather than `cnf1`/`val`/`val1` on
+     purpose: `step` names the result of each monadic call after the *generated*
+     code's own let-pattern, and the generated body already binds `val1`, `val2`,
+     `val3` and `c1`. Reusing those names here would shadow them into
+     inaccessible `✝` names in exactly the branch where they are needed. -/
+  have main : ∀ n (cc : cnf.Cnf) (m : expr.Map), cnfSize (Cnf.contents cc) < n →
+      (∀ k ∈ cnfVars (Cnf.contents cc), Map.lookupList m.val k ≠ none) →
+      sat_dpll.dpll cc m ⦃ (bres : Bool) (mres : expr.Map) =>
+        (∀ k, k ∉ cnfVars (Cnf.contents cc) →
+          Map.lookupList mres.val k = Map.lookupList m.val k) ∧
+        (∀ k, Map.lookupList m.val k ≠ none → Map.lookupList mres.val k ≠ none) ∧
+        (bres = true → ∀ w : Std.U8 → Bool,
+          (∀ k ∈ cnfVars (Cnf.contents cc), Map.lookupList mres.val k = some (w k)) →
+          Cnf.eval w (Cnf.contents cc) = true) ∧
+        ((∃ w : Std.U8 → Bool, Cnf.eval w (Cnf.contents cc) = true) → bres = true) ⦄ := by
+    intro n
+    induction n with
+    | zero => intro cc m h; exact absurd h (by simp)
+    | succ n ihn =>
+      intro cc m hn hpres
+      unfold sat_dpll.dpll
+      step*
+      · /- Success: no clauses left, so every clause on the way here was already
+           discharged and *any* valuation satisfies the residual CNF. -/
+        refine ⟨by simp, fun k h => h, ?_, by simp⟩
+        intro _ w _
+        have hnil : Cnf.contents cc = [] := b_post.mp ‹b = true›
+        simp only [Cnf.contents_def] at hnil ⊢
+        rw [hnil]
+        simp [Cnf.eval]
+      · /- Conflict: the CNF holds the empty clause, so no valuation satisfies it
+           and `false` is the complete answer. -/
+        refine ⟨by simp, fun k h => h, by simp, ?_⟩
+        intro x hx
+        rw [Cnf.eval_eq_false_of_nil_mem x (b1_post.mp ‹b1 = true›)] at hx
+        simp at hx
+      · /- No branch variable. Unreachable in practice, but `false` is correct
+           anyway: a CNF with no non-empty clause that isn't itself empty holds
+           the empty clause. -/
+        have hnil : [] ∈ Cnf.contents cc := by
+          rcases hc : Cnf.contents cc with _ | ⟨cl, rest⟩
+          · exact absurd (b_post.mpr hc) ‹¬b = true›
+          · have hcl := o1_post2 ‹o1 = none› cl (by rw [hc]; simp)
+            rw [← hcl]; simp
+        refine ⟨by simp, fun k h => h, by simp, ?_⟩
+        intro x hx
+        rw [Cnf.eval_eq_false_of_nil_mem x hnil] at hx
+        simp at hx
+      · /- Measure decreases: the branch variable is eliminated outright. -/
+        rw [c_post]
+        have := cnfSize_assignCnf_lt (value := true) (o1_post1 v ‹o1 = some v›)
+        scalar_tac
+      · /- Presence for the recursive call: the residual CNF's variables are a
+           subset of this one's, and inserting only ever adds. -/
+        intro k hk
+        rw [c_post] at hk
+        rw [‹val1.val = Map.upsertList m.val v true›]
+        exact Map.lookupList_upsertList_ne_none _ _ _ _
+          (hpres k (cnfVars_assignCnf_subset hk))
+      · /- The `true` branch succeeded. `v` still reads `true` in the returned map:
+           it vanished from the residual CNF, so no deeper call could touch it. -/
+        have hvmem : v ∈ cnfVars (Cnf.contents cc) := o1_post1 v ‹o1 = some v›
+        have hvnotc : v ∉ cnfVars (Cnf.contents c) := by
+          rw [c_post]; exact not_mem_cnfVars_assignCnf _ _ _
+        have hval1 : val1.val = Map.upsertList m.val v true := ‹_›
+        have hvval2 : Map.lookupList val2.val v = some true := by
+          rw [b2_post1 v hvnotc, hval1]; exact Map.lookupList_upsertList_self _ _ _
+        refine ⟨?_, ?_, ?_, by simp⟩
+        · intro k hk
+          have hknotc : k ∉ cnfVars (Cnf.contents c) := by
+            rw [c_post]; exact fun h => hk (cnfVars_assignCnf_subset h)
+          rw [b2_post1 k hknotc, hval1]
+          exact Map.lookupList_upsertList_other _ _ _ _ (fun h => hk (h ▸ hvmem))
+        · intro k hk
+          refine b2_post2 k ?_
+          rw [hval1]
+          exact Map.lookupList_upsertList_ne_none _ _ _ _ hk
+        · intro _ w hw
+          have hwv : w v = true := by
+            have hv := hw v hvmem
+            rw [hvval2] at hv
+            exact (Option.some.inj hv).symm
+          have heval : Cnf.eval w (Cnf.contents c) = true := by
+            refine b2_post3 ‹b2 = true› w fun k hk => hw k ?_
+            rw [c_post] at hk
+            exact cnfVars_assignCnf_subset hk
+          rw [c_post] at heval
+          rw [← Cnf.eval_assignCnf w (Cnf.contents cc) v true hwv]
+          exact heval
+      · /- Second insert of the same variable: already present, so it needs no
+           `Usize.max` headroom. -/
+        left
+        refine b2_post2 v ?_
+        rw [‹val1.val = Map.upsertList m.val v true›]
+        simp
+      · rw [c1_post]
+        have := cnfSize_assignCnf_lt (value := false) (o1_post1 v ‹o1 = some v›)
+        scalar_tac
+      · intro k hk
+        rw [c1_post] at hk
+        have hk1 := hpres k (cnfVars_assignCnf_subset hk)
+        rw [‹val3.val = Map.upsertList val2.val v false›]
+        refine Map.lookupList_upsertList_ne_none _ _ _ _ (b2_post2 k ?_)
+        rw [‹val1.val = Map.upsertList m.val v true›]
+        exact Map.lookupList_upsertList_ne_none _ _ _ _ hk1
+      · /- Both branches ran: the `false` one's answer is the call's answer. -/
+        have hvmem : v ∈ cnfVars (Cnf.contents cc) := o1_post1 v ‹o1 = some v›
+        have hval1 : val1.val = Map.upsertList m.val v true := ‹_›
+        have hval3 : val3.val = Map.upsertList val2.val v false := ‹_›
+        have hvnotc : v ∉ cnfVars (Cnf.contents c) := by
+          rw [c_post]; exact not_mem_cnfVars_assignCnf _ _ _
+        have hvnotc1 : v ∉ cnfVars (Cnf.contents c1) := by
+          rw [c1_post]; exact not_mem_cnfVars_assignCnf _ _ _
+        have hvmres : Map.lookupList mres.val v = some false := by
+          rw [bres_post1 v hvnotc1, hval3]; exact Map.lookupList_upsertList_self _ _ _
+        refine ⟨?_, ?_, ?_, ?_⟩
+        · intro k hk
+          have hkv : k ≠ v := fun h => hk (h ▸ hvmem)
+          have hknotc : k ∉ cnfVars (Cnf.contents c) := by
+            rw [c_post]; exact fun h => hk (cnfVars_assignCnf_subset h)
+          have hknotc1 : k ∉ cnfVars (Cnf.contents c1) := by
+            rw [c1_post]; exact fun h => hk (cnfVars_assignCnf_subset h)
+          rw [bres_post1 k hknotc1, hval3,
+            Map.lookupList_upsertList_other _ _ _ _ hkv, b2_post1 k hknotc, hval1]
+          exact Map.lookupList_upsertList_other _ _ _ _ hkv
+        · intro k hk
+          refine bres_post2 k ?_
+          rw [hval3]
+          refine Map.lookupList_upsertList_ne_none _ _ _ _ (b2_post2 k ?_)
+          rw [hval1]
+          exact Map.lookupList_upsertList_ne_none _ _ _ _ hk
+        · intro hb w hw
+          have hwv : w v = false := by
+            have hv := hw v hvmem
+            rw [hvmres] at hv
+            exact (Option.some.inj hv).symm
+          have heval : Cnf.eval w (Cnf.contents c1) = true := by
+            refine bres_post3 hb w fun k hk => hw k ?_
+            rw [c1_post] at hk
+            exact cnfVars_assignCnf_subset hk
+          rw [c1_post] at heval
+          rw [← Cnf.eval_assignCnf w (Cnf.contents cc) v false hwv]
+          exact heval
+        · /- Completeness: a satisfying valuation picks one of the two branches,
+             and that branch's recursive call is complete for it. -/
+          intro x hx
+          by_cases hxv : x v = true
+          · exact absurd (b2_post4 x (by
+              rw [c_post, Cnf.eval_assignCnf x (Cnf.contents cc) v true hxv]; exact hx))
+              ‹¬b2 = true›
+          · simp only [Bool.not_eq_true] at hxv
+            refine bres_post4 x ?_
+            rw [c1_post, Cnf.eval_assignCnf x (Cnf.contents cc) v false hxv]
+            exact hx
+      · /- Unit propagation: the forced literal's variable is in the CNF, hence
+           already present in the map. -/
+        left
+        exact hpres lit.var (by
+          refine List.mem_flatMap.mpr ⟨[lit], o_post1 lit ‹o = some lit›, ?_⟩
+          simp [clauseVars])
+      · rw [c_post]
+        have := cnfSize_assignCnf_lt (value := (decide ¬lit.negated = true))
+          (c := Cnf.contents cc) (var := lit.var) (by
+            refine List.mem_flatMap.mpr ⟨[lit], o_post1 lit ‹o = some lit›, ?_⟩
+            simp [clauseVars])
+        scalar_tac
+      · intro k hk
+        rw [c_post] at hk
+        rw [‹val1.val = Map.upsertList m.val lit.var (decide ¬lit.negated = true)›]
+        exact Map.lookupList_upsertList_ne_none _ _ _ _
+          (hpres k (cnfVars_assignCnf_subset hk))
+      · /- Unit propagation commits without a backtracking point: sound because
+           the assignment is forced (`Literal.eq_of_unit_mem`). -/
+        have hunit : [lit] ∈ Cnf.contents cc := o_post1 lit ‹o = some lit›
+        have hvmem : lit.var ∈ cnfVars (Cnf.contents cc) :=
+          List.mem_flatMap.mpr ⟨[lit], hunit, by simp [clauseVars]⟩
+        have hval1 : val1.val =
+            Map.upsertList m.val lit.var (decide ¬lit.negated = true) := ‹_›
+        have hvalue : (decide ¬lit.negated = true) = !lit.negated := by
+          cases lit.negated <;> simp
+        have hvnotc : lit.var ∉ cnfVars (Cnf.contents c) := by
+          rw [c_post]; exact not_mem_cnfVars_assignCnf _ _ _
+        have hvmres : Map.lookupList mres.val lit.var = some (!lit.negated) := by
+          rw [bres_post1 lit.var hvnotc, hval1, ← hvalue]
+          exact Map.lookupList_upsertList_self _ _ _
+        refine ⟨?_, ?_, ?_, ?_⟩
+        · intro k hk
+          have hkv : k ≠ lit.var := fun h => hk (h ▸ hvmem)
+          have hknotc : k ∉ cnfVars (Cnf.contents c) := by
+            rw [c_post]; exact fun h => hk (cnfVars_assignCnf_subset h)
+          rw [bres_post1 k hknotc, hval1]
+          exact Map.lookupList_upsertList_other _ _ _ _ hkv
+        · intro k hk
+          refine bres_post2 k ?_
+          rw [hval1]
+          exact Map.lookupList_upsertList_ne_none _ _ _ _ hk
+        · intro hb w hw
+          have hwv : w lit.var = (decide ¬lit.negated = true) := by
+            have hv := hw lit.var hvmem
+            rw [hvmres, ← hvalue] at hv
+            exact (Option.some.inj hv).symm
+          have heval : Cnf.eval w (Cnf.contents c) = true := by
+            refine bres_post3 hb w fun k hk => hw k ?_
+            rw [c_post] at hk
+            exact cnfVars_assignCnf_subset hk
+          rw [c_post] at heval
+          rw [← Cnf.eval_assignCnf w (Cnf.contents cc) lit.var _ hwv]
+          exact heval
+        · intro x hx
+          refine bres_post4 x ?_
+          have hxv : x lit.var = (decide ¬lit.negated = true) := by
+            rw [hvalue]; exact Literal.eq_of_unit_mem x hunit hx
+          rw [c_post, Cnf.eval_assignCnf x (Cnf.contents cc) lit.var _ hxv]
+          exact hx
+  exact main (cnfSize (Cnf.contents cnf1) + 1) cnf1 val (Nat.lt_succ_self _) hpresent
 
 /-- **Soundness**: if `sat_dpll::solve_sat` returns a valuation, it satisfies `e`.
 
