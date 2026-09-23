@@ -2,7 +2,9 @@
 use crate::expr::*;
 use crate::sat::SatSolver;
 
-fn initial_valuation(vars: &[u8]) -> Map {
+// Public because `sat_dpll` reuses it: it needs the same "all variables present,
+// all false" starting map, and this one already has a Lean spec proved against it.
+pub fn initial_valuation(vars: &[u8]) -> Map {
     let mut map = Map::new();
 
     for v in vars {
