@@ -14,9 +14,9 @@
 //! | `uf50-218`  |   50 |     218 |      1000 | SAT     |
 //! | `uuf50-218` |   50 |     218 |      1000 | UNSAT   |
 //!
-//! Only DPLL can attempt the 50-variable sets: both naive solvers enumerate all
-//! `2^n` valuations, so 50 variables is out of reach by roughly ten orders of
-//! magnitude. They are exercised on `uf20-91` instead.
+//! Only DPLL can attempt the 50-variable sets: `naive` enumerates all `2^n`
+//! valuations, so 50 variables is out of reach by roughly ten orders of
+//! magnitude. It is exercised on `uf20-91` instead.
 //!
 //! Run the heavy sets (they are `#[ignore]`d) with `just satlib-test`, which
 //! builds in release mode -- a debug build is ~20x slower and makes even the
@@ -30,7 +30,6 @@ use sat_solver::expr::{Expr, Map, evaluate};
 use sat_solver::sat::SatSolver;
 use sat_solver::sat_dpll::SAT_SOLVER_DPLL;
 use sat_solver::sat_naive::SAT_SOLVER_NAIVE;
-use sat_solver::sat_naive_functional::SAT_SOLVER_NAIVE_FUNCTIONAL;
 
 const SATLIB: &str = "benchmarks/satlib";
 
@@ -111,9 +110,24 @@ fn check(solver: &SatSolver, expr: &Expr, path: &Path, expect_sat: bool) -> Dura
 
 /// Runs `solver` over (a prefix of) a set and reports timings.
 fn run_set(solver: &SatSolver, set: &str, expect_sat: bool, limit: Option<usize>) {
-    let Some(mut paths) = instances(set) else {
+    let Some((n, mean, worst)) = measure(solver, set, expect_sat, limit) else {
         return;
     };
+    println!(
+        "[{}] {}: {} instances, mean {:.2?}, worst {:.2?}",
+        solver.description, set, n, mean, worst
+    );
+}
+
+/// Solves every instance and returns `(count, mean, worst)`, or `None` when the
+/// set hasn't been downloaded.
+fn measure(
+    solver: &SatSolver,
+    set: &str,
+    expect_sat: bool,
+    limit: Option<usize>,
+) -> Option<(usize, Duration, Duration)> {
+    let mut paths = instances(set)?;
     if let Some(n) = limit {
         paths.truncate(n);
     }
@@ -126,16 +140,7 @@ fn run_set(solver: &SatSolver, set: &str, expect_sat: bool, limit: Option<usize>
         total += elapsed;
         worst = worst.max(elapsed);
     }
-
-    println!(
-        "[{}] {}: {} instances, total {:.2?}, mean {:.2?}, worst {:.2?}",
-        solver.description,
-        set,
-        paths.len(),
-        total,
-        total / paths.len() as u32,
-        worst
-    );
+    Some((paths.len(), total / paths.len() as u32, worst))
 }
 
 #[test]
@@ -173,24 +178,67 @@ fn dpll_refutes_uuf50() {
     run_set(&SAT_SOLVER_DPLL, "uuf50-218", false, None);
 }
 
-/// All three solvers on the same prefix of `uf20-91`, for a like-for-like
-/// comparison. The sample is small because the naive solvers are `2^20`-bound:
-/// they cost ~0.2 s and ~0.6 s per instance where DPLL costs ~0.2 ms.
+/// Both solvers on the same prefix of `uf20-91`, for a like-for-like comparison.
+/// The sample is small because `naive` is `2^20`-bound: it costs ~0.2 s per
+/// instance where DPLL costs ~0.2 ms.
 #[test]
 #[ignore = "benchmark: use `just satlib-test`"]
 fn all_solvers_on_uf20_sample() {
     let sample = Some(25);
     run_set(&SAT_SOLVER_NAIVE, "uf20-91", true, sample);
-    run_set(&SAT_SOLVER_NAIVE_FUNCTIONAL, "uf20-91", true, sample);
     run_set(&SAT_SOLVER_DPLL, "uf20-91", true, sample);
 }
 
-/// The naive solvers over a larger slice of `uf20-91`, as a check that the
-/// sample above isn't hiding a disagreement on some instance.
+/// `naive` over a larger slice of `uf20-91`, as a check that the sample above
+/// isn't hiding a disagreement on some instance.
 #[test]
 #[ignore = "benchmark: use `just satlib-test`"]
-fn naive_solvers_on_uf20_slice() {
-    let slice = Some(100);
-    run_set(&SAT_SOLVER_NAIVE, "uf20-91", true, slice);
-    run_set(&SAT_SOLVER_NAIVE_FUNCTIONAL, "uf20-91", true, slice);
+fn naive_solver_on_uf20_slice() {
+    run_set(&SAT_SOLVER_NAIVE, "uf20-91", true, Some(100));
+}
+
+/// Emits the dataset behind `docs/benchmarks.svg` in one pass, as CSV on stdout.
+///
+/// Every cell is measured over the *same* number of instances so the figure
+/// compares like with like; `FIGURE_INSTANCES` is deliberately small enough that
+/// `naive` finishes. Cells `naive` cannot attempt at all are
+/// emitted as `infeasible` rather than left out, so the figure can say so
+/// explicitly instead of showing a missing bar.
+///
+/// Regenerate with `just satlib-figure`.
+#[test]
+#[ignore = "figure data: use `just satlib-figure`"]
+fn figure_data() {
+    const FIGURE_INSTANCES: usize = 100;
+    let limit = Some(FIGURE_INSTANCES);
+
+    println!("solver,set,verdict,instances,mean_us,worst_us");
+    let row = |solver: &SatSolver, set: &str, expect_sat: bool, feasible: bool| {
+        let verdict = if expect_sat { "SAT" } else { "UNSAT" };
+        if !feasible {
+            println!(
+                "{},{},{},{},infeasible,infeasible",
+                solver.description, set, verdict, FIGURE_INSTANCES
+            );
+            return;
+        }
+        if let Some((n, mean, worst)) = measure(solver, set, expect_sat, limit) {
+            println!(
+                "{},{},{},{},{},{}",
+                solver.description,
+                set,
+                verdict,
+                n,
+                mean.as_secs_f64() * 1e6,
+                worst.as_secs_f64() * 1e6
+            );
+        }
+    };
+
+    for (set, expect_sat) in [("uf20-91", true), ("uf50-218", true), ("uuf50-218", false)] {
+        // 2^50 valuations is out of reach for the enumerating solvers.
+        let naive_feasible = set == "uf20-91";
+        row(&SAT_SOLVER_NAIVE, set, expect_sat, naive_feasible);
+        row(&SAT_SOLVER_DPLL, set, expect_sat, true);
+    }
 }

@@ -26,13 +26,12 @@ satlib:
     echo "instances: $(find . -name '*.cnf' | wc -l)"
 
 # Run the solvers over the SATLIB sets. Release mode: a debug build is ~20x
-# slower, which matters for the naive solvers (~0.2 s per 20-variable instance
+# slower, which matters for the naive solver (~0.2 s per 20-variable instance
 # optimized, so ~4 s unoptimized).
 satlib-test *args:
     cargo test --release --test satlib -- --ignored --nocapture --test-threads=1 {{args}}
 
-# Extract sat_naive/sat_naive_functional/sat_dpll (and their dependencies) to
-# proofs/lean.
+# Extract sat_naive/sat_dpll (and their dependencies) to proofs/lean.
 # main.rs is moved aside for the duration: charon treats whichever cargo target it
 # compiles as "primary" and gives it full bodies, everything else becomes an opaque
 # dependency reference — so a bin target alongside the lib silently starves the lib's
@@ -56,7 +55,6 @@ extract:
         --exclude crate::dimacs \
         --exclude crate::sat \
         --exclude crate::sat_naive::SAT_SOLVER_NAIVE \
-        --exclude crate::sat_naive_functional::SAT_SOLVER_NAIVE_FUNCTIONAL \
         --exclude crate::sat_dpll::SAT_SOLVER_DPLL \
         --exclude crate::sat_cdcl \
         --opaque 'crate::expr::{impl core::fmt::Debug for crate::expr::Entry}' \
@@ -117,3 +115,8 @@ extract:
             'import SatSolver.Verification.ProofObligations' \
             > SatSolver.lean
     fi
+
+# Regenerate the dataset behind docs/benchmarks.svg (CSV on stdout).
+satlib-figure:
+    cargo test --release --test satlib figure_data -- --ignored --nocapture --test-threads=1 \
+        | grep -E '^(solver|naive|dpll)'

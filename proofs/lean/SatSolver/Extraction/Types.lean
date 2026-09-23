@@ -70,9 +70,4 @@ def expr.Map := alloc.vec.Vec expr.Entry
 @[reducible]
 def expr.evaluate.closure := Unit
 
-/-- [sat_solver::sat_naive_functional::solve_sat::closure]
-    Source: 'src/sat_naive_functional.rs', lines 38:28-38:33 -/
-@[reducible]
-def sat_naive_functional.solve_sat.closure := Unit
-
 end sat_solver

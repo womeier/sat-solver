@@ -1,5 +1,17 @@
 # Plan: Lean soundness + completeness proof for the naive SAT solvers
 
+> **Historical record.** This plan was completed (see "Progress" at the bottom); it is kept for
+> the extraction findings and proof techniques it documents, which still apply to the later
+> `Cnf.lean`/`SatDpll.lean` work that this plan predates and does not cover.
+>
+> One thing below no longer matches the tree: `sat_naive_functional` — the solver that
+> materializes all `2^n` valuations up front — has since been **removed** (`src/sat_naive_functional.rs`
+> and `Verification/SatNaiveFunctional.lean`, both proved sound and complete at the time). It was
+> strictly dominated: same `2^n` asymptotics as `sat_naive` but ~2.5x slower on `uf20-91` and far
+> hungrier for memory, and it proved nothing `sat_naive` doesn't already prove. Mentions of it
+> below, including its two top-level theorems, describe the state of the repo when the plan was
+> written.
+
 ## Context
 
 The repo has two "naive" SAT solvers:
