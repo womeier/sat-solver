@@ -117,3 +117,8 @@ extract:
             'import SatSolver.Verification.ProofObligations' \
             > SatSolver.lean
     fi
+
+# Regenerate the dataset behind docs/benchmarks.svg (CSV on stdout).
+satlib-figure:
+    cargo test --release --test satlib figure_data -- --ignored --nocapture --test-threads=1 \
+        | grep -E '^(solver|naive|dpll)'

@@ -17,17 +17,24 @@ rests on the CNF transformation proved correct in
 `just satlib` downloads the [SATLIB](https://www.cs.ubc.ca/~hoos/SATLIB/benchm.html)
 uniform-random-3-SAT sets into `benchmarks/`; `just satlib-test` runs the solvers over them.
 
-Measured over all 3000 instances (release build, mean per instance):
+Every `SAT` answer is model-checked with `expr::evaluate`, the way SAT
+competitions check solver output — all 3000 verdicts are correct.
 
-| solver             | `uf20-91` (SAT) | `uf50-218` (SAT) | `uuf50-218` (UNSAT) |
-|--------------------|-----------------|------------------|---------------------|
-| `dpll`             | 0.18 ms         | 6.0 ms           | 15.7 ms             |
-| `naive`            | 154 ms          | out of reach     | out of reach        |
-| `naive functional` | 480 ms          | out of reach     | out of reach        |
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/benchmarks-dark.svg">
+  <img src="docs/benchmarks.svg" width="780"
+       alt="Mean solve time per instance, log scale, 100 instances per set. On uf20-91 (20 variables, satisfiable) dpll averages 0.16 ms (worst 0.51 ms), naive 192 ms (worst 560 ms) and naive functional 480 ms (worst 863 ms). On uf50-218 dpll averages 5.70 ms (worst 20.4 ms) and on the unsatisfiable uuf50-218 15.8 ms (worst 58.9 ms); both naive solvers are out of reach on the 50-variable sets because they enumerate all 2^50 valuations.">
+</picture>
 
-The naive solvers enumerate all `2^n` valuations, so they only ever see the
-20-variable set — 50 variables is about ten orders of magnitude beyond them.
-DPLL is ~1000x faster on the instances all three can attempt.
+So DPLL is ~1200x faster than `naive` on the one set all three can attempt, and
+the 50-variable sets are reachable for DPLL alone: the naive solvers enumerate
+all `2^n` valuations, and `2^50` is some ten orders of magnitude out. Refuting
+an unsatisfiable instance costs DPLL ~3x more than satisfying one, since it has
+to exhaust the search tree rather than stop at the first model.
+
+`just satlib-figure` re-measures and prints the dataset as CSV;
+[`docs/make_benchmarks_svg.py`](docs/make_benchmarks_svg.py) (stdlib only)
+redraws the two SVGs from it.
 
 ## Todo
 
