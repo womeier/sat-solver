@@ -4,7 +4,7 @@ use crate::sat::SatSolver;
 
 // Public because `sat_dpll` reuses it: it needs the same "all variables present,
 // all false" starting map, and this one already has a Lean spec proved against it.
-pub fn initial_valuation(vars: &[u8]) -> Map {
+pub fn initial_valuation(vars: &[u16]) -> Map {
     let mut map = Map::new();
 
     for v in vars {
@@ -14,7 +14,7 @@ pub fn initial_valuation(vars: &[u8]) -> Map {
     map
 }
 
-fn check_possible_valuations(expr: &Expr, vars: &[u8], val: &mut Map) -> bool {
+fn check_possible_valuations(expr: &Expr, vars: &[u16], val: &mut Map) -> bool {
     if vars.is_empty() {
         return evaluate(expr, val).unwrap();
     }

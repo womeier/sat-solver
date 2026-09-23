@@ -13,12 +13,12 @@ namespace sat_solver
 
 /-- Reference semantics for `expr.Map.get`: the value of the first entry (scanning
     from the front) whose key matches, or `none` if there isn't one. -/
-def Map.lookupList (l : List expr.Entry) (k : Std.U8) : Option Bool :=
+def Map.lookupList (l : List expr.Entry) (k : Std.U16) : Option Bool :=
   (l.find? (fun e => e.key = k)).map expr.Entry.value
 
 /-- Reference semantics for `expr.Map.insert`: overwrite the value of the first
     matching entry in place, or append a fresh entry at the end if there is none. -/
-def Map.upsertList (l : List expr.Entry) (k : Std.U8) (v : Bool) : List expr.Entry :=
+def Map.upsertList (l : List expr.Entry) (k : Std.U16) (v : Bool) : List expr.Entry :=
   match l with
   | [] => [{ key := k, value := v }]
   | e :: rest =>
@@ -26,21 +26,21 @@ def Map.upsertList (l : List expr.Entry) (k : Std.U8) (v : Bool) : List expr.Ent
     else e :: Map.upsertList rest k v
 
 @[simp]
-theorem Map.lookupList_nil (k : Std.U8) : Map.lookupList [] k = none := by
+theorem Map.lookupList_nil (k : Std.U16) : Map.lookupList [] k = none := by
   simp [Map.lookupList]
 
 @[simp]
-theorem Map.lookupList_cons_eq (e : expr.Entry) (rest : List expr.Entry) (k : Std.U8)
+theorem Map.lookupList_cons_eq (e : expr.Entry) (rest : List expr.Entry) (k : Std.U16)
     (h : e.key = k) : Map.lookupList (e :: rest) k = some e.value := by
   simp [Map.lookupList, h]
 
 @[simp]
-theorem Map.lookupList_cons_ne (e : expr.Entry) (rest : List expr.Entry) (k : Std.U8)
+theorem Map.lookupList_cons_ne (e : expr.Entry) (rest : List expr.Entry) (k : Std.U16)
     (h : e.key ≠ k) : Map.lookupList (e :: rest) k = Map.lookupList rest k := by
   simp [Map.lookupList, h]
 
 @[simp]
-theorem Map.upsertList_length (l : List expr.Entry) (k : Std.U8) (v : Bool) :
+theorem Map.upsertList_length (l : List expr.Entry) (k : Std.U16) (v : Bool) :
     (Map.upsertList l k v).length = if Map.lookupList l k = none then l.length + 1 else l.length := by
   induction l with
   | nil => simp [Map.upsertList]
@@ -54,7 +54,7 @@ theorem Map.upsertList_length (l : List expr.Entry) (k : Std.U8) (v : Bool) :
       · rfl
 
 @[simp]
-theorem Map.lookupList_upsertList_self (l : List expr.Entry) (k : Std.U8) (v : Bool) :
+theorem Map.lookupList_upsertList_self (l : List expr.Entry) (k : Std.U16) (v : Bool) :
     Map.lookupList (Map.upsertList l k v) k = some v := by
   induction l with
   | nil => simp [Map.upsertList]
@@ -64,7 +64,7 @@ theorem Map.lookupList_upsertList_self (l : List expr.Entry) (k : Std.U8) (v : B
     · simp [h]
     · simp [h, ih]
 
-theorem Map.lookupList_upsertList_other (l : List expr.Entry) (k k' : Std.U8) (v : Bool)
+theorem Map.lookupList_upsertList_other (l : List expr.Entry) (k k' : Std.U16) (v : Bool)
     (h : k' ≠ k) : Map.lookupList (Map.upsertList l k v) k' = Map.lookupList l k' := by
   induction l with
   | nil => simp [Map.upsertList, Map.lookupList, Ne.symm h]
@@ -80,7 +80,7 @@ theorem Map.lookupList_upsertList_other (l : List expr.Entry) (k k' : Std.U8) (v
 
 /-- **Spec theorem for `sat_solver::expr::{sat_solver::expr::Map}::get`'s loop.** -/
 @[step]
-theorem expr.Map.get_loop.spec (iter : core.slice.iter.Iter expr.Entry) (key : Std.U8) :
+theorem expr.Map.get_loop.spec (iter : core.slice.iter.Iter expr.Entry) (key : Std.U16) :
     expr.Map.get_loop iter key ⦃ (o : core.option.Option Bool) =>
       o = Map.lookupList iter.val key ⦄ := by
   unfold expr.Map.get_loop
@@ -107,7 +107,7 @@ decreasing_by
 /-- **Spec theorem for `sat_solver::expr::{sat_solver::expr::Map}::get`**
 `Map.get` returns the value of the first matching entry, or `none`. -/
 @[step]
-theorem expr.Map.get.spec (self : expr.Map) (key : Std.U8) :
+theorem expr.Map.get.spec (self : expr.Map) (key : Std.U16) :
     expr.Map.get self key ⦃ (o : core.option.Option Bool) =>
       o = Map.lookupList self.val key ⦄ := by
   unfold expr.Map.get alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref
@@ -128,7 +128,7 @@ theorem expr.Map.insert_loop.spec
     (iter_mut_back : core.slice.iter.IterMut expr.Entry → Slice expr.Entry)
     (iter : core.slice.iter.IterMut expr.Entry)
     (back : core.slice.iter.IterMut expr.Entry → core.slice.iter.IterMut expr.Entry)
-    (key : Std.U8) (value : Bool) (pre : List expr.Entry)
+    (key : Std.U16) (value : Bool) (pre : List expr.Entry)
     (hdmb : ∀ s', deref_mut_back s' = s')
     (himb : ∀ i', iter_mut_back i' = i')
     (hback : ∀ final : core.slice.iter.IterMut expr.Entry,
@@ -242,7 +242,7 @@ decreasing_by
 theorem expr.Entry.Insts.CoreCloneClone.clone.spec (self : expr.Entry) :
     expr.Entry.Insts.CoreCloneClone.clone self ⦃ (e : expr.Entry) => e = self ⦄ := by
   unfold expr.Entry.Insts.CoreCloneClone.clone
-    core.U8.Insts.CoreCloneClone.clone core.Bool.Insts.CoreCloneClone.clone
+    core.U16.Insts.CoreCloneClone.clone core.Bool.Insts.CoreCloneClone.clone
   step*
 
 /-- Cloning a `Map` is value-preserving, since `Entry`'s own clone is. -/
@@ -257,7 +257,7 @@ theorem expr.Map.Insts.CoreCloneClone.clone.spec (self : expr.Map) :
 `Map.insert` overwrites the first matching entry in place, or appends a fresh one,
 and reports the old value (if any). -/
 @[step]
-theorem expr.Map.insert.spec (self : expr.Map) (key : Std.U8) (value : Bool)
+theorem expr.Map.insert.spec (self : expr.Map) (key : Std.U16) (value : Bool)
     (hlen : Map.lookupList self.val key ≠ none ∨ self.val.length < Usize.max) :
     expr.Map.insert self key value ⦃ (o : core.option.Option Bool) (m : expr.Map) =>
       o = Map.lookupList self.val key ∧ m.val = Map.upsertList self.val key value ⦄ := by

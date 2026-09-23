@@ -11,6 +11,11 @@
 > hungrier for memory, and it proved nothing `sat_naive` doesn't already prove. Mentions of it
 > below, including its two top-level theorems, describe the state of the repo when the plan was
 > written.
+>
+> Two smaller drifts, same story: the variable type is now `u16`/`Std.U16`, not the `u8`/`Std.U8`
+> the `char`→`u8` note under "Progress" landed on (the ceiling moved from 255 to 65535 variables;
+> the substitution was mechanical and needed no proof restructuring), and `Map` grew a `Cnf.lean`
+> sibling plus `SatDpll.lean` that this plan never mentions.
 
 ## Context
 

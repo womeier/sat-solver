@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 use crate::cnf::{Clause, Cnf, Literal, to_cnf};
+#[cfg(test)]
+use crate::expr::letter;
 use crate::expr::{Expr, Map, collect_vars};
 use crate::sat::SatSolver;
 use crate::sat_naive::initial_valuation;
@@ -40,7 +42,7 @@ fn find_unit_literal(cnf: &Cnf) -> Option<Literal> {
 // first version picks the cheapest one. (Returns `None` only for a CNF whose
 // every clause is empty; the search rules that out via `has_empty_clause`
 // before ever asking.)
-fn find_branch_var(cnf: &Cnf) -> Option<u8> {
+fn find_branch_var(cnf: &Cnf) -> Option<u16> {
     for clause in cnf.0.iter() {
         if !clause.0.is_empty() {
             return Some(clause.0[0].var);
@@ -53,7 +55,7 @@ fn find_branch_var(cnf: &Cnf) -> Option<u8> {
 // agrees with `value` makes the whole clause true, so the clause disappears
 // (`None`); one that disagrees is false and simply drops out of the clause. A
 // clause consisting only of such false literals shrinks to the empty clause.
-fn assign_clause(clause: &Clause, var: u8, value: bool) -> Option<Clause> {
+fn assign_clause(clause: &Clause, var: u16, value: bool) -> Option<Clause> {
     let mut lits = Vec::new();
     for lit in clause.0.iter() {
         if lit.var == var {
@@ -73,7 +75,7 @@ fn assign_clause(clause: &Clause, var: u8, value: bool) -> Option<Clause> {
 // nowhere, which is what makes the search terminate (one variable fewer per
 // level) and what makes the assignment stable: no deeper call can ever revisit
 // a variable an outer level already decided.
-fn assign_cnf(cnf: &Cnf, var: u8, value: bool) -> Cnf {
+fn assign_cnf(cnf: &Cnf, var: u16, value: bool) -> Cnf {
     let mut clauses = Vec::new();
     for clause in cnf.0.iter() {
         if let Some(c) = assign_clause(clause, var, value) {
@@ -145,7 +147,7 @@ pub static SAT_SOLVER_DPLL: SatSolver = SatSolver {
 };
 
 #[cfg(test)]
-fn lit(var: u8, negated: bool) -> Literal {
+fn lit(var: u16, negated: bool) -> Literal {
     Literal { var, negated }
 }
 
@@ -153,36 +155,40 @@ fn lit(var: u8, negated: bool) -> Literal {
 fn is_satisfied_only_for_the_empty_cnf() {
     assert!(is_satisfied(&Cnf(Vec::new())));
     assert!(!is_satisfied(&Cnf(vec![Clause(Vec::new())])));
-    assert!(!is_satisfied(&Cnf(vec![Clause(vec![lit(b'x', false)])])));
+    assert!(!is_satisfied(&Cnf(vec![Clause(vec![lit(
+        letter('x'),
+        false
+    )])])));
 }
 
 #[test]
 fn has_empty_clause_finds_a_conflict_anywhere() {
     assert!(!has_empty_clause(&Cnf(Vec::new())));
     assert!(has_empty_clause(&Cnf(vec![
-        Clause(vec![lit(b'x', false)]),
+        Clause(vec![lit(letter('x'), false)]),
         Clause(Vec::new()),
     ])));
     assert!(!has_empty_clause(&Cnf(vec![Clause(vec![lit(
-        b'x', false
+        letter('x'),
+        false
     )])])));
 }
 
 #[test]
 fn find_unit_literal_returns_the_first_singleton_clause() {
     let cnf = Cnf(vec![
-        Clause(vec![lit(b'x', false), lit(b'y', false)]),
-        Clause(vec![lit(b'z', true)]),
-        Clause(vec![lit(b'w', false)]),
+        Clause(vec![lit(letter('x'), false), lit(letter('y'), false)]),
+        Clause(vec![lit(letter('z'), true)]),
+        Clause(vec![lit(letter('w'), false)]),
     ]);
-    assert_eq!(find_unit_literal(&cnf), Some(lit(b'z', true)));
+    assert_eq!(find_unit_literal(&cnf), Some(lit(letter('z'), true)));
 }
 
 #[test]
 fn find_unit_literal_none_when_every_clause_is_longer() {
     let cnf = Cnf(vec![
         Clause(Vec::new()),
-        Clause(vec![lit(b'x', false), lit(b'y', false)]),
+        Clause(vec![lit(letter('x'), false), lit(letter('y'), false)]),
     ]);
     assert_eq!(find_unit_literal(&cnf), None);
 }
@@ -191,42 +197,45 @@ fn find_unit_literal_none_when_every_clause_is_longer() {
 fn find_branch_var_skips_empty_clauses() {
     let cnf = Cnf(vec![
         Clause(Vec::new()),
-        Clause(vec![lit(b'y', true), lit(b'x', false)]),
+        Clause(vec![lit(letter('y'), true), lit(letter('x'), false)]),
     ]);
-    assert_eq!(find_branch_var(&cnf), Some(b'y'));
+    assert_eq!(find_branch_var(&cnf), Some(letter('y')));
     assert_eq!(find_branch_var(&Cnf(vec![Clause(Vec::new())])), None);
 }
 
 #[test]
 fn assign_clause_drops_a_satisfied_clause() {
     // (x ∨ y) under x := true is satisfied outright.
-    let clause = Clause(vec![lit(b'x', false), lit(b'y', false)]);
-    assert_eq!(assign_clause(&clause, b'x', true), None);
+    let clause = Clause(vec![lit(letter('x'), false), lit(letter('y'), false)]);
+    assert_eq!(assign_clause(&clause, letter('x'), true), None);
     // (¬x ∨ y) under x := false, likewise.
-    let clause = Clause(vec![lit(b'x', true), lit(b'y', false)]);
-    assert_eq!(assign_clause(&clause, b'x', false), None);
+    let clause = Clause(vec![lit(letter('x'), true), lit(letter('y'), false)]);
+    assert_eq!(assign_clause(&clause, letter('x'), false), None);
 }
 
 #[test]
 fn assign_clause_removes_false_literals() {
     // (x ∨ y) under x := false shrinks to (y).
-    let clause = Clause(vec![lit(b'x', false), lit(b'y', false)]);
+    let clause = Clause(vec![lit(letter('x'), false), lit(letter('y'), false)]);
     assert_eq!(
-        assign_clause(&clause, b'x', false),
-        Some(Clause(vec![lit(b'y', false)]))
+        assign_clause(&clause, letter('x'), false),
+        Some(Clause(vec![lit(letter('y'), false)]))
     );
     // (x) under x := false becomes the empty (conflicting) clause.
-    let clause = Clause(vec![lit(b'x', false)]);
+    let clause = Clause(vec![lit(letter('x'), false)]);
     assert_eq!(
-        assign_clause(&clause, b'x', false),
+        assign_clause(&clause, letter('x'), false),
         Some(Clause(Vec::new()))
     );
 }
 
 #[test]
 fn assign_clause_leaves_unrelated_clauses_alone() {
-    let clause = Clause(vec![lit(b'y', false), lit(b'z', true)]);
-    assert_eq!(assign_clause(&clause, b'x', true), Some(clause.clone()));
+    let clause = Clause(vec![lit(letter('y'), false), lit(letter('z'), true)]);
+    assert_eq!(
+        assign_clause(&clause, letter('x'), true),
+        Some(clause.clone())
+    );
 }
 
 #[test]
@@ -234,15 +243,15 @@ fn assign_cnf_simplifies_every_clause() {
     // (x ∨ y) ∧ (¬x ∨ z) ∧ (y ∨ z) under x := true keeps the last two clauses,
     // with ¬x dropped from the second.
     let cnf = Cnf(vec![
-        Clause(vec![lit(b'x', false), lit(b'y', false)]),
-        Clause(vec![lit(b'x', true), lit(b'z', false)]),
-        Clause(vec![lit(b'y', false), lit(b'z', false)]),
+        Clause(vec![lit(letter('x'), false), lit(letter('y'), false)]),
+        Clause(vec![lit(letter('x'), true), lit(letter('z'), false)]),
+        Clause(vec![lit(letter('y'), false), lit(letter('z'), false)]),
     ]);
     assert_eq!(
-        assign_cnf(&cnf, b'x', true),
+        assign_cnf(&cnf, letter('x'), true),
         Cnf(vec![
-            Clause(vec![lit(b'z', false)]),
-            Clause(vec![lit(b'y', false), lit(b'z', false)]),
+            Clause(vec![lit(letter('z'), false)]),
+            Clause(vec![lit(letter('y'), false), lit(letter('z'), false)]),
         ])
     );
 }
@@ -250,14 +259,14 @@ fn assign_cnf_simplifies_every_clause() {
 #[test]
 fn assign_cnf_mentions_the_assigned_variable_nowhere() {
     let cnf = Cnf(vec![
-        Clause(vec![lit(b'x', false), lit(b'y', false)]),
-        Clause(vec![lit(b'x', true), lit(b'x', false)]),
+        Clause(vec![lit(letter('x'), false), lit(letter('y'), false)]),
+        Clause(vec![lit(letter('x'), true), lit(letter('x'), false)]),
     ]);
     for value in [true, false] {
-        let Cnf(clauses) = assign_cnf(&cnf, b'x', value);
+        let Cnf(clauses) = assign_cnf(&cnf, letter('x'), value);
         for Clause(lits) in clauses {
             for l in lits {
-                assert_ne!(l.var, b'x');
+                assert_ne!(l.var, letter('x'));
             }
         }
     }
@@ -267,8 +276,8 @@ fn assign_cnf_mentions_the_assigned_variable_nowhere() {
 fn dpll_propagates_units_to_a_conflict() {
     // (x) ∧ (¬x) is unsatisfiable, and pure unit propagation finds it.
     let cnf = Cnf(vec![
-        Clause(vec![lit(b'x', false)]),
-        Clause(vec![lit(b'x', true)]),
+        Clause(vec![lit(letter('x'), false)]),
+        Clause(vec![lit(letter('x'), true)]),
     ]);
     let mut val = Map::new();
     assert!(!dpll(&cnf, &mut val));
@@ -278,13 +287,13 @@ fn dpll_propagates_units_to_a_conflict() {
 fn dpll_finds_an_assignment_that_needs_backtracking() {
     // (x ∨ y) ∧ (¬x) forces x := false via the second clause, then y := true.
     let cnf = Cnf(vec![
-        Clause(vec![lit(b'x', false), lit(b'y', false)]),
-        Clause(vec![lit(b'x', true)]),
+        Clause(vec![lit(letter('x'), false), lit(letter('y'), false)]),
+        Clause(vec![lit(letter('x'), true)]),
     ]);
     let mut val = Map::new();
     assert!(dpll(&cnf, &mut val));
-    assert_eq!(val.get(&b'x'), Some(&false));
-    assert_eq!(val.get(&b'y'), Some(&true));
+    assert_eq!(val.get(&letter('x')), Some(&false));
+    assert_eq!(val.get(&letter('y')), Some(&true));
 }
 
 #[test]

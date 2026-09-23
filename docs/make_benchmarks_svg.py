@@ -16,15 +16,15 @@ SERIES = [  # label, shape; colors come from the theme
 
 GROUPS = [
     ("uf20-91", "20 variables · 91 clauses · satisfiable", {
-        "dpll": (0.15778, 0.50968),
-        "naive": (192.456, 559.615),
+        "dpll": (0.13767, 0.44688),
+        "naive": (123.807, 358.975),
     }),
     ("uf50-218", "50 variables · 218 clauses · satisfiable", {
-        "dpll": (5.69549, 20.35636),
+        "dpll": (4.44072, 16.80491),
         "naive": None,
     }),
     ("uuf50-218", "50 variables · 218 clauses · unsatisfiable", {
-        "dpll": (15.75463, 58.92630),
+        "dpll": (12.10825, 42.28480),
         "naive": None,
     }),
 ]
@@ -100,9 +100,9 @@ def build(theme_name):
       f'role="img" aria-labelledby="figTitle figDesc" font-family="{FONT}">')
     a('<title id="figTitle">SATLIB solve time by solver</title>')
     a('<desc id="figDesc">Mean solve time per instance on a logarithmic scale, for two solvers across three '
-      'SATLIB random 3-SAT sets, 100 instances each. On uf20-91 (20 variables, satisfiable): dpll 0.16 ms mean '
-      'and 0.51 ms worst; naive 192 ms mean and 560 ms worst. On uf50-218 (50 variables, satisfiable): dpll '
-      '5.70 ms mean, 20.4 ms worst. On uuf50-218 (50 variables, unsatisfiable): dpll 15.8 ms mean, 58.9 ms '
+      'SATLIB random 3-SAT sets, 100 instances each. On uf20-91 (20 variables, satisfiable): dpll 0.14 ms mean '
+      'and 0.45 ms worst; naive 124 ms mean and 359 ms worst. On uf50-218 (50 variables, satisfiable): dpll '
+      '4.44 ms mean, 16.8 ms worst. On uuf50-218 (50 variables, unsatisfiable): dpll 12.1 ms mean, 42.3 ms '
       'worst. The naive solver is out of reach on the 50-variable sets, since it enumerates all 2^50 '
       'valuations.</desc>')
     a(f'<rect x="0" y="0" width="{W}" height="{H}" fill="{surface}"/>')

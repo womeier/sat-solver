@@ -1,16 +1,16 @@
 #![allow(dead_code)]
 use nom::{
+    IResult, Parser,
     branch::alt,
     character::complete::{multispace0, one_of},
     combinator::map,
     sequence::{delimited, preceded, separated_pair},
-    IResult, Parser,
 };
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
 struct Entry {
-    key: u8,
+    key: u16,
     value: bool,
 }
 
@@ -22,7 +22,7 @@ impl Map {
         Map(Vec::new())
     }
 
-    pub fn insert(&mut self, key: u8, value: bool) -> Option<bool> {
+    pub fn insert(&mut self, key: u16, value: bool) -> Option<bool> {
         for entry in self.0.iter_mut() {
             if entry.key == key {
                 return Some(std::mem::replace(&mut entry.value, value));
@@ -32,7 +32,7 @@ impl Map {
         None
     }
 
-    pub fn get(&self, key: &u8) -> Option<&bool> {
+    pub fn get(&self, key: &u16) -> Option<&bool> {
         for entry in self.0.iter() {
             if entry.key == *key {
                 return Some(&entry.value);
@@ -46,7 +46,7 @@ impl Map {
 pub enum Expr {
     True,
     False,
-    Variable(u8),
+    Variable(u16),
     Conj(Box<Expr>, Box<Expr>),
     Disj(Box<Expr>, Box<Expr>),
     Neg(Box<Expr>),
@@ -58,7 +58,13 @@ impl fmt::Display for Expr {
             Self::Neg(e) => write!(f, "¬{}", *e),
             Self::True => write!(f, "⊤"),
             Self::False => write!(f, "⊥"),
-            Self::Variable(v) => write!(f, "{}", *v as char),
+            // The parser's variables are the letters `a`..`z`, and print as
+            // themselves; DIMACS variables are plain indices with no letter to
+            // print, so they get an `x`-prefixed number instead.
+            Self::Variable(v) => match u8::try_from(*v) {
+                Ok(b) if b.is_ascii_lowercase() => write!(f, "{}", b as char),
+                _ => write!(f, "x{v}"),
+            },
             Self::Conj(e1, e2) => write!(f, "({} ∧ {})", e1, e2),
             Self::Disj(e1, e2) => write!(f, "({} ∨ {})", e1, e2),
         }
@@ -82,7 +88,7 @@ fn parse_bool(i: &str) -> IResult<&str, Expr> {
 
 fn parse_var(i: &str) -> IResult<&str, Expr> {
     map(one_of("abcdefghijklmnopqrstuvwxyz"), |c: char| {
-        Expr::Variable(c as u8)
+        Expr::Variable(c as u16)
     })
     .parse(i)
 }
@@ -146,19 +152,26 @@ pub fn evaluate(expr: &Expr, valuation: &Map) -> Result<bool, ()> {
     }
 }
 
+/// Tests name variables by the letters the parser accepts; `Variable` holds a
+/// `u16` index, so the letter has to be widened rather than written as `b'x'`.
+#[cfg(test)]
+pub const fn letter(c: char) -> u16 {
+    c as u16
+}
+
 #[test]
 fn example_eval_sat() {
     let expr = example_expr_sat();
 
     let mut valuation = Map::new();
-    valuation.insert(b'x', true);
-    valuation.insert(b'y', false);
+    valuation.insert(letter('x'), true);
+    valuation.insert(letter('y'), false);
 
     let res = evaluate(&expr, &valuation);
     assert!(res == Ok(true));
 }
 
-fn contains_var(vars: &[u8], v: u8) -> bool {
+fn contains_var(vars: &[u16], v: u16) -> bool {
     for x in vars.iter() {
         if *x == v {
             return true;
@@ -167,7 +180,7 @@ fn contains_var(vars: &[u8], v: u8) -> bool {
     false
 }
 
-fn merge_vars(dst: &mut Vec<u8>, src: &[u8]) {
+fn merge_vars(dst: &mut Vec<u16>, src: &[u16]) {
     for v in src.iter() {
         if !contains_var(dst, *v) {
             dst.push(*v);
@@ -175,7 +188,7 @@ fn merge_vars(dst: &mut Vec<u8>, src: &[u8]) {
     }
 }
 
-fn collect_vars_aux(expr: &Expr) -> Vec<u8> {
+fn collect_vars_aux(expr: &Expr) -> Vec<u16> {
     match expr {
         Expr::Variable(v) => {
             let mut vars = Vec::new();
@@ -193,6 +206,6 @@ fn collect_vars_aux(expr: &Expr) -> Vec<u8> {
     }
 }
 
-pub fn collect_vars(expr: &Expr) -> Vec<u8> {
+pub fn collect_vars(expr: &Expr) -> Vec<u16> {
     collect_vars_aux(expr)
 }

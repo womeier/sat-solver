@@ -12,7 +12,7 @@ namespace sat_solver
 
 /-- The set of variables occurring in `e` (as a list; duplicates/order don't
     matter, only membership is ever used). -/
-def varsOf : expr.Expr → List Std.U8
+def varsOf : expr.Expr → List Std.U16
   | .True => []
   | .False => []
   | .Variable v => [v]
@@ -32,7 +32,7 @@ def exprSize : expr.Expr → Nat
 
 /-- **Spec theorem for `sat_solver::expr::contains_var`'s loop.** -/
 @[step]
-theorem expr.contains_var_loop.spec (iter : core.slice.iter.Iter Std.U8) (v : Std.U8) :
+theorem expr.contains_var_loop.spec (iter : core.slice.iter.Iter Std.U16) (v : Std.U16) :
     expr.contains_var_loop iter v ⦃ (b : Bool) => b = true ↔ v ∈ iter.val ⦄ := by
   unfold expr.contains_var_loop
   step*
@@ -57,7 +57,7 @@ decreasing_by
 
 /-- **Spec theorem for `sat_solver::expr::contains_var`** -/
 @[step]
-theorem expr.contains_var.spec (vars : Slice Std.U8) (v : Std.U8) :
+theorem expr.contains_var.spec (vars : Slice Std.U16) (v : Std.U16) :
     expr.contains_var vars v ⦃ (b : Bool) => b = true ↔ v ∈ vars.val ⦄ := by
   unfold expr.contains_var
   step*
@@ -67,10 +67,10 @@ theorem expr.contains_var.spec (vars : Slice Std.U8) (v : Std.U8) :
 genuinely new key), so that sum bounds `Vec.push`'s `Usize.max` side-condition
 throughout the recursion. -/
 @[step]
-theorem expr.merge_vars_loop.spec (iter : core.slice.iter.Iter Std.U8)
-    (dst : alloc.vec.Vec Std.U8) (hlen : dst.val.length + iter.val.length ≤ Usize.max)
+theorem expr.merge_vars_loop.spec (iter : core.slice.iter.Iter Std.U16)
+    (dst : alloc.vec.Vec Std.U16) (hlen : dst.val.length + iter.val.length ≤ Usize.max)
     (hnodup : dst.val.Nodup) :
-    expr.merge_vars_loop iter dst ⦃ (result : alloc.vec.Vec Std.U8) =>
+    expr.merge_vars_loop iter dst ⦃ (result : alloc.vec.Vec Std.U16) =>
       (∀ k, k ∈ result.val ↔ k ∈ dst.val ∨ k ∈ iter.val) ∧
       result.val.length ≤ dst.val.length + iter.val.length ∧
       result.val.Nodup ⦄ := by
@@ -143,9 +143,9 @@ decreasing_by
 
 /-- **Spec theorem for `sat_solver::expr::merge_vars`** -/
 @[step]
-theorem expr.merge_vars.spec (dst : alloc.vec.Vec Std.U8) (src : Slice Std.U8)
+theorem expr.merge_vars.spec (dst : alloc.vec.Vec Std.U16) (src : Slice Std.U16)
     (hlen : dst.val.length + src.val.length ≤ Usize.max) (hnodup : dst.val.Nodup) :
-    expr.merge_vars dst src ⦃ (result : alloc.vec.Vec Std.U8) =>
+    expr.merge_vars dst src ⦃ (result : alloc.vec.Vec Std.U16) =>
       (∀ k, k ∈ result.val ↔ k ∈ dst.val ∨ k ∈ src.val) ∧
       result.val.length ≤ dst.val.length + src.val.length ∧
       result.val.Nodup ⦄ := by
@@ -155,11 +155,11 @@ theorem expr.merge_vars.spec (dst : alloc.vec.Vec Std.U8) (src : Slice Std.U8)
 /-- **Spec theorem for `sat_solver::expr::collect_vars_aux`**
 `vs.val.length ≤ exprSize e` is carried along purely to discharge `merge_vars`'s
 `Usize.max` side-condition in the `Conj`/`Disj` cases -- it isn't otherwise
-meaningful (the real bound, after dedup, is `≤ 256`, but this coarser one is
+meaningful (the real bound, after dedup, is `≤ 65536`, but this coarser one is
 enough and needs no extra machinery). -/
 @[step]
 theorem expr.collect_vars_aux.spec (e : expr.Expr) (hbound : exprSize e ≤ Usize.max) :
-    expr.collect_vars_aux e ⦃ (vs : alloc.vec.Vec Std.U8) =>
+    expr.collect_vars_aux e ⦃ (vs : alloc.vec.Vec Std.U16) =>
       (∀ k, k ∈ vs.val ↔ k ∈ varsOf e) ∧ vs.val.length ≤ exprSize e ∧ vs.val.Nodup ⦄ := by
   induction e with
   | True => unfold expr.collect_vars_aux; step*; simp_all [varsOf, exprSize]
@@ -197,7 +197,7 @@ The returned vector contains exactly the variables of `e` (as a set), with no
 duplicates. -/
 @[step]
 theorem expr.collect_vars.spec (e : expr.Expr) (hbound : exprSize e ≤ Usize.max) :
-    expr.collect_vars e ⦃ (vs : alloc.vec.Vec Std.U8) =>
+    expr.collect_vars e ⦃ (vs : alloc.vec.Vec Std.U16) =>
       (∀ k, k ∈ vs.val ↔ k ∈ varsOf e) ∧ vs.val.Nodup ∧ vs.val.length ≤ exprSize e ⦄ := by
   unfold expr.collect_vars
   step*

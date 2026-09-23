@@ -26,7 +26,7 @@ namespace sat_solver
     a freshly-branched-on variable apart from ones handled at outer recursion levels. -/
 @[step]
 theorem sat_naive.check_possible_valuations.spec
-    (e : expr.Expr) (vars : Slice Std.U8) (val0 : expr.Map) (w0 : Std.U8 → Bool)
+    (e : expr.Expr) (vars : Slice Std.U16) (val0 : expr.Map) (w0 : Std.U16 → Bool)
     (hsub : ∀ k ∈ vars.val, k ∈ varsOf e) (hnodup : vars.val.Nodup)
     (hlen : (∀ k ∈ vars.val, Map.lookupList val0.val k ≠ none) ∨
       val0.val.length + vars.val.length < Usize.max)
@@ -41,13 +41,13 @@ theorem sat_naive.check_possible_valuations.spec
       (∀ k ∈ vars.val, Map.lookupList val1.val k ≠ none) ∧
       -- soundness: a `true` result comes with an actual satisfying valuation, and
       -- val1 *is* that valuation on `vars` (val1 is the witness returned by solve_sat)
-      (b = true → ∃ w : Std.U8 → Bool,
+      (b = true → ∃ w : Std.U16 → Bool,
         (∀ k, k ∈ varsOf e → k ∉ vars.val → w k = w0 k) ∧
         (∀ k ∈ vars.val, Map.lookupList val1.val k = some (w k)) ∧
         evalPure w e = true) ∧
       -- completeness: if some valuation extending w0 satisfies e, a `true` result
       -- is found
-      ((∃ w : Std.U8 → Bool,
+      ((∃ w : Std.U16 → Bool,
           (∀ k, k ∈ varsOf e → k ∉ vars.val → w k = w0 k) ∧ evalPure w e = true) →
         b = true) ⦄ := by
   unfold sat_naive.check_possible_valuations
@@ -297,7 +297,7 @@ untouched. Mirrors `check_possible_valuations.spec`'s disjunctive `hlen`: a key
 that's already present needs no fresh growth room to be overwritten. -/
 @[step]
 theorem sat_naive.initial_valuation_loop.spec
-    (iter : core.slice.iter.Iter Std.U8) (map : expr.Map)
+    (iter : core.slice.iter.Iter Std.U16) (map : expr.Map)
     (hlen : (∀ k ∈ iter.val, Map.lookupList map.val k ≠ none) ∨
       map.val.length + iter.val.length < Usize.max) :
     sat_naive.initial_valuation_loop iter map ⦃ (m : expr.Map) =>
@@ -375,7 +375,7 @@ decreasing_by
 /-- **Spec theorem for `sat_naive::initial_valuation`**
 Sets every variable in `vars` to `false` in a fresh map. -/
 @[step]
-theorem sat_naive.initial_valuation.spec (vars : Slice Std.U8) (hlen : vars.val.length < Usize.max) :
+theorem sat_naive.initial_valuation.spec (vars : Slice Std.U16) (hlen : vars.val.length < Usize.max) :
     sat_naive.initial_valuation vars ⦃ (m : expr.Map) =>
       ∀ k ∈ vars.val, Map.lookupList m.val k = some false ⦄ := by
   unfold sat_naive.initial_valuation expr.Map.new
@@ -418,7 +418,7 @@ theorem sat_naive.solve_sat_sound (e : expr.Expr) (hbound : exprSize e < Usize.m
 
 /-- **Completeness**: if some total valuation `w` satisfies `e`, `sat_naive::solve_sat`
     finds a satisfying valuation. -/
-theorem sat_naive.solve_sat_complete (e : expr.Expr) (w : Std.U8 → Bool)
+theorem sat_naive.solve_sat_complete (e : expr.Expr) (w : Std.U16 → Bool)
     (hbound : exprSize e < Usize.max) (hsat : evalPure w e = true) :
     sat_naive.solve_sat e ⦃ (result : core.option.Option expr.Map) => result ≠ none ⦄ := by
   unfold sat_naive.solve_sat
