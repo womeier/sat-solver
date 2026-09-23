@@ -57,3 +57,7 @@ Makefile.coq.conf
 # cargo-hax's downloaded charon/aeneas toolchains (see flake.nix shellHook's
 # XDG_CACHE_HOME redirect, same $HOME-may-be-noexec reasoning as above).
 /.cache
+
+# SATLIB benchmark instances (3000 files, ~2 MB of tarballs): fetched on demand
+# by `just satlib`, never committed.
+/benchmarks
