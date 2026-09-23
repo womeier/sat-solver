@@ -7,9 +7,10 @@
 //! already in CNF, so no `Disj` ever sits above a `Conj` and the distribution
 //! step never fires.
 //!
-//! Variables are `Expr::Variable(u8)`, so instances may use at most 255
+//! Variables are `Expr::Variable(u16)`, so instances may use at most 65535
 //! variables; anything larger is rejected rather than silently truncated. That
-//! covers SATLIB's uf20/uf50/uf100/uf250 families (and `uf250` only just).
+//! covers every SATLIB family, the DIMACS challenge sets, and all but the
+//! largest industrial instances.
 //!
 //! This module is excluded from the Lean extraction, like `expr.rs`'s parser:
 //! it is I/O plumbing around the verified core, not part of it.
@@ -17,8 +18,8 @@
 use crate::expr::Expr;
 use std::fmt;
 
-/// The largest variable index `Expr::Variable(u8)` can hold.
-pub const MAX_VAR: i64 = 255;
+/// The largest variable index `Expr::Variable(u16)` can hold.
+pub const MAX_VAR: i64 = u16::MAX as i64;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum DimacsError {
@@ -29,7 +30,7 @@ pub enum DimacsError {
     /// A token in the clause body was not an integer.
     BadToken(String),
     /// A variable index of 0 (DIMACS reserves it as the clause terminator) or
-    /// one beyond what `u8` can hold.
+    /// one beyond what `u16` can hold.
     VarOutOfRange(i64),
     /// The file ended mid-clause (no terminating `0`).
     UnterminatedClause,
@@ -59,7 +60,7 @@ fn literal(n: i64) -> Result<Expr, DimacsError> {
     if var == 0 || var > MAX_VAR {
         return Err(DimacsError::VarOutOfRange(n));
     }
-    let atom = Expr::Variable(var as u8);
+    let atom = Expr::Variable(var as u16);
     if n < 0 {
         Ok(Expr::Neg(Box::new(atom)))
     } else {
@@ -115,7 +116,7 @@ pub fn parse_dimacs(input: &str) -> Result<Expr, DimacsError> {
                 (Some("cnf"), Some(vars), Some(nclauses)) => {
                     // The variable count is validated but not enforced: a file may
                     // legitimately declare more variables than it uses, and the
-                    // `u8` bound is checked per literal instead.
+                    // `u16` bound is checked per literal instead.
                     vars.parse::<usize>()
                         .map_err(|_| DimacsError::BadHeader(line.to_string()))?;
                     declared = Some(
@@ -235,14 +236,28 @@ mod tests {
     }
 
     #[test]
-    fn rejects_variables_beyond_u8() {
+    fn rejects_variables_beyond_u16() {
         assert_eq!(
-            parse_dimacs("p cnf 256 1\n256 0\n"),
-            Err(DimacsError::VarOutOfRange(256))
+            parse_dimacs("p cnf 65536 1\n65536 0\n"),
+            Err(DimacsError::VarOutOfRange(65536))
         );
         assert_eq!(
-            parse_dimacs("p cnf 256 1\n-300 0\n"),
-            Err(DimacsError::VarOutOfRange(-300))
+            parse_dimacs("p cnf 65536 1\n-70000 0\n"),
+            Err(DimacsError::VarOutOfRange(-70000))
+        );
+    }
+
+    /// The old `u8` ceiling stopped just past `uf250`; 256 is now an ordinary
+    /// variable index.
+    #[test]
+    fn accepts_variables_past_the_old_u8_ceiling() {
+        assert_eq!(
+            parse_dimacs("p cnf 65535 1\n65535 0\n").unwrap(),
+            Expr::Variable(65535)
+        );
+        assert_eq!(
+            parse_dimacs("p cnf 256 1\n256 0\n").unwrap(),
+            Expr::Variable(256)
         );
     }
 

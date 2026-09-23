@@ -20,22 +20,22 @@ namespace sat_solver
 
 /-- A literal is true under `w` iff it's the (possibly negated) value `w` assigns its
     variable. -/
-def Literal.eval (w : Std.U8 → Bool) (lit : cnf.Literal) : Bool :=
+def Literal.eval (w : Std.U16 → Bool) (lit : cnf.Literal) : Bool :=
   if lit.negated then !w lit.var else w lit.var
 
 /-- A clause (disjunction of literals) is true iff some literal in it is. -/
-def Clause.eval (w : Std.U8 → Bool) (clause : List cnf.Literal) : Bool :=
+def Clause.eval (w : Std.U16 → Bool) (clause : List cnf.Literal) : Bool :=
   clause.any (Literal.eval w)
 
 /-- A CNF (conjunction of clauses) is true iff every clause in it is. -/
-def Cnf.eval (w : Std.U8 → Bool) (cnf : List (List cnf.Literal)) : Bool :=
+def Cnf.eval (w : Std.U16 → Bool) (cnf : List (List cnf.Literal)) : Bool :=
   cnf.all (Clause.eval w)
 
 /-- The variables occurring in a clause, as a list (mirrors `varsOf`). -/
-def clauseVars (c : List cnf.Literal) : List Std.U8 := c.map cnf.Literal.var
+def clauseVars (c : List cnf.Literal) : List Std.U16 := c.map cnf.Literal.var
 
 /-- The variables occurring anywhere in a CNF, as a list (mirrors `varsOf`). -/
-def cnfVars (c : List (List cnf.Literal)) : List Std.U8 := c.flatMap clauseVars
+def cnfVars (c : List (List cnf.Literal)) : List Std.U16 := c.flatMap clauseVars
 
 @[simp]
 theorem clauseVars_append (c1 c2 : List cnf.Literal) :
@@ -55,12 +55,12 @@ def Cnf.contents (c : cnf.Cnf) : List (List cnf.Literal) := c.val.map (fun cl =>
 theorem Cnf.contents_def (c : cnf.Cnf) : Cnf.contents c = c.val.map (fun cl => cl.val) := rfl
 
 @[simp]
-theorem Clause.eval_append (w : Std.U8 → Bool) (c1 c2 : List cnf.Literal) :
+theorem Clause.eval_append (w : Std.U16 → Bool) (c1 c2 : List cnf.Literal) :
     Clause.eval w (c1 ++ c2) = (Clause.eval w c1 || Clause.eval w c2) := by
   simp [Clause.eval, List.any_append]
 
 @[simp]
-theorem Cnf.eval_append (w : Std.U8 → Bool) (c1 c2 : List (List cnf.Literal)) :
+theorem Cnf.eval_append (w : Std.U16 → Bool) (c1 c2 : List (List cnf.Literal)) :
     Cnf.eval w (c1 ++ c2) = (Cnf.eval w c1 && Cnf.eval w c2) := by
   simp [Cnf.eval, List.all_append]
 
@@ -96,7 +96,7 @@ theorem distributeList_length (c1 c2 : List (List cnf.Literal)) :
     simp only [distributeList, List.flatMap_cons] at ih ⊢
     rw [List.length_append, List.length_map, ih, List.length_cons, Nat.succ_mul, Nat.add_comm]
 
-theorem mem_cnfVars_distributeList {c1 c2 : List (List cnf.Literal)} {k : Std.U8}
+theorem mem_cnfVars_distributeList {c1 c2 : List (List cnf.Literal)} {k : Std.U16}
     (hk : k ∈ cnfVars (distributeList c1 c2)) : k ∈ cnfVars c1 ∨ k ∈ cnfVars c2 := by
   simp only [cnfVars, distributeList, List.mem_flatMap, List.mem_map] at hk
   obtain ⟨cl, ⟨cl1, hcl1, cl2, hcl2, rfl⟩, hkcl⟩ := hk
@@ -108,14 +108,14 @@ theorem mem_cnfVars_distributeList {c1 c2 : List (List cnf.Literal)} {k : Std.U8
 /-- Mapping "union with `cl1`" over a clause list, then checking the whole CNF, is the same
     as ORing `cl1` itself against the original CNF: every produced clause is satisfied iff
     `cl1` is (which makes all of them satisfied) or the original clause was (pointwise). -/
-theorem Cnf.eval_map_append (w : Std.U8 → Bool) (cl1 : List cnf.Literal)
+theorem Cnf.eval_map_append (w : Std.U16 → Bool) (cl1 : List cnf.Literal)
     (c2 : List (List cnf.Literal)) :
     Cnf.eval w (c2.map (fun cl2 => cl1 ++ cl2)) = (Clause.eval w cl1 || Cnf.eval w c2) := by
   simp only [Cnf.eval, List.all_map, Function.comp_def, Clause.eval_append]
   exact Cnf.eval_or_distrib (Clause.eval w cl1) c2 (Clause.eval w)
 
 /-- `distribute` implements OR: it's true exactly when *either* side's CNF is. -/
-theorem Cnf.eval_distributeList (w : Std.U8 → Bool) (c1 c2 : List (List cnf.Literal)) :
+theorem Cnf.eval_distributeList (w : Std.U16 → Bool) (c1 c2 : List (List cnf.Literal)) :
     Cnf.eval w (distributeList c1 c2) = (Cnf.eval w c1 || Cnf.eval w c2) := by
   induction c1 with
   | nil => simp [distributeList, Cnf.eval]
@@ -269,7 +269,7 @@ theorem cnfVars_cnfPure_subset (e : expr.Expr) (negate : Bool) :
 /-- **Core correctness theorem**: `cnfPure` is a polarity-parametrized equivalence-
     preserving transform. With `negate = false` this says `to_cnf` preserves meaning
     exactly (not just satisfiability). -/
-theorem Cnf.eval_cnfPure (e : expr.Expr) (w : Std.U8 → Bool) (negate : Bool) :
+theorem Cnf.eval_cnfPure (e : expr.Expr) (w : Std.U16 → Bool) (negate : Bool) :
     Cnf.eval w (cnfPure e negate) = (evalPure w e != negate) := by
   induction e generalizing negate with
   | True => cases negate <;> simp [cnfPure, Cnf.eval, Clause.eval, evalPure]
@@ -298,7 +298,7 @@ theorem Cnf.eval_cnfPure (e : expr.Expr) (w : Std.U8 → Bool) (negate : Bool) :
 theorem cnf.Literal.Insts.CoreCloneClone.clone.spec (self : cnf.Literal) :
     cnf.Literal.Insts.CoreCloneClone.clone self ⦃ (l : cnf.Literal) => l = self ⦄ := by
   unfold cnf.Literal.Insts.CoreCloneClone.clone
-    core.U8.Insts.CoreCloneClone.clone core.Bool.Insts.CoreCloneClone.clone
+    core.U16.Insts.CoreCloneClone.clone core.Bool.Insts.CoreCloneClone.clone
   step*
 
 /-- `clause_union_loop0`/`_loop1` share this exact body: clone each remaining literal
@@ -707,7 +707,7 @@ theorem cnf.to_cnf.spec (e : expr.Expr) (hbound : 2 ^ exprSize e ≤ Usize.max) 
 
 /-- **Spec theorem for `sat_solver::cnf::eval_literal`**: matches `Literal.eval`. -/
 @[step]
-theorem cnf.eval_literal.spec (lit : cnf.Literal) (m : expr.Map) (w : Std.U8 → Bool)
+theorem cnf.eval_literal.spec (lit : cnf.Literal) (m : expr.Map) (w : Std.U16 → Bool)
     (hrepr : Map.represents m [lit.var] w) :
     cnf.eval_literal lit m ⦃ (r : core.result.Result Bool Unit) =>
       r = core.result.Result.Ok (Literal.eval w lit) ⦄ := by
@@ -720,7 +720,7 @@ theorem cnf.eval_literal.spec (lit : cnf.Literal) (m : expr.Map) (w : Std.U8 →
 /-- **Spec theorem for `sat_solver::cnf::eval_clause`'s loop.** -/
 @[step]
 theorem cnf.eval_clause_loop.spec (iter : core.slice.iter.Iter cnf.Literal) (m : expr.Map)
-    (w : Std.U8 → Bool) (hrepr : Map.represents m (clauseVars iter.val) w) :
+    (w : Std.U16 → Bool) (hrepr : Map.represents m (clauseVars iter.val) w) :
     cnf.eval_clause_loop iter m ⦃ (r : core.result.Result Bool Unit) =>
       r = core.result.Result.Ok (Clause.eval w iter.val) ⦄ := by
   unfold cnf.eval_clause_loop
@@ -762,7 +762,7 @@ decreasing_by
 
 /-- **Spec theorem for `sat_solver::cnf::eval_clause`**: matches `Clause.eval`. -/
 @[step]
-theorem cnf.eval_clause.spec (clause : cnf.Clause) (m : expr.Map) (w : Std.U8 → Bool)
+theorem cnf.eval_clause.spec (clause : cnf.Clause) (m : expr.Map) (w : Std.U16 → Bool)
     (hrepr : Map.represents m (clauseVars clause.val) w) :
     cnf.eval_clause clause m ⦃ (r : core.result.Result Bool Unit) =>
       r = core.result.Result.Ok (Clause.eval w clause.val) ⦄ := by
@@ -775,7 +775,7 @@ theorem cnf.eval_clause.spec (clause : cnf.Clause) (m : expr.Map) (w : Std.U8 �
 /-- **Spec theorem for `sat_solver::cnf::eval_cnf`'s loop.** -/
 @[step]
 theorem cnf.eval_cnf_loop.spec (iter : core.slice.iter.Iter cnf.Clause) (m : expr.Map)
-    (w : Std.U8 → Bool) (hrepr : Map.represents m (cnfVars (iter.val.map (·.val))) w) :
+    (w : Std.U16 → Bool) (hrepr : Map.represents m (cnfVars (iter.val.map (·.val))) w) :
     cnf.eval_cnf_loop iter m ⦃ (r : core.result.Result Bool Unit) =>
       r = core.result.Result.Ok (Cnf.eval w (iter.val.map (·.val))) ⦄ := by
   unfold cnf.eval_cnf_loop
@@ -817,7 +817,7 @@ decreasing_by
 
 /-- **Spec theorem for `sat_solver::cnf::eval_cnf`**: matches `Cnf.eval`. -/
 @[step]
-theorem cnf.eval_cnf.spec (cnf1 : cnf.Cnf) (m : expr.Map) (w : Std.U8 → Bool)
+theorem cnf.eval_cnf.spec (cnf1 : cnf.Cnf) (m : expr.Map) (w : Std.U16 → Bool)
     (hrepr : Map.represents m (cnfVars (Cnf.contents cnf1)) w) :
     cnf.eval_cnf cnf1 m ⦃ (r : core.result.Result Bool Unit) =>
       r = core.result.Result.Ok (Cnf.eval w (Cnf.contents cnf1)) ⦄ := by
@@ -831,7 +831,7 @@ theorem cnf.eval_cnf.spec (cnf1 : cnf.Cnf) (m : expr.Map) (w : Std.U8 → Bool)
     the same answer as evaluating `e` directly (this is `cnfPure`'s own correctness
     theorem, `Cnf.eval_cnfPure`, transported across the extraction layer). -/
 @[step]
-theorem cnf.eval_cnf_to_cnf.spec_of_represents (e : expr.Expr) (m : expr.Map) (w : Std.U8 → Bool)
+theorem cnf.eval_cnf_to_cnf.spec_of_represents (e : expr.Expr) (m : expr.Map) (w : Std.U16 → Bool)
     (hrepr : Map.represents m (varsOf e) w) (hbound : 2 ^ exprSize e ≤ Usize.max) :
     (do let c ← cnf.to_cnf e; cnf.eval_cnf c m) ⦃ (r : core.result.Result Bool Unit) =>
       r = core.result.Result.Ok (evalPure w e) ⦄ := by

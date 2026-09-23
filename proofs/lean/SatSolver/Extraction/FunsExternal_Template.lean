@@ -26,7 +26,7 @@ set_option maxRecDepth 2048
 open sat_solver
 
 /-- [sat_solver::cnf::{impl core::fmt::Debug for sat_solver::cnf::Literal}::fmt]:
-    Source: 'src/cnf.rs', lines 6:9-6:14
+    Source: 'src/cnf.rs', lines 8:9-8:14
     Visibility: public -/
 axiom cnf.Literal.Insts.CoreFmtDebug.fmt
   :
@@ -35,7 +35,7 @@ axiom cnf.Literal.Insts.CoreFmtDebug.fmt
     core.fmt.Formatter))
 
 /-- [sat_solver::cnf::{impl core::fmt::Debug for sat_solver::cnf::Clause}::fmt]:
-    Source: 'src/cnf.rs', lines 12:9-12:14
+    Source: 'src/cnf.rs', lines 14:9-14:14
     Visibility: public -/
 axiom cnf.Clause.Insts.CoreFmtDebug.fmt
   :
@@ -44,7 +44,7 @@ axiom cnf.Clause.Insts.CoreFmtDebug.fmt
     core.fmt.Formatter))
 
 /-- [sat_solver::cnf::{impl core::fmt::Debug for sat_solver::cnf::Cnf}::fmt]:
-    Source: 'src/cnf.rs', lines 15:9-15:14
+    Source: 'src/cnf.rs', lines 17:9-17:14
     Visibility: public -/
 axiom cnf.Cnf.Insts.CoreFmtDebug.fmt
   :
@@ -80,7 +80,7 @@ axiom expr.Expr.Insts.CoreFmtDebug.fmt
     core.fmt.Formatter))
 
 /-- [sat_solver::expr::{impl core::fmt::Display for sat_solver::expr::Expr}::fmt]:
-    Source: 'src/expr.rs', lines 56:4-65:5
+    Source: 'src/expr.rs', lines 56:4-71:5
     Visibility: public -/
 axiom expr.Expr.Insts.CoreFmtDisplay.fmt
   :

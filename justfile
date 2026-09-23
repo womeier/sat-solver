@@ -4,8 +4,8 @@ claude *args:
 # Download the SATLIB uniform-random-3-SAT benchmark sets into benchmarks/
 # (gitignored). Three sets of 1000 instances each, at the clause/variable ratio
 # 4.26 where random 3-SAT is hardest: uf20-91 and uf50-218 are satisfiable,
-# uuf50-218 unsatisfiable. 50 variables is the largest that fits comfortably in
-# `Expr::Variable(u8)`'s 255-variable ceiling.
+# uuf50-218 unsatisfiable. 50 variables is what DPLL solves in milliseconds; the
+# `Expr::Variable(u16)` ceiling is 65535 and not the binding constraint.
 satlib:
     #!/usr/bin/env bash
     set -eu

@@ -22,7 +22,7 @@ competitions check solver output — all 3000 verdicts are correct.
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/benchmarks-dark.svg">
   <img src="docs/benchmarks.svg" width="780"
-       alt="Mean solve time per instance, log scale, 100 instances per set. On uf20-91 (20 variables, satisfiable) dpll averages 0.16 ms (worst 0.51 ms) and naive 192 ms (worst 560 ms). On uf50-218 dpll averages 5.70 ms (worst 20.4 ms) and on the unsatisfiable uuf50-218 15.8 ms (worst 58.9 ms); naive is out of reach on the 50-variable sets because it enumerates all 2^50 valuations.">
+       alt="Mean solve time per instance, log scale, 100 instances per set. On uf20-91 (20 variables, satisfiable) dpll averages 0.14 ms (worst 0.45 ms) and naive 124 ms (worst 359 ms). On uf50-218 dpll averages 4.44 ms (worst 16.8 ms) and on the unsatisfiable uuf50-218 12.1 ms (worst 42.3 ms); naive is out of reach on the 50-variable sets because it enumerates all 2^50 valuations.">
 </picture>
 
 `just satlib-figure` re-measures and prints the dataset as CSV;
@@ -52,10 +52,8 @@ redraws the two SVGs from it.
 
 Known limits worth fixing (or at least documenting) alongside the above:
 
-- [ ] **255-variable ceiling.** `Expr::Variable(u8)` and `Map`'s keys are `u8`,
-      so `uf250` only just fits and nothing larger does. Widening to `u16` would
-      ripple through the extraction and every `Std.U8` in the proofs.
-- [ ] **`Map` is a linear-scan assoc list**, so every lookup is O(vars).
+- [ ] **`Map` is a linear-scan assoc list**, so every lookup is O(vars) — now
+      the binding constraint on instance size, with the variable ceiling lifted.
 - [ ] **DPLL allocates a fresh residual CNF per node.** That is what makes the
       correctness proof clean (each recursive call is self-contained), and it is
       also the performance ceiling. Watched literals would fix it at a

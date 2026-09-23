@@ -1,5 +1,5 @@
 /- Pure reference semantics for `expr::evaluate`, and the spec connecting it to the
-extracted `expr.evaluate`. Working against a *total* valuation `Std.U8 → Bool` rather
+extracted `expr.evaluate`. Working against a *total* valuation `Std.U16 → Bool` rather
 than a partial `expr.Map` sidesteps the partiality of `Map.get` entirely: locality
 (two maps agreeing on `varsOf e` evaluate the same) falls out for free, since both
 sides just reduce to `evalPure w e` for the same `w`. -/
@@ -15,7 +15,7 @@ open Std.Do
 namespace sat_solver
 
 /-- Pure reference semantics for `expr::evaluate`, over a total valuation. -/
-def evalPure (w : Std.U8 → Bool) : expr.Expr → Bool
+def evalPure (w : Std.U16 → Bool) : expr.Expr → Bool
   | .True => true
   | .False => false
   | .Variable v => w v
@@ -25,15 +25,15 @@ def evalPure (w : Std.U8 → Bool) : expr.Expr → Bool
 
 /-- A map `m` *represents* `w` on a set of keys `ks` if every key in `ks` is
     present in `m` with the value `w` assigns it. -/
-def Map.represents (m : expr.Map) (ks : List Std.U8) (w : Std.U8 → Bool) : Prop :=
+def Map.represents (m : expr.Map) (ks : List Std.U16) (w : Std.U16 → Bool) : Prop :=
   ∀ k ∈ ks, Map.lookupList m.val k = some (w k)
 
-theorem Map.represents_of_subset {m : expr.Map} {ks1 ks2 : List Std.U8} {w : Std.U8 → Bool}
+theorem Map.represents_of_subset {m : expr.Map} {ks1 ks2 : List Std.U16} {w : Std.U16 → Bool}
     (hsub : ∀ k ∈ ks1, k ∈ ks2) (h : Map.represents m ks2 w) : Map.represents m ks1 w :=
   fun k hk => h k (hsub k hk)
 
 /-- `evalPure` only depends on `w`'s values on `varsOf e`. -/
-theorem evalPure_congr {w1 w2 : Std.U8 → Bool} (e : expr.Expr)
+theorem evalPure_congr {w1 w2 : Std.U16 → Bool} (e : expr.Expr)
     (hagree : ∀ k ∈ varsOf e, w1 k = w2 k) : evalPure w1 e = evalPure w2 e := by
   induction e with
   | True => simp [evalPure]
@@ -57,7 +57,7 @@ succeeds and returns exactly `evalPure w e`. This also gives locality for free:
 two maps representing the *same* `w` on `varsOf e` evaluate identically, since both
 sides of this lemma only depend on `w`. -/
 @[step]
-theorem expr.evaluate.spec_of_represents (e : expr.Expr) (m : expr.Map) (w : Std.U8 → Bool)
+theorem expr.evaluate.spec_of_represents (e : expr.Expr) (m : expr.Map) (w : Std.U16 → Bool)
     (hrepr : Map.represents m (varsOf e) w) :
     expr.evaluate e m ⦃ (r : core.result.Result Bool Unit) =>
       r = core.result.Result.Ok (evalPure w e) ⦄ := by

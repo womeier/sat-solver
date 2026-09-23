@@ -36,7 +36,7 @@ namespace sat_solver
 /-- "Assigning `var := value` satisfies this clause outright": the clause holds a
     literal of `var` whose polarity `value` makes true. This is exactly the test
     `assign_clause` performs as it scans, and the reason it can return `None`. -/
-def clauseSatBy (var : Std.U8) (value : Bool) (cl : List cnf.Literal) : Bool :=
+def clauseSatBy (var : Std.U16) (value : Bool) (cl : List cnf.Literal) : Bool :=
   cl.any (fun lit => lit.var = var && (lit.negated != value))
 
 /-- Pure reference semantics for `sat_dpll::assign_clause`: simplify one clause
@@ -45,7 +45,7 @@ def clauseSatBy (var : Std.U8) (value : Bool) (cl : List cnf.Literal) : Bool :=
     of `var` that disagree are false and drop out. Note that a clause of only
     such literals shrinks to `some []` -- the empty clause, i.e. a conflict, not
     a satisfied clause. -/
-def assignClause (var : Std.U8) (value : Bool) (cl : List cnf.Literal) :
+def assignClause (var : Std.U16) (value : Bool) (cl : List cnf.Literal) :
     Option (List cnf.Literal) :=
   if clauseSatBy var value cl then none
   else some (cl.filter (fun lit => lit.var != var))
@@ -55,25 +55,25 @@ def assignClause (var : Std.U8) (value : Bool) (cl : List cnf.Literal) :
 (dependent elimination can't see through the `if`). -/
 
 @[simp]
-theorem assignClause_of_satBy {var : Std.U8} {value : Bool} {cl : List cnf.Literal}
+theorem assignClause_of_satBy {var : Std.U16} {value : Bool} {cl : List cnf.Literal}
     (h : clauseSatBy var value cl = true) : assignClause var value cl = none := by
   simp [assignClause, h]
 
 @[simp]
-theorem assignClause_of_not_satBy {var : Std.U8} {value : Bool} {cl : List cnf.Literal}
+theorem assignClause_of_not_satBy {var : Std.U16} {value : Bool} {cl : List cnf.Literal}
     (h : clauseSatBy var value cl = false) :
     assignClause var value cl = some (cl.filter (fun lit => lit.var != var)) := by
   simp [assignClause, h]
 
-theorem satBy_iff {var : Std.U8} {value : Bool} {cl : List cnf.Literal} :
+theorem satBy_iff {var : Std.U16} {value : Bool} {cl : List cnf.Literal} :
     clauseSatBy var value cl = true ↔ ∃ lit ∈ cl, lit.var = var ∧ lit.negated ≠ value := by
   simp [clauseSatBy]
 
-theorem not_satBy_iff {var : Std.U8} {value : Bool} {cl : List cnf.Literal} :
+theorem not_satBy_iff {var : Std.U16} {value : Bool} {cl : List cnf.Literal} :
     clauseSatBy var value cl = false ↔ ∀ lit ∈ cl, lit.var = var → lit.negated = value := by
   simp [clauseSatBy]
 
-theorem assignClause_inv_none {var : Std.U8} {value : Bool} {cl : List cnf.Literal}
+theorem assignClause_inv_none {var : Std.U16} {value : Bool} {cl : List cnf.Literal}
     (h : assignClause var value cl = none) : clauseSatBy var value cl = true := by
   by_cases hsat : clauseSatBy var value cl = true
   · exact hsat
@@ -81,7 +81,7 @@ theorem assignClause_inv_none {var : Std.U8} {value : Bool} {cl : List cnf.Liter
     rw [assignClause_of_not_satBy hsat] at h
     simp at h
 
-theorem assignClause_inv_some {var : Std.U8} {value : Bool} {cl cl' : List cnf.Literal}
+theorem assignClause_inv_some {var : Std.U16} {value : Bool} {cl cl' : List cnf.Literal}
     (h : assignClause var value cl = some cl') :
     clauseSatBy var value cl = false ∧ cl' = cl.filter (fun lit => lit.var != var) := by
   by_cases hsat : clauseSatBy var value cl = true
@@ -93,12 +93,12 @@ theorem assignClause_inv_some {var : Std.U8} {value : Bool} {cl cl' : List cnf.L
 /-! Cons-level rewrites for `assignClause`, mirroring the three cases
 `assign_clause`'s loop body distinguishes as it scans. -/
 
-theorem assignClause_cons_sat {var : Std.U8} {value : Bool} {lit : cnf.Literal}
+theorem assignClause_cons_sat {var : Std.U16} {value : Bool} {lit : cnf.Literal}
     (rest : List cnf.Literal) (hvar : lit.var = var) (hneg : lit.negated ≠ value) :
     assignClause var value (lit :: rest) = none := by
   refine assignClause_of_satBy (satBy_iff.mpr ⟨lit, by simp, hvar, hneg⟩)
 
-theorem assignClause_cons_drop {var : Std.U8} {value : Bool} {lit : cnf.Literal}
+theorem assignClause_cons_drop {var : Std.U16} {value : Bool} {lit : cnf.Literal}
     (rest : List cnf.Literal) (hvar : lit.var = var) (hneg : lit.negated = value) :
     assignClause var value (lit :: rest) = assignClause var value rest := by
   have hcons : clauseSatBy var value (lit :: rest) = clauseSatBy var value rest := by
@@ -109,7 +109,7 @@ theorem assignClause_cons_drop {var : Std.U8} {value : Bool} {lit : cnf.Literal}
     rw [assignClause_of_not_satBy hsat, assignClause_of_not_satBy (hcons.trans hsat)]
     simp [hvar]
 
-theorem assignClause_cons_keep {var : Std.U8} {value : Bool} {lit : cnf.Literal}
+theorem assignClause_cons_keep {var : Std.U16} {value : Bool} {lit : cnf.Literal}
     (rest : List cnf.Literal) (hvar : lit.var ≠ var) :
     assignClause var value (lit :: rest) =
       Option.map (fun cl => lit :: cl) (assignClause var value rest) := by
@@ -123,7 +123,7 @@ theorem assignClause_cons_keep {var : Std.U8} {value : Bool} {lit : cnf.Literal}
 
 /-- Pure reference semantics for `sat_dpll::assign_cnf`: simplify every clause,
     dropping the ones that became satisfied. -/
-def assignCnf (var : Std.U8) (value : Bool) (c : List (List cnf.Literal)) :
+def assignCnf (var : Std.U16) (value : Bool) (c : List (List cnf.Literal)) :
     List (List cnf.Literal) :=
   c.filterMap (assignClause var value)
 
@@ -139,13 +139,13 @@ def assignCnf (var : Std.U8) (value : Bool) (c : List (List cnf.Literal)) :
 def cnfSize (c : List (List cnf.Literal)) : Nat := (cnfVars c).length
 
 /-- Membership in a simplified CNF: exactly the clauses that survived. -/
-theorem mem_assignCnf {c : List (List cnf.Literal)} {var : Std.U8} {value : Bool}
+theorem mem_assignCnf {c : List (List cnf.Literal)} {var : Std.U16} {value : Bool}
     {cl' : List cnf.Literal} :
     cl' ∈ assignCnf var value c ↔ ∃ cl ∈ c, assignClause var value cl = some cl' := by
   simp only [assignCnf, List.mem_filterMap]
 
 /-- Every surviving clause is its original with all of `var`'s literals dropped. -/
-theorem assignCnf_mem_inv {c : List (List cnf.Literal)} {var : Std.U8} {value : Bool}
+theorem assignCnf_mem_inv {c : List (List cnf.Literal)} {var : Std.U16} {value : Bool}
     {cl' : List cnf.Literal} (h : cl' ∈ assignCnf var value c) :
     ∃ cl ∈ c, cl' = cl.filter (fun lit => lit.var != var) := by
   obtain ⟨cl, hcl, hassign⟩ := mem_assignCnf.mp h
@@ -154,12 +154,12 @@ theorem assignCnf_mem_inv {c : List (List cnf.Literal)} {var : Std.U8} {value : 
 /-! Cons-level rewrites for `assignCnf`, so the inductions below never have to
 touch `List.filterMap` or case on the `Option`. -/
 
-theorem assignCnf_cons_of_satBy {var : Std.U8} {value : Bool} {cl : List cnf.Literal}
+theorem assignCnf_cons_of_satBy {var : Std.U16} {value : Bool} {cl : List cnf.Literal}
     (rest : List (List cnf.Literal)) (h : clauseSatBy var value cl = true) :
     assignCnf var value (cl :: rest) = assignCnf var value rest := by
   simp only [assignCnf, List.filterMap_cons, assignClause_of_satBy h]
 
-theorem assignCnf_cons_of_not_satBy {var : Std.U8} {value : Bool} {cl : List cnf.Literal}
+theorem assignCnf_cons_of_not_satBy {var : Std.U16} {value : Bool} {cl : List cnf.Literal}
     (rest : List (List cnf.Literal)) (h : clauseSatBy var value cl = false) :
     assignCnf var value (cl :: rest) =
       cl.filter (fun lit => lit.var != var) :: assignCnf var value rest := by
@@ -167,13 +167,13 @@ theorem assignCnf_cons_of_not_satBy {var : Std.U8} {value : Bool} {cl : List cnf
 
 /-- A CNF containing the empty clause is false under every valuation -- this is
     what makes `has_empty_clause` a sound conflict test. -/
-theorem Cnf.eval_eq_false_of_nil_mem (w : Std.U8 → Bool) {c : List (List cnf.Literal)}
+theorem Cnf.eval_eq_false_of_nil_mem (w : Std.U16 → Bool) {c : List (List cnf.Literal)}
     (h : [] ∈ c) : Cnf.eval w c = false := by
   simp only [Cnf.eval, Bool.eq_false_iff, ne_eq, List.all_eq_true, not_forall]
   exact ⟨[], h, by simp [Clause.eval]⟩
 
 /-- A literal's value is determined by the assignment to its own variable. -/
-theorem Literal.eval_eq (w : Std.U8 → Bool) (lit : cnf.Literal) {value : Bool}
+theorem Literal.eval_eq (w : Std.U16 → Bool) (lit : cnf.Literal) {value : Bool}
     (hw : w lit.var = value) : Literal.eval w lit = (lit.negated != value) := by
   simp only [Literal.eval, hw]
   cases lit.negated <;> cases value <;> simp
@@ -182,7 +182,7 @@ theorem Literal.eval_eq (w : Std.U8 → Bool) (lit : cnf.Literal) {value : Bool}
     CNF assigns `lit.var` the only value that makes `lit` true. This is *the*
     justification for unit propagation committing without a backtracking point,
     and hence for `dpll`'s completeness in the propagation case. -/
-theorem Literal.eq_of_unit_mem (w : Std.U8 → Bool) {c : List (List cnf.Literal)}
+theorem Literal.eq_of_unit_mem (w : Std.U16 → Bool) {c : List (List cnf.Literal)}
     {lit : cnf.Literal} (hmem : [lit] ∈ c) (hsat : Cnf.eval w c = true) :
     w lit.var = !lit.negated := by
   simp only [Cnf.eval, List.all_eq_true] at hsat
@@ -194,8 +194,8 @@ theorem Literal.eq_of_unit_mem (w : Std.U8 → Bool) {c : List (List cnf.Literal
 
 /-- Clause-level half of the correctness of simplification: a clause that
     *disappears* was already satisfied. -/
-theorem Clause.eval_of_satBy {w : Std.U8 → Bool} {cl : List cnf.Literal}
-    {var : Std.U8} {value : Bool} (hw : w var = value)
+theorem Clause.eval_of_satBy {w : Std.U16 → Bool} {cl : List cnf.Literal}
+    {var : Std.U16} {value : Bool} (hw : w var = value)
     (h : clauseSatBy var value cl = true) : Clause.eval w cl = true := by
   obtain ⟨lit, hmem, hvar, hneg⟩ := satBy_iff.mp h
   simp only [Clause.eval, List.any_eq_true]
@@ -205,7 +205,7 @@ theorem Clause.eval_of_satBy {w : Std.U8 → Bool} {cl : List cnf.Literal}
 
 /-- Clause-level other half: the literals simplification *drops* were all false,
     so dropping them leaves the clause's value unchanged. -/
-theorem Clause.eval_filter {w : Std.U8 → Bool} {var : Std.U8} {value : Bool}
+theorem Clause.eval_filter {w : Std.U16 → Bool} {var : Std.U16} {value : Bool}
     (hw : w var = value) (cl : List cnf.Literal)
     (h : clauseSatBy var value cl = false) :
     Clause.eval w (cl.filter (fun lit => lit.var != var)) = Clause.eval w cl := by
@@ -235,8 +235,8 @@ theorem Clause.eval_filter {w : Std.U8 → Bool} {var : Std.U8} {value : Bool}
     residual CNF of the branch matching its own value at `var`); right to left it
     gives soundness (satisfying the residual CNF suffices to satisfy the
     original). -/
-theorem Cnf.eval_assignCnf (w : Std.U8 → Bool) (c : List (List cnf.Literal))
-    (var : Std.U8) (value : Bool) (hw : w var = value) :
+theorem Cnf.eval_assignCnf (w : Std.U16 → Bool) (c : List (List cnf.Literal))
+    (var : Std.U16) (value : Bool) (hw : w var = value) :
     Cnf.eval w (assignCnf var value c) = Cnf.eval w c := by
   induction c with
   | nil => simp [assignCnf, Cnf.eval]
@@ -252,8 +252,8 @@ theorem Cnf.eval_assignCnf (w : Std.U8 → Bool) (c : List (List cnf.Literal))
 /-- Simplification never invents variables. Needed to compose the frame condition
     of a recursive call (which only covers the residual CNF's variables) with the
     caller's. -/
-theorem cnfVars_assignCnf_subset {c : List (List cnf.Literal)} {var : Std.U8} {value : Bool}
-    {k : Std.U8} (hk : k ∈ cnfVars (assignCnf var value c)) : k ∈ cnfVars c := by
+theorem cnfVars_assignCnf_subset {c : List (List cnf.Literal)} {var : Std.U16} {value : Bool}
+    {k : Std.U16} (hk : k ∈ cnfVars (assignCnf var value c)) : k ∈ cnfVars c := by
   simp only [cnfVars, List.mem_flatMap] at hk ⊢
   obtain ⟨cl', hcl', hk⟩ := hk
   obtain ⟨cl, hcl, hcl'eq⟩ := assignCnf_mem_inv hcl'
@@ -267,7 +267,7 @@ theorem cnfVars_assignCnf_subset {c : List (List cnf.Literal)} {var : Std.U8} {v
     and therefore ever overwrite, a variable an outer level just decided. This is
     what makes the mutable `Map` threaded through the search stable on the
     decided literals, and it is the other half of the termination argument. -/
-theorem not_mem_cnfVars_assignCnf (c : List (List cnf.Literal)) (var : Std.U8) (value : Bool) :
+theorem not_mem_cnfVars_assignCnf (c : List (List cnf.Literal)) (var : Std.U16) (value : Bool) :
     var ∉ cnfVars (assignCnf var value c) := by
   simp only [cnfVars, List.mem_flatMap, not_exists]
   rintro cl' ⟨hcl', hvar⟩
@@ -281,7 +281,7 @@ theorem not_mem_cnfVars_assignCnf (c : List (List cnf.Literal)) (var : Std.U8) (
 
 /-- The measure never grows (used for the head clause in the strict version
     below, where the *other* clauses only need monotonicity). -/
-theorem cnfSize_assignCnf_le (c : List (List cnf.Literal)) (var : Std.U8) (value : Bool) :
+theorem cnfSize_assignCnf_le (c : List (List cnf.Literal)) (var : Std.U16) (value : Bool) :
     cnfSize (assignCnf var value c) ≤ cnfSize c := by
   induction c with
   | nil => simp [assignCnf, cnfSize, cnfVars]
@@ -298,7 +298,7 @@ theorem cnfSize_assignCnf_le (c : List (List cnf.Literal)) (var : Std.U8) (value
 
 /-- Termination: deciding a variable the CNF actually mentions strictly shrinks
     the measure, because every occurrence of that variable is deleted. -/
-theorem cnfSize_assignCnf_lt {c : List (List cnf.Literal)} {var : Std.U8} (value : Bool)
+theorem cnfSize_assignCnf_lt {c : List (List cnf.Literal)} {var : Std.U16} (value : Bool)
     (hvar : var ∈ cnfVars c) : cnfSize (assignCnf var value c) < cnfSize c := by
   induction c with
   | nil => simp [cnfVars] at hvar
@@ -351,7 +351,7 @@ theorem cnfSize_assignCnf_lt {c : List (List cnf.Literal)} {var : Std.U8} (value
         scalar_tac
 
 /-- Inserting never *removes* a key: presence is monotone along the search. -/
-theorem Map.lookupList_upsertList_ne_none (l : List expr.Entry) (k key : Std.U8) (value : Bool)
+theorem Map.lookupList_upsertList_ne_none (l : List expr.Entry) (k key : Std.U16) (value : Bool)
     (h : Map.lookupList l k ≠ none) :
     Map.lookupList (Map.upsertList l key value) k ≠ none := by
   by_cases hk : k = key
@@ -362,10 +362,10 @@ theorem Map.lookupList_upsertList_ne_none (l : List expr.Entry) (k key : Std.U8)
     to `false`. `solve_sat`'s soundness proof needs *some* total valuation to
     instantiate `dpll.spec`'s soundness clause with, and this is the one the
     returned map itself describes. -/
-def Map.readback (m : expr.Map) : Std.U8 → Bool := fun k => (Map.lookupList m.val k).getD false
+def Map.readback (m : expr.Map) : Std.U16 → Bool := fun k => (Map.lookupList m.val k).getD false
 
 /-- A map that holds every key of `ks` represents its own readback there. -/
-theorem Map.represents_readback (m : expr.Map) (ks : List Std.U8)
+theorem Map.represents_readback (m : expr.Map) (ks : List Std.U16)
     (hpresent : ∀ k ∈ ks, Map.lookupList m.val k ≠ none) :
     Map.represents m ks (Map.readback m) := by
   intro k hk
@@ -473,7 +473,7 @@ theorem sat_dpll.find_unit_literal.spec (cnf1 : cnf.Cnf) :
 /-- **Spec theorem for `sat_solver::sat_dpll::find_branch_var`'s loop.** -/
 @[step]
 theorem sat_dpll.find_branch_var_loop.spec (iter : core.slice.iter.Iter cnf.Clause) :
-    sat_dpll.find_branch_var_loop iter ⦃ (r : core.option.Option Std.U8) =>
+    sat_dpll.find_branch_var_loop iter ⦃ (r : core.option.Option Std.U16) =>
       (∀ v, r = some v → v ∈ cnfVars (iter.val.map (·.val))) ∧
       (r = none → ∀ cl ∈ iter.val.map (·.val), cl = []) ⦄ := by
   unfold sat_dpll.find_branch_var_loop
@@ -522,7 +522,7 @@ decreasing_by
     `has_empty_clause`). -/
 @[step]
 theorem sat_dpll.find_branch_var.spec (cnf1 : cnf.Cnf) :
-    sat_dpll.find_branch_var cnf1 ⦃ (r : core.option.Option Std.U8) =>
+    sat_dpll.find_branch_var cnf1 ⦃ (r : core.option.Option Std.U16) =>
       (∀ v, r = some v → v ∈ cnfVars (Cnf.contents cnf1)) ∧
       (r = none → ∀ cl ∈ Cnf.contents cnf1, cl = []) ⦄ := by
   unfold sat_dpll.find_branch_var
@@ -537,7 +537,7 @@ theorem sat_dpll.find_branch_var.spec (cnf1 : cnf.Cnf) :
     the final push happens at `lits.val.length = clause.val.length - 1`. -/
 @[step]
 theorem sat_dpll.assign_clause_loop.spec (iter : core.slice.iter.Iter cnf.Literal)
-    (var : Std.U8) (value : Bool) (lits : alloc.vec.Vec cnf.Literal)
+    (var : Std.U16) (value : Bool) (lits : alloc.vec.Vec cnf.Literal)
     (hlen : lits.val.length + iter.val.length ≤ Usize.max) :
     sat_dpll.assign_clause_loop iter var value lits ⦃ (r : core.option.Option cnf.Clause) =>
       Option.map (fun (cl : cnf.Clause) => cl.val) r =
@@ -585,7 +585,7 @@ theorem sat_dpll.assign_clause_loop.spec (iter : core.slice.iter.Iter cnf.Litera
       all_goals scalar_tac
   · /- A literal of another variable: it is kept, and the accumulated prefix grows
        by exactly it. Done without `simp_all` on the way in: it normalizes
-       `lit.var ≠ var` to a `U8.val` inequality, which no longer matches
+       `lit.var ≠ var` to a `U16.val` inequality, which no longer matches
        `assignClause_cons_keep`'s hypothesis. -/
     rcases hiter : iter.val with _ | ⟨e, es⟩
     · simp_all
@@ -610,7 +610,7 @@ decreasing_by
 /-- **Spec theorem for `sat_solver::sat_dpll::assign_clause`**: matches
     `assignClause`. -/
 @[step]
-theorem sat_dpll.assign_clause.spec (clause : cnf.Clause) (var : Std.U8) (value : Bool) :
+theorem sat_dpll.assign_clause.spec (clause : cnf.Clause) (var : Std.U16) (value : Bool) :
     sat_dpll.assign_clause clause var value ⦃ (r : core.option.Option cnf.Clause) =>
       Option.map (fun (cl : cnf.Clause) => cl.val) r = assignClause var value clause.val ⦄ := by
   unfold sat_dpll.assign_clause
@@ -621,7 +621,7 @@ theorem sat_dpll.assign_clause.spec (clause : cnf.Clause) (var : Std.U8) (value 
     over the already-accumulated prefix `clauses`. -/
 @[step]
 theorem sat_dpll.assign_cnf_loop.spec (iter : core.slice.iter.Iter cnf.Clause)
-    (var : Std.U8) (value : Bool) (clauses : alloc.vec.Vec cnf.Clause)
+    (var : Std.U16) (value : Bool) (clauses : alloc.vec.Vec cnf.Clause)
     (hlen : clauses.val.length + iter.val.length ≤ Usize.max) :
     sat_dpll.assign_cnf_loop iter var value clauses ⦃ (r : alloc.vec.Vec cnf.Clause) =>
       Cnf.contents r = Cnf.contents clauses ++ assignCnf var value (iter.val.map (·.val)) ⦄ := by
@@ -683,7 +683,7 @@ decreasing_by
 
 /-- **Spec theorem for `sat_solver::sat_dpll::assign_cnf`**: matches `assignCnf`. -/
 @[step]
-theorem sat_dpll.assign_cnf.spec (cnf1 : cnf.Cnf) (var : Std.U8) (value : Bool) :
+theorem sat_dpll.assign_cnf.spec (cnf1 : cnf.Cnf) (var : Std.U16) (value : Bool) :
     sat_dpll.assign_cnf cnf1 var value ⦃ (r : cnf.Cnf) =>
       Cnf.contents r = assignCnf var value (Cnf.contents cnf1) ⦄ := by
   unfold sat_dpll.assign_cnf
@@ -726,10 +726,10 @@ theorem sat_dpll.dpll.spec (cnf1 : cnf.Cnf) (val : expr.Map)
       (∀ k, k ∉ cnfVars (Cnf.contents cnf1) →
         Map.lookupList val1.val k = Map.lookupList val.val k) ∧
       (∀ k, Map.lookupList val.val k ≠ none → Map.lookupList val1.val k ≠ none) ∧
-      (b = true → ∀ w : Std.U8 → Bool,
+      (b = true → ∀ w : Std.U16 → Bool,
         (∀ k ∈ cnfVars (Cnf.contents cnf1), Map.lookupList val1.val k = some (w k)) →
         Cnf.eval w (Cnf.contents cnf1) = true) ∧
-      ((∃ w : Std.U8 → Bool, Cnf.eval w (Cnf.contents cnf1) = true) → b = true) ⦄ := by
+      ((∃ w : Std.U16 → Bool, Cnf.eval w (Cnf.contents cnf1) = true) → b = true) ⦄ := by
   /- Strong induction on the literal-count measure, phrased with `< n` so the base
      case is vacuous: a CNF of measure 0 is still a real case (`[]`, or a CNF of
      empty clauses), it just never recurses.
@@ -745,10 +745,10 @@ theorem sat_dpll.dpll.spec (cnf1 : cnf.Cnf) (val : expr.Map)
         (∀ k, k ∉ cnfVars (Cnf.contents cc) →
           Map.lookupList mres.val k = Map.lookupList m.val k) ∧
         (∀ k, Map.lookupList m.val k ≠ none → Map.lookupList mres.val k ≠ none) ∧
-        (bres = true → ∀ w : Std.U8 → Bool,
+        (bres = true → ∀ w : Std.U16 → Bool,
           (∀ k ∈ cnfVars (Cnf.contents cc), Map.lookupList mres.val k = some (w k)) →
           Cnf.eval w (Cnf.contents cc) = true) ∧
-        ((∃ w : Std.U8 → Bool, Cnf.eval w (Cnf.contents cc) = true) → bres = true) ⦄ := by
+        ((∃ w : Std.U16 → Bool, Cnf.eval w (Cnf.contents cc) = true) → bres = true) ⦄ := by
     intro n
     induction n with
     | zero => intro cc m h; exact absurd h (by simp)
@@ -1009,7 +1009,7 @@ theorem sat_dpll.solve_sat_sound (e : expr.Expr) (hbound : 2 ^ exprSize e ≤ Us
     equisatisfiability-preserving (no auxiliary variables -- see `Cnf.lean`); a
     Tseitin-style encoding would need the witness to be extended to the auxiliary
     variables first. -/
-theorem sat_dpll.solve_sat_complete (e : expr.Expr) (w : Std.U8 → Bool)
+theorem sat_dpll.solve_sat_complete (e : expr.Expr) (w : Std.U16 → Bool)
     (hbound : 2 ^ exprSize e ≤ Usize.max) (hsat : evalPure w e = true) :
     sat_dpll.solve_sat e ⦃ (result : core.option.Option expr.Map) => result ≠ none ⦄ := by
   have hsize : exprSize e ≤ Usize.max := le_trans Nat.lt_two_pow_self.le hbound
