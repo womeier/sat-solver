@@ -11,3 +11,5 @@ open sat_solver
 #print axioms sat_naive.solve_sat_complete
 #print axioms sat_naive_functional.solve_sat_sound
 #print axioms sat_naive_functional.solve_sat_complete
+#print axioms sat_dpll.solve_sat_sound
+#print axioms sat_dpll.solve_sat_complete

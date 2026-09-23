@@ -221,4 +221,41 @@ theorem alloc.vec.into_iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.next.s
     simp [h0]
   | cons e es => simp [Slice.len]
 
+/-- `Vec`'s own `is_empty`/`len`/indexing (as opposed to the slice ones, for which
+`Aeneas.Std` does register specs) -- all three are thin wrappers over the
+underlying `Seq`, and all three are used by `sat_dpll`. -/
+@[step]
+theorem alloc.vec.Vec.is_empty.spec {T : Type} (self : alloc.vec.Vec T) :
+    alloc.vec.Vec.is_empty self ⦃ (b : Bool) => b = true ↔ self.val = [] ⦄ := by
+  unfold alloc.vec.Vec.is_empty rust_primitives.sequence.seq_len
+  step*
+  grind [Slice.len_val, List.length_eq_zero_iff]
+
+@[step]
+theorem alloc.vec.Vec.len.spec {T : Type} (self : alloc.vec.Vec T) :
+    alloc.vec.Vec.len self ⦃ (i : Std.Usize) => i.val = self.val.length ⦄ := by
+  unfold alloc.vec.Vec.len rust_primitives.sequence.seq_len
+  step*
+
+/-- Indexing a `Vec` at a `Usize`. Stated via `getElem?` rather than `getElem!` so
+it needs no `Inhabited` instance (the extracted element types don't have one) and
+no dependent bound proof inside the postcondition. -/
+@[step]
+theorem alloc.vec.Vec.Insts.CoreOpsIndexIndex.index.usize.spec
+    {T : Type} (self : alloc.vec.Vec T) (i : Std.Usize) (hi : i.val < self.val.length) :
+    alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+      (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT T) self i ⦃ (x : T) =>
+      self.val[i.val]? = some x ⦄ := by
+  unfold alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+    core.Slice.Insts.CoreOpsIndexIndex.index
+    core.Usize.Insts.CoreSliceIndexSliceIndexSliceT
+    core.Usize.Insts.CoreSliceIndexSliceIndexSliceT.get
+    rust_primitives.slice.slice_length rust_primitives.slice.slice_index
+  step*
+  have hlen : s.val.length = self.val.length := by rw [s_post]
+  have hlt : i < s.len := by scalar_tac
+  rw [if_pos hlt]
+  step*
+  simp_all
+
 end sat_solver

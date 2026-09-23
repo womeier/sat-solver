@@ -1,17 +1,19 @@
 #![allow(dead_code)]
 use crate::expr::{Expr, Map};
 
+// Fields are public so that solvers living in sibling modules (`sat_dpll`) can
+// take CNFs apart; `cnf` itself is the only place that builds them.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Literal {
-    var: u8,
-    negated: bool,
+    pub var: u8,
+    pub negated: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Clause(Vec<Literal>);
+pub struct Clause(pub Vec<Literal>);
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Cnf(Vec<Clause>);
+pub struct Cnf(pub Vec<Clause>);
 
 fn clause_union(c1: &Clause, c2: &Clause) -> Clause {
     let mut lits = Vec::new();

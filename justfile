@@ -1,7 +1,8 @@
 claude *args:
     nix develop --command claude-sandbox {{args}}
 
-# Extract sat_naive/sat_naive_functional (and their dependencies) to proofs/lean.
+# Extract sat_naive/sat_naive_functional/sat_dpll (and their dependencies) to
+# proofs/lean.
 # main.rs is moved aside for the duration: charon treats whichever cargo target it
 # compiles as "primary" and gives it full bodies, everything else becomes an opaque
 # dependency reference — so a bin target alongside the lib silently starves the lib's
@@ -25,7 +26,7 @@ extract:
         --exclude crate::sat \
         --exclude crate::sat_naive::SAT_SOLVER_NAIVE \
         --exclude crate::sat_naive_functional::SAT_SOLVER_NAIVE_FUNCTIONAL \
-        --exclude crate::sat_dpll \
+        --exclude crate::sat_dpll::SAT_SOLVER_DPLL \
         --exclude crate::sat_cdcl \
         --opaque 'crate::expr::{impl core::fmt::Debug for crate::expr::Entry}' \
         --opaque 'crate::expr::{impl core::fmt::Debug for crate::expr::Map}' \
