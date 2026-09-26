@@ -22,12 +22,62 @@
 > siblings, `cnf_transform_tseitin.rs` and `cnf_transform_hybrid.rs`. `sat_dpll::solve_sat` now
 > goes through `solve_sat_with(e, Transform::Naive)`, so `Verification/Cnf.lean` refers to
 > `cnf_transform_naive.*` throughout and the two top-level `SatDpll.lean` theorems open with
-> `simp only [solve_sat, solve_sat_with, encode]` where they used to `unfold solve_sat`. **Only
-> the `Naive` arm is proved.** The Tseitin and hybrid transformations are extracted (aeneas
-> translates both) and tested in Rust, but carry no Lean theorems: both are merely
-> *equisatisfiability*-preserving, so `Cnf.eval_cnfPure` — the step the completeness proof turns
-> on — does not apply to them without first extending the witness to the auxiliary variables.
-> That is the piece of work a proof for `Transform::Hybrid` would have to start from.
+> `simp only [solve_sat, solve_sat_with, encode]` where they used to `unfold solve_sat`.
+
+## Where the Tseitin and hybrid proofs stand
+
+`Verification/{Encoding,Tseitin,Hybrid}.lean` prove both new transformations **sound and
+complete** — `toCnf_sound` (every model of the CNF satisfies `e`) and `toCnf_complete` (every
+model of `e` extends to a model of the CNF, agreeing on `varsOf e`), which together is
+equisatisfiability. No `sorry`; all four rest only on propext/Classical.choice/Quot.sound.
+
+Two things are worth recording about the *shape* of these proofs, because neither applies to
+`Cnf.lean`:
+
+- **Soundness needs no freshness.** Tseitin's defining clauses are biconditionals, so any
+  valuation satisfying them already pins each gate to the subformula it names
+  (`Tseitin.encode_sound` is an *equality*, `Literal.eval w l = evalPure w e`). The only
+  invariant it needs is `State.Pinned`: if the shared constant gate was allocated, its unit
+  clause was emitted. The hybrid's definitions are one-directional (`g → c`, not `g ↔ c`), so
+  there the corresponding statement weakens to an implication — a gate may be false where the
+  clause list it names is true.
+- **Completeness is where freshness is spent.** Both `encode_complete`/`cnfRec_complete`
+  extend the witness gate by gate, and that is only harmless because the new gate sits at
+  `next`, strictly above every variable mentioned so far (`State.Wf`). `Cnf.eval_upd_of_lt` is
+  the lemma that cashes this in. For the hybrid the gate is given the value its clause list
+  actually takes, which makes the substitution value-preserving — so the body comes out with
+  exactly the truth value the naive transform would have given it.
+
+**The extraction-matching layer is done too.** `TseitinExtraction.lean` and
+`HybridExtraction.lean` carry an `@[step]` spec per extracted function, each saying it agrees
+with its model counterpart under an abstraction (`absEncoder` / `absRenamer`) that reads the
+`Vec`-of-`Vec` clause store as a plain list and the `u32` counter as a `Nat`. The payoff is
+`cnf_transform_{tseitin,hybrid}.to_cnf.{sound,complete}`: four theorems that mention the
+generated code and nothing else. So all three transformations are now verified *as Rust*, not
+merely as algorithms.
+
+Three things cost more here than in `Cnf.lean`, and are worth knowing before touching these
+files:
+
+- **State threading.** Every spec has to say what came out *and* what the state became. The
+  naive transform is a pure function and needs none of this.
+- **`?` desugaring.** Each `?` becomes `Try.branch` on a `Result` plus a `ControlFlow` match,
+  so every spec carries an explicit `Ok`/`Err` split, and the `Err` path goes through
+  `from_residual` and the blanket `From T T` instance (the identity) — which has to be
+  unfolded by name before `step*` can see through it.
+- **Overflow preconditions are real.** The hybrid's `disjoin` computes `n * m` in `usize`
+  *before* deciding whether to distribute, so `cnfRec_length_le` (one clause per AST node),
+  `cnfRec_defs_length_le` (one definition per pair of nodes) and `cnfRec_clause_length_le`
+  (one literal per node) exist purely to discharge it. Tseitin needs only the linear
+  `encode_clauses_length_le`. These are honest properties of the Rust, not proof bookkeeping:
+  without them the extracted code really could overflow.
+
+One small addition outside these files: `Prelude.lean` gained an `alloc.vec.Vec.append` spec,
+which `Renamer::rename` needs and nothing in the repo previously called.
+
+`Transform::Naive` is still the default — not for want of proof now, but because it is the
+encoding that is *fastest* on the clausal input SATLIB consists of (see the benchmark table in
+the commit that introduced the three transforms).
 
 ## Context
 

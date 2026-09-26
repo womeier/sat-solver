@@ -62,6 +62,19 @@ theorem alloc.vec.Vec.push.spec {T : Type} (self : alloc.vec.Vec T) (x : T)
   unfold alloc.vec.Vec.push rust_primitives.sequence.seq_push
   simp [hlen]
 
+/-- `CoreModels`'s `Vec.append` concatenates and leaves the source empty (Rust's
+    `append` drains `other`). `cnf_transform_hybrid::Renamer::rename` is the only
+    caller here: it builds `[neg g]` and appends the clause being renamed onto it. -/
+@[step]
+theorem alloc.vec.Vec.append.spec {T : Type} (self : alloc.vec.Vec T)
+    (other : alloc.vec.Vec T) (hlen : self.val.length + other.val.length ≤ Usize.max) :
+    alloc.vec.Vec.append self other
+    ⦃ (v : alloc.vec.Vec T) (rest : alloc.vec.Vec T) =>
+      v.val = self.val ++ other.val ∧ rest.val = [] ⦄ := by
+  unfold alloc.vec.Vec.append rust_primitives.sequence.seq_concat
+    rust_primitives.sequence.seq_empty
+  simp [hlen, Slice.new]
+
 /-- `CoreModels`'s `Vec.deref_mut` is the identity, with an identity backward
     function (`Vec T` and `Slice T` are the same underlying representation). -/
 @[step]
