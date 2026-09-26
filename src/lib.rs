@@ -1,4 +1,7 @@
 pub mod cnf;
+pub mod cnf_transform_hybrid;
+pub mod cnf_transform_naive;
+pub mod cnf_transform_tseitin;
 pub mod dimacs;
 pub mod expr;
 pub mod sat;

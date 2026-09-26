@@ -56,18 +56,22 @@ extract:
         --exclude crate::sat \
         --exclude crate::sat_naive::SAT_SOLVER_NAIVE \
         --exclude crate::sat_dpll::SAT_SOLVER_DPLL \
+        --exclude crate::sat_dpll::SAT_SOLVER_DPLL_TSEITIN \
+        --exclude crate::sat_dpll::SAT_SOLVER_DPLL_HYBRID \
         --exclude crate::sat_cdcl \
         --opaque 'crate::expr::{impl core::fmt::Debug for crate::expr::Map}' \
         --opaque 'crate::expr::{impl core::fmt::Debug for crate::expr::Expr}' \
         --opaque 'crate::expr::{impl core::fmt::Display for crate::expr::Expr}' \
         --opaque 'crate::cnf::{impl core::fmt::Debug for crate::cnf::Literal}' \
         --opaque 'crate::cnf::{impl core::fmt::Debug for crate::cnf::Clause}' \
-        --opaque 'crate::cnf::{impl core::fmt::Debug for crate::cnf::Cnf}'" \
+        --opaque 'crate::cnf::{impl core::fmt::Debug for crate::cnf::Cnf}' \
+        --opaque 'crate::sat_dpll::{impl core::fmt::Debug for crate::sat_dpll::Transform}'" \
         --aeneas-args="-loops-to-rec"
     # The --opaque flags above stop charon from attempting to translate the
     # derived Debug impls / the handwritten Display impl for Entry/Map/Expr
     # (and, same story, the derived Debug impls for cnf.rs's Literal/Clause/
-    # Cnf): doing so hits an internal "Unreachable" aeneas error (their
+    # Cnf and for sat_dpll.rs's Transform): doing so hits an internal
+    # "Unreachable" aeneas error (their
     # bodies use unsupported alloc::fmt machinery anyway, same reason
     # evaluate's error type is `()` instead of `String` -- see justfile
     # history). Opaque items still get properly seeded into Assumptions/ as
@@ -96,6 +100,27 @@ extract:
         fi
         if [ ! -f "SatSolver/Extraction/$f.lean" ] && [ -f "SatSolver/Assumptions/$f.lean" ]; then
             echo "import SatSolver.Assumptions.$f" > "SatSolver/Extraction/$f.lean"
+        fi
+    done
+
+    # On every *later* run the seeding above is a no-op, so an extraction that
+    # newly needs an axiom -- a fresh --opaque item, e.g. the derived Debug impl
+    # on a type that did not exist before -- leaves Assumptions/ one entry short.
+    # Lean then fails on the *instance* with "failed to set reducibility status,
+    # CoreFmtDebug is not a definition", which says nothing about the real cause.
+    # Compare the axiom names and say it plainly instead.
+    for f in TypesExternal FunsExternal; do
+        tmpl="SatSolver/Extraction/${f}_Template.lean"
+        have="SatSolver/Assumptions/$f.lean"
+        if [ ! -f "$tmpl" ] || [ ! -f "$have" ]; then continue; fi
+        missing=$(comm -23 \
+            <(grep -oE '^axiom [A-Za-z0-9_.]+' "$tmpl" | awk '{print $2}' | sort) \
+            <(grep -oE '^axiom [A-Za-z0-9_.]+' "$have" | awk '{print $2}' | sort))
+        if [ -n "$missing" ]; then
+            echo "WARNING: $have is missing axioms this extraction needs:"
+            echo "$missing" | sed 's/^/  /'
+            echo "  Copy them across from $tmpl, dropping the spurious trailing"
+            echo "  '× (core.fmt.Formatter → core.fmt.Formatter)' tuple component."
         fi
     done
 

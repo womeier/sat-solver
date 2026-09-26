@@ -3,9 +3,9 @@
 //!
 //! A formula is returned as an `Expr` -- a conjunction of disjunctions of
 //! (possibly negated) variables -- so the existing solvers can run on it
-//! unchanged. Feeding such an `Expr` through `cnf::to_cnf` costs nothing: it is
-//! already in CNF, so no `Disj` ever sits above a `Conj` and the distribution
-//! step never fires.
+//! unchanged. Feeding such an `Expr` through `cnf_transform_naive::to_cnf`
+//! costs nothing: it is already in CNF, so no `Disj` ever sits above a `Conj`
+//! and the distribution step never fires.
 //!
 //! Variables are `Expr::Variable(u16)`, so instances may use at most 65535
 //! variables; anything larger is rejected rather than silently truncated. That

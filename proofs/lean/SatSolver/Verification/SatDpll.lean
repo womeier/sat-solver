@@ -133,7 +133,7 @@ def assignCnf (var : Std.U16) (value : Bool) (c : List (List cnf.Literal)) :
     occurrences and never adds any. `sat_dpll.dpll` is a `partial_fixpoint`
     definition and `WP.spec` maps `div` to `False`, so its spec has to internalize
     termination via strong induction on this measure (the `∀ n, measure ≤ n → ...`
-    trick `cnf.cnf_rec.spec` uses for `exprSize`) rather than `unfold` alone.
+    trick `cnf_transform_naive.cnf_rec.spec` uses for `exprSize`) rather than `unfold` alone.
     A distinct-variable count would work too, but needs `dedup`/`Nodup` reasoning
     this one avoids. -/
 def cnfSize (c : List (List cnf.Literal)) : Nat := (cnfVars c).length
@@ -947,7 +947,7 @@ theorem sat_dpll.dpll.spec (cnf1 : cnf.Cnf) (val : expr.Map)
     phrased as `Ok true`, never matched against `Err`, exactly like the naive
     solvers'.
 
-    `hbound` is the classic worst-case CNF blowup bound `cnf.to_cnf.spec` needs;
+    `hbound` is the classic worst-case CNF blowup bound `cnf_transform_naive.to_cnf.spec` needs;
     it subsumes the `exprSize e < Usize.max` that `initial_valuation.spec` and
     `collect_vars.spec` ask for, since `exprSize e < 2 ^ exprSize e`. -/
 theorem sat_dpll.solve_sat_sound (e : expr.Expr) (hbound : 2 ^ exprSize e ≤ Usize.max) :
@@ -957,7 +957,11 @@ theorem sat_dpll.solve_sat_sound (e : expr.Expr) (hbound : 2 ^ exprSize e ≤ Us
           r = core.result.Result.Ok true ⦄ ⦄ := by
   have hsize : exprSize e ≤ Usize.max := le_trans Nat.lt_two_pow_self.le hbound
   have hsize' : exprSize e < Usize.max := lt_of_lt_of_le Nat.lt_two_pow_self hbound
-  unfold sat_dpll.solve_sat
+  /- `solve_sat` is now a thin wrapper: `solve_sat_with e Transform.Naive`,
+     whose `encode` matches on the transform. `simp only` unfolds the two
+     wrappers and iota-reduces that match away, leaving the same goal the
+     proof saw when `solve_sat` called `to_cnf` directly. -/
+  simp only [sat_dpll.solve_sat, sat_dpll.solve_sat_with, sat_dpll.encode]
   step*
   · /- `dpll`'s presence precondition: `initial_valuation` covers every variable
        of `e`, and the CNF only mentions those. -/
@@ -1003,7 +1007,11 @@ theorem sat_dpll.solve_sat_complete (e : expr.Expr) (w : Std.U16 → Bool)
     sat_dpll.solve_sat e ⦃ (result : core.option.Option expr.Map) => result ≠ none ⦄ := by
   have hsize : exprSize e ≤ Usize.max := le_trans Nat.lt_two_pow_self.le hbound
   have hsize' : exprSize e < Usize.max := lt_of_lt_of_le Nat.lt_two_pow_self hbound
-  unfold sat_dpll.solve_sat
+  /- `solve_sat` is now a thin wrapper: `solve_sat_with e Transform.Naive`,
+     whose `encode` matches on the transform. `simp only` unfolds the two
+     wrappers and iota-reduces that match away, leaving the same goal the
+     proof saw when `solve_sat` called `to_cnf` directly. -/
+  simp only [sat_dpll.solve_sat, sat_dpll.solve_sat_with, sat_dpll.encode]
   step*
   · /- `dpll`'s presence precondition, as in the soundness proof. -/
     intro k hk

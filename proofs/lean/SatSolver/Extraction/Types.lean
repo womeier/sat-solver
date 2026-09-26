@@ -23,23 +23,35 @@ set_option maxRecDepth 2048
 namespace sat_solver
 
 /-- [sat_solver::cnf::Literal]
-    Source: 'src/cnf.rs', lines 9:0-12:1
+    Source: 'src/cnf.rs', lines 13:0-16:1
     Visibility: public -/
 structure cnf.Literal where
   var : Std.U16
   negated : Bool
 
 /-- [sat_solver::cnf::Clause]
-    Source: 'src/cnf.rs', lines 15:0-15:36
+    Source: 'src/cnf.rs', lines 19:0-19:36
     Visibility: public -/
 @[reducible]
 def cnf.Clause := alloc.vec.Vec cnf.Literal
 
 /-- [sat_solver::cnf::Cnf]
-    Source: 'src/cnf.rs', lines 18:0-18:32
+    Source: 'src/cnf.rs', lines 22:0-22:32
     Visibility: public -/
 @[reducible]
 def cnf.Cnf := alloc.vec.Vec cnf.Clause
+
+/-- [sat_solver::expr::Map]
+    Source: 'src/expr.rs', lines 25:0-25:34
+    Visibility: public -/
+@[reducible]
+def expr.Map := alloc.vec.Vec (core.option.Option Bool)
+
+/-- [sat_solver::cnf_transform_hybrid::Renamer]
+    Source: 'src/cnf_transform_hybrid.rs', lines 61:0-69:1 -/
+structure cnf_transform_hybrid.Renamer where
+  next : Std.U32
+  defs : alloc.vec.Vec cnf.Clause
 
 /-- [sat_solver::expr::Expr]
     Source: 'src/expr.rs', lines 53:0-60:1
@@ -53,15 +65,25 @@ inductive expr.Expr where
 | Disj : expr.Expr → expr.Expr → expr.Expr
 | Neg : expr.Expr → expr.Expr
 
-/-- [sat_solver::expr::Map]
-    Source: 'src/expr.rs', lines 25:0-25:34
-    Visibility: public -/
-@[reducible]
-def expr.Map := alloc.vec.Vec (core.option.Option Bool)
+/-- [sat_solver::cnf_transform_tseitin::Encoder]
+    Source: 'src/cnf_transform_tseitin.rs', lines 49:0-58:1 -/
+structure cnf_transform_tseitin.Encoder where
+  next : Std.U32
+  true_var : core.option.Option Std.U16
+  clauses : alloc.vec.Vec cnf.Clause
 
 /-- [sat_solver::expr::evaluate::closure]
     Source: 'src/expr.rs', lines 152:51-152:57 -/
 @[reducible]
 def expr.evaluate.closure := Unit
+
+/-- [sat_solver::sat_dpll::Transform]
+    Source: 'src/sat_dpll.rs', lines 137:0-157:1
+    Visibility: public -/
+@[discriminant isize]
+inductive sat_dpll.Transform where
+| Naive : sat_dpll.Transform
+| Tseitin : sat_dpll.Transform
+| Hybrid : sat_dpll.Transform
 
 end sat_solver

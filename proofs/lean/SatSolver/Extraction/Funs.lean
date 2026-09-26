@@ -27,14 +27,14 @@ noncomputable section
 namespace sat_solver
 
 /-- Trait implementation: [sat_solver::cnf::{impl core::fmt::Debug for sat_solver::cnf::Literal}]
-    Source: 'src/cnf.rs', lines 8:9-8:14 -/
+    Source: 'src/cnf.rs', lines 12:9-12:14 -/
 @[reducible]
 def cnf.Literal.Insts.CoreFmtDebug : core.fmt.Debug cnf.Literal := {
   fmt := cnf.Literal.Insts.CoreFmtDebug.fmt
 }
 
 /-- [sat_solver::cnf::{impl core::clone::Clone for sat_solver::cnf::Literal}::clone]:
-    Source: 'src/cnf.rs', lines 8:16-8:21
+    Source: 'src/cnf.rs', lines 12:16-12:21
     Visibility: public -/
 def cnf.Literal.Insts.CoreCloneClone.clone
   (self : cnf.Literal) : RustM cnf.Literal := do
@@ -43,7 +43,7 @@ def cnf.Literal.Insts.CoreCloneClone.clone
   ok { var := i, negated := b }
 
 /-- Trait implementation: [sat_solver::cnf::{impl core::clone::Clone for sat_solver::cnf::Literal}]
-    Source: 'src/cnf.rs', lines 8:16-8:21 -/
+    Source: 'src/cnf.rs', lines 12:16-12:21 -/
 @[reducible]
 impl_def cnf.Literal.Insts.CoreCloneClone : core.clone.Clone cnf.Literal := {
   clone := cnf.Literal.Insts.CoreCloneClone.clone
@@ -52,14 +52,14 @@ impl_def cnf.Literal.Insts.CoreCloneClone : core.clone.Clone cnf.Literal := {
 }
 
 /-- Trait implementation: [sat_solver::cnf::{impl core::marker::StructuralPartialEq for sat_solver::cnf::Literal}]
-    Source: 'src/cnf.rs', lines 8:23-8:32 -/
+    Source: 'src/cnf.rs', lines 12:23-12:32 -/
 @[reducible]
 def cnf.Literal.Insts.CoreMarkerStructuralPartialEq :
   core.marker.StructuralPartialEq cnf.Literal := {
 }
 
 /-- [sat_solver::cnf::{impl core::cmp::PartialEq<sat_solver::cnf::Literal> for sat_solver::cnf::Literal}::eq]:
-    Source: 'src/cnf.rs', lines 8:23-8:32
+    Source: 'src/cnf.rs', lines 12:23-12:32
     Visibility: public -/
 def cnf.Literal.Insts.CoreCmpPartialEqLiteral.eq
   (self : cnf.Literal) (other : cnf.Literal) : RustM Bool := do
@@ -68,7 +68,7 @@ def cnf.Literal.Insts.CoreCmpPartialEqLiteral.eq
   else ok false
 
 /-- Trait implementation: [sat_solver::cnf::{impl core::cmp::PartialEq<sat_solver::cnf::Literal> for sat_solver::cnf::Literal}]
-    Source: 'src/cnf.rs', lines 8:23-8:32 -/
+    Source: 'src/cnf.rs', lines 12:23-12:32 -/
 @[reducible]
 impl_def cnf.Literal.Insts.CoreCmpPartialEqLiteral : core.cmp.PartialEq
   cnf.Literal cnf.Literal := {
@@ -77,14 +77,14 @@ impl_def cnf.Literal.Insts.CoreCmpPartialEqLiteral : core.cmp.PartialEq
 }
 
 /-- Trait implementation: [sat_solver::cnf::{impl core::fmt::Debug for sat_solver::cnf::Clause}]
-    Source: 'src/cnf.rs', lines 14:9-14:14 -/
+    Source: 'src/cnf.rs', lines 18:9-18:14 -/
 @[reducible]
 def cnf.Clause.Insts.CoreFmtDebug : core.fmt.Debug cnf.Clause := {
   fmt := cnf.Clause.Insts.CoreFmtDebug.fmt
 }
 
 /-- [sat_solver::cnf::{impl core::clone::Clone for sat_solver::cnf::Clause}::clone]:
-    Source: 'src/cnf.rs', lines 14:16-14:21
+    Source: 'src/cnf.rs', lines 18:16-18:21
     Visibility: public -/
 def cnf.Clause.Insts.CoreCloneClone.clone
   (self : cnf.Clause) : RustM cnf.Clause := do
@@ -94,7 +94,7 @@ def cnf.Clause.Insts.CoreCloneClone.clone
   ok v
 
 /-- Trait implementation: [sat_solver::cnf::{impl core::clone::Clone for sat_solver::cnf::Clause}]
-    Source: 'src/cnf.rs', lines 14:16-14:21 -/
+    Source: 'src/cnf.rs', lines 18:16-18:21 -/
 @[reducible]
 impl_def cnf.Clause.Insts.CoreCloneClone : core.clone.Clone cnf.Clause := {
   clone := cnf.Clause.Insts.CoreCloneClone.clone
@@ -103,14 +103,14 @@ impl_def cnf.Clause.Insts.CoreCloneClone : core.clone.Clone cnf.Clause := {
 }
 
 /-- Trait implementation: [sat_solver::cnf::{impl core::marker::StructuralPartialEq for sat_solver::cnf::Clause}]
-    Source: 'src/cnf.rs', lines 14:23-14:32 -/
+    Source: 'src/cnf.rs', lines 18:23-18:32 -/
 @[reducible]
 def cnf.Clause.Insts.CoreMarkerStructuralPartialEq :
   core.marker.StructuralPartialEq cnf.Clause := {
 }
 
 /-- [sat_solver::cnf::{impl core::cmp::PartialEq<sat_solver::cnf::Clause> for sat_solver::cnf::Clause}::eq]:
-    Source: 'src/cnf.rs', lines 14:23-14:32
+    Source: 'src/cnf.rs', lines 18:23-18:32
     Visibility: public -/
 def cnf.Clause.Insts.CoreCmpPartialEqClause.eq
   (self : cnf.Clause) (other : cnf.Clause) : RustM Bool := do
@@ -118,7 +118,7 @@ def cnf.Clause.Insts.CoreCmpPartialEqClause.eq
     cnf.Literal.Insts.CoreCmpPartialEqLiteral self other
 
 /-- Trait implementation: [sat_solver::cnf::{impl core::cmp::PartialEq<sat_solver::cnf::Clause> for sat_solver::cnf::Clause}]
-    Source: 'src/cnf.rs', lines 14:23-14:32 -/
+    Source: 'src/cnf.rs', lines 18:23-18:32 -/
 @[reducible]
 impl_def cnf.Clause.Insts.CoreCmpPartialEqClause : core.cmp.PartialEq
   cnf.Clause cnf.Clause := {
@@ -127,14 +127,14 @@ impl_def cnf.Clause.Insts.CoreCmpPartialEqClause : core.cmp.PartialEq
 }
 
 /-- Trait implementation: [sat_solver::cnf::{impl core::fmt::Debug for sat_solver::cnf::Cnf}]
-    Source: 'src/cnf.rs', lines 17:9-17:14 -/
+    Source: 'src/cnf.rs', lines 21:9-21:14 -/
 @[reducible]
 def cnf.Cnf.Insts.CoreFmtDebug : core.fmt.Debug cnf.Cnf := {
   fmt := cnf.Cnf.Insts.CoreFmtDebug.fmt
 }
 
 /-- [sat_solver::cnf::{impl core::clone::Clone for sat_solver::cnf::Cnf}::clone]:
-    Source: 'src/cnf.rs', lines 17:16-17:21
+    Source: 'src/cnf.rs', lines 21:16-21:21
     Visibility: public -/
 def cnf.Cnf.Insts.CoreCloneClone.clone (self : cnf.Cnf) : RustM cnf.Cnf := do
   let v ←
@@ -143,7 +143,7 @@ def cnf.Cnf.Insts.CoreCloneClone.clone (self : cnf.Cnf) : RustM cnf.Cnf := do
   ok v
 
 /-- Trait implementation: [sat_solver::cnf::{impl core::clone::Clone for sat_solver::cnf::Cnf}]
-    Source: 'src/cnf.rs', lines 17:16-17:21 -/
+    Source: 'src/cnf.rs', lines 21:16-21:21 -/
 @[reducible]
 impl_def cnf.Cnf.Insts.CoreCloneClone : core.clone.Clone cnf.Cnf := {
   clone := cnf.Cnf.Insts.CoreCloneClone.clone
@@ -152,14 +152,14 @@ impl_def cnf.Cnf.Insts.CoreCloneClone : core.clone.Clone cnf.Cnf := {
 }
 
 /-- Trait implementation: [sat_solver::cnf::{impl core::marker::StructuralPartialEq for sat_solver::cnf::Cnf}]
-    Source: 'src/cnf.rs', lines 17:23-17:32 -/
+    Source: 'src/cnf.rs', lines 21:23-21:32 -/
 @[reducible]
 def cnf.Cnf.Insts.CoreMarkerStructuralPartialEq :
   core.marker.StructuralPartialEq cnf.Cnf := {
 }
 
 /-- [sat_solver::cnf::{impl core::cmp::PartialEq<sat_solver::cnf::Cnf> for sat_solver::cnf::Cnf}::eq]:
-    Source: 'src/cnf.rs', lines 17:23-17:32
+    Source: 'src/cnf.rs', lines 21:23-21:32
     Visibility: public -/
 def cnf.Cnf.Insts.CoreCmpPartialEqCnf.eq
   (self : cnf.Cnf) (other : cnf.Cnf) : RustM Bool := do
@@ -167,7 +167,7 @@ def cnf.Cnf.Insts.CoreCmpPartialEqCnf.eq
     cnf.Clause.Insts.CoreCmpPartialEqClause self other
 
 /-- Trait implementation: [sat_solver::cnf::{impl core::cmp::PartialEq<sat_solver::cnf::Cnf> for sat_solver::cnf::Cnf}]
-    Source: 'src/cnf.rs', lines 17:23-17:32 -/
+    Source: 'src/cnf.rs', lines 21:23-21:32 -/
 @[reducible]
 impl_def cnf.Cnf.Insts.CoreCmpPartialEqCnf : core.cmp.PartialEq cnf.Cnf cnf.Cnf
   := {
@@ -175,84 +175,345 @@ impl_def cnf.Cnf.Insts.CoreCmpPartialEqCnf : core.cmp.PartialEq cnf.Cnf cnf.Cnf
   ne := core.cmp.PartialEq.ne.default cnf.Cnf.Insts.CoreCmpPartialEqCnf
 }
 
-/-- [sat_solver::cnf::clause_union]: loop 0:
-    Source: 'src/cnf.rs', lines 22:4-24:5 -/
+/-- [sat_solver::expr::{sat_solver::expr::Map}::get]:
+    Source: 'src/expr.rs', lines 42:4-49:5
+    Visibility: public -/
+def expr.Map.get
+  (self : expr.Map) (key : Std.U16) : RustM (core.option.Option Bool) := do
+  let i ← lift (UScalar.cast .Usize key)
+  let i1 ← alloc.vec.Vec.len self
+  if i < i1
+  then
+    alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+      (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT (core.option.Option
+      Bool)) self i
+  else ok core.option.Option.None
+
+/-- [sat_solver::cnf::eval_literal]:
+    Source: 'src/cnf.rs', lines 27:0-32:1 -/
+def cnf.eval_literal
+  (lit : cnf.Literal) (valuation : expr.Map) :
+  RustM (core.result.Result Bool Unit)
+  := do
+  let o ← expr.Map.get valuation lit.var
+  match o with
+  | core.option.Option.None => ok (core.result.Result.Err ())
+  | core.option.Option.Some b =>
+    if lit.negated
+    then ok (core.result.Result.Ok (¬ b))
+    else ok (core.result.Result.Ok b)
+
+/-- [sat_solver::cnf::eval_clause]: loop 0:
+    Source: 'src/cnf.rs', lines 35:4-41:1 -/
 @[rust_loop]
-def cnf.clause_union_loop0
-  (iter : core.slice.iter.Iter cnf.Literal) (lits : alloc.vec.Vec cnf.Literal)
-  :
-  RustM (alloc.vec.Vec cnf.Literal)
+def cnf.eval_clause_loop
+  (iter : core.slice.iter.Iter cnf.Literal) (valuation : expr.Map) :
+  RustM (core.result.Result Bool Unit)
   := do
   let (o, iter1) ←
     core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
   match o with
-  | core.option.Option.None => ok lits
-  | core.option.Option.Some l =>
-    let l1 ← cnf.Literal.Insts.CoreCloneClone.clone l
-    let lits1 ← alloc.vec.Vec.push lits l1
-    cnf.clause_union_loop0 iter1 lits1
+  | core.option.Option.None => ok (core.result.Result.Ok false)
+  | core.option.Option.Some lit =>
+    let r ← cnf.eval_literal lit valuation
+    let cf ← core.result.Result.Insts.CoreOpsTry_traitTry.branch r
+    match cf with
+    | core.ops.control_flow.ControlFlow.Continue val =>
+      if val
+      then ok (core.result.Result.Ok true)
+      else cnf.eval_clause_loop iter1 valuation
+    | core.ops.control_flow.ControlFlow.Break residual =>
+      core.result.Result.Insts.CoreOpsTry_traitFromResidualResultInfallibleE.from_residual
+        Bool (core.convert.From.Blanket Unit) residual
 partial_fixpoint
 
-/-- [sat_solver::cnf::clause_union]: loop 1:
-    Source: 'src/cnf.rs', lines 25:4-27:5 -/
-@[rust_loop]
-def cnf.clause_union_loop1
-  (iter : core.slice.iter.Iter cnf.Literal) (lits : alloc.vec.Vec cnf.Literal)
-  :
-  RustM (alloc.vec.Vec cnf.Literal)
+/-- [sat_solver::cnf::eval_clause]:
+    Source: 'src/cnf.rs', lines 34:0-41:1 -/
+def cnf.eval_clause
+  (clause : cnf.Clause) (valuation : expr.Map) :
+  RustM (core.result.Result Bool Unit)
   := do
-  let (o, iter1) ←
-    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
-  match o with
-  | core.option.Option.None => ok lits
-  | core.option.Option.Some l =>
-    let l1 ← cnf.Literal.Insts.CoreCloneClone.clone l
-    let lits1 ← alloc.vec.Vec.push lits l1
-    cnf.clause_union_loop1 iter1 lits1
-partial_fixpoint
-
-/-- [sat_solver::cnf::clause_union]:
-    Source: 'src/cnf.rs', lines 20:0-29:1 -/
-def cnf.clause_union
-  (c1 : cnf.Clause) (c2 : cnf.Clause) : RustM cnf.Clause := do
-  let lits ← alloc.vec.Vec.new cnf.Literal
-  let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref c1
+  let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref clause
   let iter ← core.slice.Slice.iter s
-  let lits1 ← cnf.clause_union_loop0 iter lits
-  let s1 ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref c2
-  let iter1 ← core.slice.Slice.iter s1
-  let lits2 ← cnf.clause_union_loop1 iter1 lits1
-  ok lits2
+  cnf.eval_clause_loop iter valuation
 
-/-- [sat_solver::cnf::conj_cnf]: loop 0:
-    Source: 'src/cnf.rs', lines 35:4-37:5 -/
+/-- [sat_solver::cnf::eval_cnf]: loop 0:
+    Source: 'src/cnf.rs', lines 44:4-50:1
+    Visibility: public -/
 @[rust_loop]
-def cnf.conj_cnf_loop
-  (iter : alloc.vec.into_iter.IntoIter cnf.Clause)
-  (clauses : alloc.vec.Vec cnf.Clause) :
-  RustM (alloc.vec.Vec cnf.Clause)
+def cnf.eval_cnf_loop
+  (iter : core.slice.iter.Iter cnf.Clause) (valuation : expr.Map) :
+  RustM (core.result.Result Bool Unit)
+  := do
+  let (o, iter1) ←
+    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
+  match o with
+  | core.option.Option.None => ok (core.result.Result.Ok true)
+  | core.option.Option.Some clause =>
+    let r ← cnf.eval_clause clause valuation
+    let cf ← core.result.Result.Insts.CoreOpsTry_traitTry.branch r
+    match cf with
+    | core.ops.control_flow.ControlFlow.Continue val =>
+      if val
+      then cnf.eval_cnf_loop iter1 valuation
+      else ok (core.result.Result.Ok false)
+    | core.ops.control_flow.ControlFlow.Break residual =>
+      core.result.Result.Insts.CoreOpsTry_traitFromResidualResultInfallibleE.from_residual
+        Bool (core.convert.From.Blanket Unit) residual
+partial_fixpoint
+
+/-- [sat_solver::cnf::eval_cnf]:
+    Source: 'src/cnf.rs', lines 43:0-50:1
+    Visibility: public -/
+def cnf.eval_cnf
+  (cnf1 : cnf.Cnf) (valuation : expr.Map) :
+  RustM (core.result.Result Bool Unit)
+  := do
+  let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref cnf1
+  let iter ← core.slice.Slice.iter s
+  cnf.eval_cnf_loop iter valuation
+
+/-- [sat_solver::cnf_transform_hybrid::pos]:
+    Source: 'src/cnf_transform_hybrid.rs', lines 50:0-55:1 -/
+def cnf_transform_hybrid.pos (var : Std.U16) : RustM cnf.Literal := do
+  ok { var, negated := false }
+
+/-- [sat_solver::cnf_transform_hybrid::neg]:
+    Source: 'src/cnf_transform_hybrid.rs', lines 57:0-59:1 -/
+def cnf_transform_hybrid.neg (var : Std.U16) : RustM cnf.Literal := do
+  ok { var, negated := true }
+
+/-- [sat_solver::expr::contains_var]: loop 0:
+    Source: 'src/expr.rs', lines 182:4-188:1 -/
+@[rust_loop]
+def expr.contains_var_loop
+  (iter : core.slice.iter.Iter Std.U16) (v : Std.U16) : RustM Bool := do
+  let (o, iter1) ←
+    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
+  match o with
+  | core.option.Option.None => ok false
+  | core.option.Option.Some x =>
+    if x = v
+    then ok true
+    else expr.contains_var_loop iter1 v
+partial_fixpoint
+
+/-- [sat_solver::expr::contains_var]:
+    Source: 'src/expr.rs', lines 181:0-188:1 -/
+def expr.contains_var (vars : Slice Std.U16) (v : Std.U16) : RustM Bool := do
+  let iter ← core.slice.Slice.iter vars
+  expr.contains_var_loop iter v
+
+/-- [sat_solver::expr::merge_vars]: loop 0:
+    Source: 'src/expr.rs', lines 191:4-195:5 -/
+@[rust_loop]
+def expr.merge_vars_loop
+  (iter : core.slice.iter.Iter Std.U16) (dst : alloc.vec.Vec Std.U16) :
+  RustM (alloc.vec.Vec Std.U16)
+  := do
+  let (o, iter1) ←
+    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
+  match o with
+  | core.option.Option.None => ok dst
+  | core.option.Option.Some v =>
+    let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref dst
+    let b ← expr.contains_var s v
+    if b
+    then expr.merge_vars_loop iter1 dst
+    else let dst1 ← alloc.vec.Vec.push dst v
+         expr.merge_vars_loop iter1 dst1
+partial_fixpoint
+
+/-- [sat_solver::expr::merge_vars]:
+    Source: 'src/expr.rs', lines 190:0-196:1 -/
+def expr.merge_vars
+  (dst : alloc.vec.Vec Std.U16) (src : Slice Std.U16) :
+  RustM (alloc.vec.Vec Std.U16)
+  := do
+  let iter ← core.slice.Slice.iter src
+  expr.merge_vars_loop iter dst
+
+/-- [sat_solver::expr::collect_vars_aux]:
+    Source: 'src/expr.rs', lines 198:0-214:1 -/
+def expr.collect_vars_aux
+  (expr1 : expr.Expr) : RustM (alloc.vec.Vec Std.U16) := do
+  match expr1 with
+  | expr.Expr.True => alloc.vec.Vec.new Std.U16
+  | expr.Expr.False => alloc.vec.Vec.new Std.U16
+  | expr.Expr.Variable v =>
+    let vars ← alloc.vec.Vec.new Std.U16
+    alloc.vec.Vec.push vars v
+  | expr.Expr.Conj e1 e2 =>
+    let vs1 ← expr.collect_vars_aux e1
+    let vs2 ← expr.collect_vars_aux e2
+    let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref vs2
+    expr.merge_vars vs1 s
+  | expr.Expr.Disj e1 e2 =>
+    let vs1 ← expr.collect_vars_aux e1
+    let vs2 ← expr.collect_vars_aux e2
+    let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref vs2
+    expr.merge_vars vs1 s
+  | expr.Expr.Neg e => expr.collect_vars_aux e
+partial_fixpoint
+
+/-- [sat_solver::expr::collect_vars]:
+    Source: 'src/expr.rs', lines 216:0-218:1
+    Visibility: public -/
+def expr.collect_vars (expr1 : expr.Expr) : RustM (alloc.vec.Vec Std.U16) := do
+  expr.collect_vars_aux expr1
+
+/-- [sat_solver::cnf_transform_hybrid::{sat_solver::cnf_transform_hybrid::Renamer}::new]: loop 0:
+    Source: 'src/cnf_transform_hybrid.rs', lines 74:8-78:9 -/
+@[rust_loop]
+def cnf_transform_hybrid.Renamer.new_loop
+  (iter : alloc.vec.into_iter.IntoIter Std.U16) (next : Std.U32) :
+  RustM Std.U32
   := do
   let (o, iter1) ←
     alloc.vec.into_iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.next iter
   match o with
-  | core.option.Option.None => ok clauses
-  | core.option.Option.Some c =>
-    let clauses1 ← alloc.vec.Vec.push clauses c
-    cnf.conj_cnf_loop iter1 clauses1
+  | core.option.Option.None => ok next
+  | core.option.Option.Some v =>
+    let i ← lift (UScalar.cast .U32 v)
+    if i >= next
+    then
+      let i1 ← lift (UScalar.cast .U32 v)
+      let next1 ← i1 + 1#u32
+      cnf_transform_hybrid.Renamer.new_loop iter1 next1
+    else cnf_transform_hybrid.Renamer.new_loop iter1 next
 partial_fixpoint
 
-/-- [sat_solver::cnf::conj_cnf]:
-    Source: 'src/cnf.rs', lines 32:0-39:1 -/
-def cnf.conj_cnf (c1 : cnf.Cnf) (c2 : cnf.Cnf) : RustM cnf.Cnf := do
+/-- [sat_solver::cnf_transform_hybrid::{sat_solver::cnf_transform_hybrid::Renamer}::new]:
+    Source: 'src/cnf_transform_hybrid.rs', lines 72:4-83:5 -/
+def cnf_transform_hybrid.Renamer.new
+  (expr1 : expr.Expr) : RustM cnf_transform_hybrid.Renamer := do
+  let v ← expr.collect_vars expr1
   let iter ←
-    alloc.vec.Vec.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter c2
-  let clauses ← cnf.conj_cnf_loop iter c1
-  ok clauses
+    alloc.vec.Vec.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter v
+  let next ← cnf_transform_hybrid.Renamer.new_loop iter 0#u32
+  let v1 ← alloc.vec.Vec.new cnf.Clause
+  ok { next, defs := v1 }
 
-/-- [sat_solver::cnf::distribute]: loop 1:
-    Source: 'src/cnf.rs', lines 46:8-48:9 -/
+/-- [sat_solver::cnf_transform_hybrid::{sat_solver::cnf_transform_hybrid::Renamer}::fresh]:
+    Source: 'src/cnf_transform_hybrid.rs', lines 85:4-92:5 -/
+def cnf_transform_hybrid.Renamer.fresh
+  (self : cnf_transform_hybrid.Renamer) :
+  RustM ((core.result.Result Std.U16 Unit) × cnf_transform_hybrid.Renamer)
+  := do
+  let i ← lift (UScalar.cast .U32 core.num.U16.MAX)
+  if self.next > i
+  then ok (core.result.Result.Err (), self)
+  else
+    let v ← lift (UScalar.cast .U16 self.next)
+    let i1 ← self.next + 1#u32
+    ok (core.result.Result.Ok v, { self with next := i1 })
+
+/-- [sat_solver::cnf_transform_hybrid::{sat_solver::cnf_transform_hybrid::Renamer}::rename]: loop 0:
+    Source: 'src/cnf_transform_hybrid.rs', lines 98:19-99:40 -/
 @[rust_loop]
-def cnf.distribute_loop0_loop0
+def cnf_transform_hybrid.Renamer.rename_loop
+  (iter : alloc.vec.into_iter.IntoIter cnf.Clause)
+  (self : cnf_transform_hybrid.Renamer) (g : Std.U16) :
+  RustM cnf_transform_hybrid.Renamer
+  := do
+  let (o, iter1) ←
+    alloc.vec.into_iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.next iter
+  match o with
+  | core.option.Option.None => ok self
+  | core.option.Option.Some c =>
+    let l ← cnf_transform_hybrid.neg g
+    let y ←
+      lift (Std.Array.to_slice (Array.make 1#usize [ l ] : Array cnf.Literal
+        1#usize))
+    let ret ← alloc.slice.Slice.into_vec y
+    let (ret1, _) ← alloc.vec.Vec.append ret c
+    let v ← alloc.vec.Vec.push self.defs ret1
+    cnf_transform_hybrid.Renamer.rename_loop iter1 { self with defs := v } g
+partial_fixpoint
+
+/-- [sat_solver::cnf_transform_hybrid::{sat_solver::cnf_transform_hybrid::Renamer}::rename]:
+    Source: 'src/cnf_transform_hybrid.rs', lines 96:4-104:5 -/
+def cnf_transform_hybrid.Renamer.rename
+  (self : cnf_transform_hybrid.Renamer) (cnf1 : cnf.Cnf) :
+  RustM ((core.result.Result cnf.Cnf Unit) × cnf_transform_hybrid.Renamer)
+  := do
+  let (r, self1) ← cnf_transform_hybrid.Renamer.fresh self
+  let cf ← core.result.Result.Insts.CoreOpsTry_traitTry.branch r
+  match cf with
+  | core.ops.control_flow.ControlFlow.Continue val =>
+    let iter ←
+      alloc.vec.Vec.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter
+        cnf1
+    let self2 ← cnf_transform_hybrid.Renamer.rename_loop iter self1 val
+    let l ← cnf_transform_hybrid.pos val
+    let y ←
+      lift (Std.Array.to_slice (Array.make 1#usize [ l ] : Array cnf.Literal
+        1#usize))
+    let ret ← alloc.slice.Slice.into_vec y
+    let y1 ←
+      lift (Std.Array.to_slice (Array.make 1#usize [ ret ] : Array cnf.Clause
+        1#usize))
+    let ret1 ← alloc.slice.Slice.into_vec y1
+    ok (core.result.Result.Ok ret1, self2)
+  | core.ops.control_flow.ControlFlow.Break residual =>
+    let r1 ←
+      core.result.Result.Insts.CoreOpsTry_traitFromResidualResultInfallibleE.from_residual
+        cnf.Cnf (core.convert.From.Blanket Unit) residual
+    ok (r1, self1)
+
+/-- [sat_solver::cnf_transform_naive::clause_union]: loop 0:
+    Source: 'src/cnf_transform_naive.rs', lines 21:4-23:5 -/
+@[rust_loop]
+def cnf_transform_naive.clause_union_loop0
+  (iter : core.slice.iter.Iter cnf.Literal) (lits : alloc.vec.Vec cnf.Literal)
+  :
+  RustM (alloc.vec.Vec cnf.Literal)
+  := do
+  let (o, iter1) ←
+    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
+  match o with
+  | core.option.Option.None => ok lits
+  | core.option.Option.Some l =>
+    let l1 ← cnf.Literal.Insts.CoreCloneClone.clone l
+    let lits1 ← alloc.vec.Vec.push lits l1
+    cnf_transform_naive.clause_union_loop0 iter1 lits1
+partial_fixpoint
+
+/-- [sat_solver::cnf_transform_naive::clause_union]: loop 1:
+    Source: 'src/cnf_transform_naive.rs', lines 24:4-26:5 -/
+@[rust_loop]
+def cnf_transform_naive.clause_union_loop1
+  (iter : core.slice.iter.Iter cnf.Literal) (lits : alloc.vec.Vec cnf.Literal)
+  :
+  RustM (alloc.vec.Vec cnf.Literal)
+  := do
+  let (o, iter1) ←
+    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
+  match o with
+  | core.option.Option.None => ok lits
+  | core.option.Option.Some l =>
+    let l1 ← cnf.Literal.Insts.CoreCloneClone.clone l
+    let lits1 ← alloc.vec.Vec.push lits l1
+    cnf_transform_naive.clause_union_loop1 iter1 lits1
+partial_fixpoint
+
+/-- [sat_solver::cnf_transform_naive::clause_union]:
+    Source: 'src/cnf_transform_naive.rs', lines 19:0-28:1 -/
+def cnf_transform_naive.clause_union
+  (c1 : cnf.Clause) (c2 : cnf.Clause) : RustM cnf.Clause := do
+  let lits ← alloc.vec.Vec.new cnf.Literal
+  let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref c1
+  let iter ← core.slice.Slice.iter s
+  let lits1 ← cnf_transform_naive.clause_union_loop0 iter lits
+  let s1 ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref c2
+  let iter1 ← core.slice.Slice.iter s1
+  let lits2 ← cnf_transform_naive.clause_union_loop1 iter1 lits1
+  ok lits2
+
+/-- [sat_solver::cnf_transform_naive::distribute]: loop 1:
+    Source: 'src/cnf_transform_naive.rs', lines 45:8-47:9 -/
+@[rust_loop]
+def cnf_transform_naive.distribute_loop0_loop0
   (iter : core.slice.iter.Iter cnf.Clause) (result : alloc.vec.Vec cnf.Clause)
   (clause1 : cnf.Clause) :
   RustM (alloc.vec.Vec cnf.Clause)
@@ -262,15 +523,15 @@ def cnf.distribute_loop0_loop0
   match o with
   | core.option.Option.None => ok result
   | core.option.Option.Some clause2 =>
-    let c ← cnf.clause_union clause1 clause2
+    let c ← cnf_transform_naive.clause_union clause1 clause2
     let result1 ← alloc.vec.Vec.push result c
-    cnf.distribute_loop0_loop0 iter1 result1 clause1
+    cnf_transform_naive.distribute_loop0_loop0 iter1 result1 clause1
 partial_fixpoint
 
-/-- [sat_solver::cnf::distribute]: loop 0:
-    Source: 'src/cnf.rs', lines 45:4-49:5 -/
+/-- [sat_solver::cnf_transform_naive::distribute]: loop 0:
+    Source: 'src/cnf_transform_naive.rs', lines 44:4-48:5 -/
 @[rust_loop]
-def cnf.distribute_loop0
+def cnf_transform_naive.distribute_loop0
   (iter : core.slice.iter.Iter cnf.Clause) (c2 : cnf.Cnf)
   (result : alloc.vec.Vec cnf.Clause) :
   RustM (alloc.vec.Vec cnf.Clause)
@@ -282,22 +543,201 @@ def cnf.distribute_loop0
   | core.option.Option.Some clause1 =>
     let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref c2
     let iter2 ← core.slice.Slice.iter s
-    let result1 ← cnf.distribute_loop0_loop0 iter2 result clause1
-    cnf.distribute_loop0 iter1 c2 result1
+    let result1 ←
+      cnf_transform_naive.distribute_loop0_loop0 iter2 result clause1
+    cnf_transform_naive.distribute_loop0 iter1 c2 result1
 partial_fixpoint
 
-/-- [sat_solver::cnf::distribute]:
-    Source: 'src/cnf.rs', lines 43:0-51:1 -/
-def cnf.distribute (c1 : cnf.Cnf) (c2 : cnf.Cnf) : RustM cnf.Cnf := do
+/-- [sat_solver::cnf_transform_naive::distribute]:
+    Source: 'src/cnf_transform_naive.rs', lines 42:0-50:1 -/
+def cnf_transform_naive.distribute
+  (c1 : cnf.Cnf) (c2 : cnf.Cnf) : RustM cnf.Cnf := do
   let result ← alloc.vec.Vec.new cnf.Clause
   let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref c1
   let iter ← core.slice.Slice.iter s
-  let result1 ← cnf.distribute_loop0 iter c2 result
+  let result1 ← cnf_transform_naive.distribute_loop0 iter c2 result
   ok result1
 
-/-- [sat_solver::cnf::cnf_rec]:
-    Source: 'src/cnf.rs', lines 58:0-94:1 -/
-def cnf.cnf_rec (expr1 : expr.Expr) (negate : Bool) : RustM cnf.Cnf := do
+/-- [sat_solver::cnf_transform_hybrid::{sat_solver::cnf_transform_hybrid::Renamer}::disjoin]:
+    Source: 'src/cnf_transform_hybrid.rs', lines 108:4-121:5 -/
+def cnf_transform_hybrid.Renamer.disjoin
+  (self : cnf_transform_hybrid.Renamer) (c1 : cnf.Cnf) (c2 : cnf.Cnf) :
+  RustM ((core.result.Result cnf.Cnf Unit) × cnf_transform_hybrid.Renamer)
+  := do
+  let n ← alloc.vec.Vec.len c1
+  let m ← alloc.vec.Vec.len c2
+  let i ← n * m
+  let i1 ← n + m
+  if i <= i1
+  then
+    let c ← cnf_transform_naive.distribute c1 c2
+    ok (core.result.Result.Ok c, self)
+  else
+    if n >= m
+    then
+      let (r, self1) ← cnf_transform_hybrid.Renamer.rename self c1
+      let cf ← core.result.Result.Insts.CoreOpsTry_traitTry.branch r
+      match cf with
+      | core.ops.control_flow.ControlFlow.Continue val =>
+        let c ← cnf_transform_naive.distribute val c2
+        ok (core.result.Result.Ok c, self1)
+      | core.ops.control_flow.ControlFlow.Break residual =>
+        let r1 ←
+          core.result.Result.Insts.CoreOpsTry_traitFromResidualResultInfallibleE.from_residual
+            cnf.Cnf (core.convert.From.Blanket Unit) residual
+        ok (r1, self1)
+    else
+      let (r, self1) ← cnf_transform_hybrid.Renamer.rename self c2
+      let cf ← core.result.Result.Insts.CoreOpsTry_traitTry.branch r
+      match cf with
+      | core.ops.control_flow.ControlFlow.Continue val =>
+        let c ← cnf_transform_naive.distribute c1 val
+        ok (core.result.Result.Ok c, self1)
+      | core.ops.control_flow.ControlFlow.Break residual =>
+        let r1 ←
+          core.result.Result.Insts.CoreOpsTry_traitFromResidualResultInfallibleE.from_residual
+            cnf.Cnf (core.convert.From.Blanket Unit) residual
+        ok (r1, self1)
+
+/-- [sat_solver::cnf_transform_naive::conj_cnf]: loop 0:
+    Source: 'src/cnf_transform_naive.rs', lines 34:4-36:5 -/
+@[rust_loop]
+def cnf_transform_naive.conj_cnf_loop
+  (iter : alloc.vec.into_iter.IntoIter cnf.Clause)
+  (clauses : alloc.vec.Vec cnf.Clause) :
+  RustM (alloc.vec.Vec cnf.Clause)
+  := do
+  let (o, iter1) ←
+    alloc.vec.into_iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.next iter
+  match o with
+  | core.option.Option.None => ok clauses
+  | core.option.Option.Some c =>
+    let clauses1 ← alloc.vec.Vec.push clauses c
+    cnf_transform_naive.conj_cnf_loop iter1 clauses1
+partial_fixpoint
+
+/-- [sat_solver::cnf_transform_naive::conj_cnf]:
+    Source: 'src/cnf_transform_naive.rs', lines 31:0-38:1 -/
+def cnf_transform_naive.conj_cnf
+  (c1 : cnf.Cnf) (c2 : cnf.Cnf) : RustM cnf.Cnf := do
+  let iter ←
+    alloc.vec.Vec.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter c2
+  let clauses ← cnf_transform_naive.conj_cnf_loop iter c1
+  ok clauses
+
+/-- [sat_solver::cnf_transform_hybrid::{sat_solver::cnf_transform_hybrid::Renamer}::cnf]:
+    Source: 'src/cnf_transform_hybrid.rs', lines 129:4-165:5 -/
+def cnf_transform_hybrid.Renamer.cnf
+  (self : cnf_transform_hybrid.Renamer) (expr1 : expr.Expr) (negate : Bool) :
+  RustM ((core.result.Result cnf.Cnf Unit) × cnf_transform_hybrid.Renamer)
+  := do
+  match expr1 with
+  | expr.Expr.True =>
+    if negate
+    then
+      let v ← alloc.vec.Vec.new cnf.Literal
+      let y ←
+        lift (Std.Array.to_slice (Array.make 1#usize [ v ] : Array cnf.Clause
+          1#usize))
+      let ret ← alloc.slice.Slice.into_vec y
+      ok (core.result.Result.Ok ret, self)
+    else
+      let v ← alloc.vec.Vec.new cnf.Clause
+      ok (core.result.Result.Ok v, self)
+  | expr.Expr.False =>
+    if negate
+    then
+      let v ← alloc.vec.Vec.new cnf.Clause
+      ok (core.result.Result.Ok v, self)
+    else
+      let v ← alloc.vec.Vec.new cnf.Literal
+      let y ←
+        lift (Std.Array.to_slice (Array.make 1#usize [ v ] : Array cnf.Clause
+          1#usize))
+      let ret ← alloc.slice.Slice.into_vec y
+      ok (core.result.Result.Ok ret, self)
+  | expr.Expr.Variable v =>
+    let y ←
+      lift (Std.Array.to_slice
+        (Array.make 1#usize [ { var := v, negated := negate } ] : Array
+        cnf.Literal 1#usize))
+    let ret ← alloc.slice.Slice.into_vec y
+    let y1 ←
+      lift (Std.Array.to_slice (Array.make 1#usize [ ret ] : Array cnf.Clause
+        1#usize))
+    let ret1 ← alloc.slice.Slice.into_vec y1
+    ok (core.result.Result.Ok ret1, self)
+  | expr.Expr.Conj e1 e2 =>
+    let (r, self1) ← cnf_transform_hybrid.Renamer.cnf self e1 negate
+    let cf ← core.result.Result.Insts.CoreOpsTry_traitTry.branch r
+    match cf with
+    | core.ops.control_flow.ControlFlow.Continue val =>
+      let (r1, self2) ← cnf_transform_hybrid.Renamer.cnf self1 e2 negate
+      let cf1 ← core.result.Result.Insts.CoreOpsTry_traitTry.branch r1
+      match cf1 with
+      | core.ops.control_flow.ControlFlow.Continue val1 =>
+        if negate
+        then cnf_transform_hybrid.Renamer.disjoin self2 val val1
+        else
+          let c ← cnf_transform_naive.conj_cnf val val1
+          ok (core.result.Result.Ok c, self2)
+      | core.ops.control_flow.ControlFlow.Break residual =>
+        let r2 ←
+          core.result.Result.Insts.CoreOpsTry_traitFromResidualResultInfallibleE.from_residual
+            cnf.Cnf (core.convert.From.Blanket Unit) residual
+        ok (r2, self2)
+    | core.ops.control_flow.ControlFlow.Break residual =>
+      let r1 ←
+        core.result.Result.Insts.CoreOpsTry_traitFromResidualResultInfallibleE.from_residual
+          cnf.Cnf (core.convert.From.Blanket Unit) residual
+      ok (r1, self1)
+  | expr.Expr.Disj e1 e2 =>
+    let (r, self1) ← cnf_transform_hybrid.Renamer.cnf self e1 negate
+    let cf ← core.result.Result.Insts.CoreOpsTry_traitTry.branch r
+    match cf with
+    | core.ops.control_flow.ControlFlow.Continue val =>
+      let (r1, self2) ← cnf_transform_hybrid.Renamer.cnf self1 e2 negate
+      let cf1 ← core.result.Result.Insts.CoreOpsTry_traitTry.branch r1
+      match cf1 with
+      | core.ops.control_flow.ControlFlow.Continue val1 =>
+        if negate
+        then
+          let c ← cnf_transform_naive.conj_cnf val val1
+          ok (core.result.Result.Ok c, self2)
+        else cnf_transform_hybrid.Renamer.disjoin self2 val val1
+      | core.ops.control_flow.ControlFlow.Break residual =>
+        let r2 ←
+          core.result.Result.Insts.CoreOpsTry_traitFromResidualResultInfallibleE.from_residual
+            cnf.Cnf (core.convert.From.Blanket Unit) residual
+        ok (r2, self2)
+    | core.ops.control_flow.ControlFlow.Break residual =>
+      let r1 ←
+        core.result.Result.Insts.CoreOpsTry_traitFromResidualResultInfallibleE.from_residual
+          cnf.Cnf (core.convert.From.Blanket Unit) residual
+      ok (r1, self1)
+  | expr.Expr.Neg e => cnf_transform_hybrid.Renamer.cnf self e (¬ negate)
+partial_fixpoint
+
+/-- [sat_solver::cnf_transform_hybrid::to_cnf]:
+    Source: 'src/cnf_transform_hybrid.rs', lines 174:0-181:1
+    Visibility: public -/
+def cnf_transform_hybrid.to_cnf
+  (expr1 : expr.Expr) : RustM (core.result.Result cnf.Cnf Unit) := do
+  let renamer ← cnf_transform_hybrid.Renamer.new expr1
+  let (r, renamer1) ← cnf_transform_hybrid.Renamer.cnf renamer expr1 false
+  let cf ← core.result.Result.Insts.CoreOpsTry_traitTry.branch r
+  match cf with
+  | core.ops.control_flow.ControlFlow.Continue val =>
+    let c ← cnf_transform_naive.conj_cnf val renamer1.defs
+    ok (core.result.Result.Ok c)
+  | core.ops.control_flow.ControlFlow.Break residual =>
+    core.result.Result.Insts.CoreOpsTry_traitFromResidualResultInfallibleE.from_residual
+      cnf.Cnf (core.convert.From.Blanket Unit) residual
+
+/-- [sat_solver::cnf_transform_naive::cnf_rec]:
+    Source: 'src/cnf_transform_naive.rs', lines 57:0-93:1 -/
+def cnf_transform_naive.cnf_rec
+  (expr1 : expr.Expr) (negate : Bool) : RustM cnf.Cnf := do
   match expr1 with
   | expr.Expr.True =>
     if negate
@@ -335,129 +775,282 @@ def cnf.cnf_rec (expr1 : expr.Expr) (negate : Bool) : RustM cnf.Cnf := do
   | expr.Expr.Conj e1 e2 =>
     if negate
     then
-      let c ← cnf.cnf_rec e1 true
-      let c1 ← cnf.cnf_rec e2 true
-      cnf.distribute c c1
+      let c ← cnf_transform_naive.cnf_rec e1 true
+      let c1 ← cnf_transform_naive.cnf_rec e2 true
+      cnf_transform_naive.distribute c c1
     else
-      let c ← cnf.cnf_rec e1 false
-      let c1 ← cnf.cnf_rec e2 false
-      cnf.conj_cnf c c1
+      let c ← cnf_transform_naive.cnf_rec e1 false
+      let c1 ← cnf_transform_naive.cnf_rec e2 false
+      cnf_transform_naive.conj_cnf c c1
   | expr.Expr.Disj e1 e2 =>
     if negate
     then
-      let c ← cnf.cnf_rec e1 true
-      let c1 ← cnf.cnf_rec e2 true
-      cnf.conj_cnf c c1
+      let c ← cnf_transform_naive.cnf_rec e1 true
+      let c1 ← cnf_transform_naive.cnf_rec e2 true
+      cnf_transform_naive.conj_cnf c c1
     else
-      let c ← cnf.cnf_rec e1 false
-      let c1 ← cnf.cnf_rec e2 false
-      cnf.distribute c c1
-  | expr.Expr.Neg e => cnf.cnf_rec e (¬ negate)
+      let c ← cnf_transform_naive.cnf_rec e1 false
+      let c1 ← cnf_transform_naive.cnf_rec e2 false
+      cnf_transform_naive.distribute c c1
+  | expr.Expr.Neg e => cnf_transform_naive.cnf_rec e (¬ negate)
 partial_fixpoint
 
-/-- [sat_solver::cnf::to_cnf]:
-    Source: 'src/cnf.rs', lines 96:0-98:1
+/-- [sat_solver::cnf_transform_naive::to_cnf]:
+    Source: 'src/cnf_transform_naive.rs', lines 95:0-97:1
     Visibility: public -/
-def cnf.to_cnf (expr1 : expr.Expr) : RustM cnf.Cnf := do
-  cnf.cnf_rec expr1 false
+def cnf_transform_naive.to_cnf (expr1 : expr.Expr) : RustM cnf.Cnf := do
+  cnf_transform_naive.cnf_rec expr1 false
 
-/-- [sat_solver::expr::{sat_solver::expr::Map}::get]:
-    Source: 'src/expr.rs', lines 42:4-49:5
-    Visibility: public -/
-def expr.Map.get
-  (self : expr.Map) (key : Std.U16) : RustM (core.option.Option Bool) := do
-  let i ← lift (UScalar.cast .Usize key)
-  let i1 ← alloc.vec.Vec.len self
-  if i < i1
-  then
-    alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
-      (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT (core.option.Option
-      Bool)) self i
-  else ok core.option.Option.None
+/-- [sat_solver::cnf_transform_tseitin::pos]:
+    Source: 'src/cnf_transform_tseitin.rs', lines 31:0-36:1 -/
+def cnf_transform_tseitin.pos (var : Std.U16) : RustM cnf.Literal := do
+  ok { var, negated := false }
 
-/-- [sat_solver::cnf::eval_literal]:
-    Source: 'src/cnf.rs', lines 103:0-108:1 -/
-def cnf.eval_literal
-  (lit : cnf.Literal) (valuation : expr.Map) :
-  RustM (core.result.Result Bool Unit)
-  := do
-  let o ← expr.Map.get valuation lit.var
-  match o with
-  | core.option.Option.None => ok (core.result.Result.Err ())
-  | core.option.Option.Some b =>
-    if lit.negated
-    then ok (core.result.Result.Ok (¬ b))
-    else ok (core.result.Result.Ok b)
+/-- [sat_solver::cnf_transform_tseitin::neg]:
+    Source: 'src/cnf_transform_tseitin.rs', lines 38:0-40:1 -/
+def cnf_transform_tseitin.neg (var : Std.U16) : RustM cnf.Literal := do
+  ok { var, negated := true }
 
-/-- [sat_solver::cnf::eval_clause]: loop 0:
-    Source: 'src/cnf.rs', lines 111:4-117:1 -/
+/-- [sat_solver::cnf_transform_tseitin::flip]:
+    Source: 'src/cnf_transform_tseitin.rs', lines 42:0-47:1 -/
+def cnf_transform_tseitin.flip (lit : cnf.Literal) : RustM cnf.Literal := do
+  ok { lit with negated := (¬ lit.negated) }
+
+/-- [sat_solver::cnf_transform_tseitin::{sat_solver::cnf_transform_tseitin::Encoder}::new]: loop 0:
+    Source: 'src/cnf_transform_tseitin.rs', lines 63:8-67:9 -/
 @[rust_loop]
-def cnf.eval_clause_loop
-  (iter : core.slice.iter.Iter cnf.Literal) (valuation : expr.Map) :
-  RustM (core.result.Result Bool Unit)
+def cnf_transform_tseitin.Encoder.new_loop
+  (iter : alloc.vec.into_iter.IntoIter Std.U16) (next : Std.U32) :
+  RustM Std.U32
   := do
   let (o, iter1) ←
-    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
+    alloc.vec.into_iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.next iter
   match o with
-  | core.option.Option.None => ok (core.result.Result.Ok false)
-  | core.option.Option.Some lit =>
-    let r ← cnf.eval_literal lit valuation
+  | core.option.Option.None => ok next
+  | core.option.Option.Some v =>
+    let i ← lift (UScalar.cast .U32 v)
+    if i >= next
+    then
+      let i1 ← lift (UScalar.cast .U32 v)
+      let next1 ← i1 + 1#u32
+      cnf_transform_tseitin.Encoder.new_loop iter1 next1
+    else cnf_transform_tseitin.Encoder.new_loop iter1 next
+partial_fixpoint
+
+/-- [sat_solver::cnf_transform_tseitin::{sat_solver::cnf_transform_tseitin::Encoder}::new]:
+    Source: 'src/cnf_transform_tseitin.rs', lines 61:4-73:5 -/
+def cnf_transform_tseitin.Encoder.new
+  (expr1 : expr.Expr) : RustM cnf_transform_tseitin.Encoder := do
+  let v ← expr.collect_vars expr1
+  let iter ←
+    alloc.vec.Vec.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter v
+  let next ← cnf_transform_tseitin.Encoder.new_loop iter 0#u32
+  let v1 ← alloc.vec.Vec.new cnf.Clause
+  ok { next, true_var := core.option.Option.None, clauses := v1 }
+
+/-- [sat_solver::cnf_transform_tseitin::{sat_solver::cnf_transform_tseitin::Encoder}::fresh]:
+    Source: 'src/cnf_transform_tseitin.rs', lines 75:4-82:5 -/
+def cnf_transform_tseitin.Encoder.fresh
+  (self : cnf_transform_tseitin.Encoder) :
+  RustM ((core.result.Result Std.U16 Unit) × cnf_transform_tseitin.Encoder)
+  := do
+  let i ← lift (UScalar.cast .U32 core.num.U16.MAX)
+  if self.next > i
+  then ok (core.result.Result.Err (), self)
+  else
+    let v ← lift (UScalar.cast .U16 self.next)
+    let i1 ← self.next + 1#u32
+    ok (core.result.Result.Ok v, { self with next := i1 })
+
+/-- [sat_solver::cnf_transform_tseitin::{sat_solver::cnf_transform_tseitin::Encoder}::constant]:
+    Source: 'src/cnf_transform_tseitin.rs', lines 84:4-95:5 -/
+def cnf_transform_tseitin.Encoder.constant
+  (self : cnf_transform_tseitin.Encoder) (value : Bool) :
+  RustM ((core.result.Result cnf.Literal Unit) ×
+    cnf_transform_tseitin.Encoder)
+  := do
+  match self.true_var with
+  | core.option.Option.None =>
+    let (r, self1) ← cnf_transform_tseitin.Encoder.fresh self
     let cf ← core.result.Result.Insts.CoreOpsTry_traitTry.branch r
     match cf with
     | core.ops.control_flow.ControlFlow.Continue val =>
-      if val
-      then ok (core.result.Result.Ok true)
-      else cnf.eval_clause_loop iter1 valuation
+      let l ← cnf_transform_tseitin.pos val
+      let y ←
+        lift (Std.Array.to_slice (Array.make 1#usize [ l ] : Array cnf.Literal
+          1#usize))
+      let ret ← alloc.slice.Slice.into_vec y
+      let v ← alloc.vec.Vec.push self1.clauses ret
+      if value
+      then
+        ok (core.result.Result.Ok l,
+          { self1 with true_var := (core.option.Option.Some val), clauses := v
+          })
+      else
+        let l1 ← cnf_transform_tseitin.neg val
+        ok (core.result.Result.Ok l1,
+          { self1 with true_var := (core.option.Option.Some val), clauses := v
+          })
     | core.ops.control_flow.ControlFlow.Break residual =>
-      core.result.Result.Insts.CoreOpsTry_traitFromResidualResultInfallibleE.from_residual
-        Bool (core.convert.From.Blanket Unit) residual
-partial_fixpoint
+      let r1 ←
+        core.result.Result.Insts.CoreOpsTry_traitFromResidualResultInfallibleE.from_residual
+          cnf.Literal (core.convert.From.Blanket Unit) residual
+      ok (r1, self1)
+  | core.option.Option.Some v =>
+    if value
+    then
+      let l ← cnf_transform_tseitin.pos v
+      ok (core.result.Result.Ok l, self)
+    else
+      let l ← cnf_transform_tseitin.neg v
+      ok (core.result.Result.Ok l, self)
 
-/-- [sat_solver::cnf::eval_clause]:
-    Source: 'src/cnf.rs', lines 110:0-117:1 -/
-def cnf.eval_clause
-  (clause : cnf.Clause) (valuation : expr.Map) :
-  RustM (core.result.Result Bool Unit)
+/-- [sat_solver::cnf_transform_tseitin::{sat_solver::cnf_transform_tseitin::Encoder}::encode]:
+    Source: 'src/cnf_transform_tseitin.rs', lines 99:4-133:5 -/
+def cnf_transform_tseitin.Encoder.encode
+  (self : cnf_transform_tseitin.Encoder) (expr1 : expr.Expr) :
+  RustM ((core.result.Result cnf.Literal Unit) ×
+    cnf_transform_tseitin.Encoder)
   := do
-  let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref clause
-  let iter ← core.slice.Slice.iter s
-  cnf.eval_clause_loop iter valuation
-
-/-- [sat_solver::cnf::eval_cnf]: loop 0:
-    Source: 'src/cnf.rs', lines 120:4-126:1
-    Visibility: public -/
-@[rust_loop]
-def cnf.eval_cnf_loop
-  (iter : core.slice.iter.Iter cnf.Clause) (valuation : expr.Map) :
-  RustM (core.result.Result Bool Unit)
-  := do
-  let (o, iter1) ←
-    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
-  match o with
-  | core.option.Option.None => ok (core.result.Result.Ok true)
-  | core.option.Option.Some clause =>
-    let r ← cnf.eval_clause clause valuation
+  match expr1 with
+  | expr.Expr.True => cnf_transform_tseitin.Encoder.constant self true
+  | expr.Expr.False => cnf_transform_tseitin.Encoder.constant self false
+  | expr.Expr.Variable v =>
+    let l ← cnf_transform_tseitin.pos v
+    ok (core.result.Result.Ok l, self)
+  | expr.Expr.Conj e1 e2 =>
+    let (r, self1) ← cnf_transform_tseitin.Encoder.encode self e1
     let cf ← core.result.Result.Insts.CoreOpsTry_traitTry.branch r
     match cf with
     | core.ops.control_flow.ControlFlow.Continue val =>
-      if val
-      then cnf.eval_cnf_loop iter1 valuation
-      else ok (core.result.Result.Ok false)
+      let (r1, self2) ← cnf_transform_tseitin.Encoder.encode self1 e2
+      let cf1 ← core.result.Result.Insts.CoreOpsTry_traitTry.branch r1
+      match cf1 with
+      | core.ops.control_flow.ControlFlow.Continue val1 =>
+        let (r2, self3) ← cnf_transform_tseitin.Encoder.fresh self2
+        let cf2 ← core.result.Result.Insts.CoreOpsTry_traitTry.branch r2
+        match cf2 with
+        | core.ops.control_flow.ControlFlow.Continue val2 =>
+          let l ← cnf_transform_tseitin.neg val2
+          let l1 ← cnf.Literal.Insts.CoreCloneClone.clone val
+          let y ←
+            lift (Std.Array.to_slice (Array.make 2#usize [ l, l1 ] : Array
+              cnf.Literal 2#usize))
+          let ret ← alloc.slice.Slice.into_vec y
+          let v ← alloc.vec.Vec.push self3.clauses ret
+          let l2 ← cnf.Literal.Insts.CoreCloneClone.clone val1
+          let y1 ←
+            lift (Std.Array.to_slice (Array.make 2#usize [ l, l2 ] : Array
+              cnf.Literal 2#usize))
+          let ret1 ← alloc.slice.Slice.into_vec y1
+          let v1 ← alloc.vec.Vec.push v ret1
+          let l3 ← cnf_transform_tseitin.pos val2
+          let l4 ← cnf_transform_tseitin.flip val
+          let l5 ← cnf_transform_tseitin.flip val1
+          let y2 ←
+            lift (Std.Array.to_slice (Array.make 3#usize [ l3, l4, l5 ] : Array
+              cnf.Literal 3#usize))
+          let ret2 ← alloc.slice.Slice.into_vec y2
+          let v2 ← alloc.vec.Vec.push v1 ret2
+          ok (core.result.Result.Ok l3, { self3 with clauses := v2 })
+        | core.ops.control_flow.ControlFlow.Break residual =>
+          let r3 ←
+            core.result.Result.Insts.CoreOpsTry_traitFromResidualResultInfallibleE.from_residual
+              cnf.Literal (core.convert.From.Blanket Unit) residual
+          ok (r3, self3)
+      | core.ops.control_flow.ControlFlow.Break residual =>
+        let r2 ←
+          core.result.Result.Insts.CoreOpsTry_traitFromResidualResultInfallibleE.from_residual
+            cnf.Literal (core.convert.From.Blanket Unit) residual
+        ok (r2, self2)
     | core.ops.control_flow.ControlFlow.Break residual =>
-      core.result.Result.Insts.CoreOpsTry_traitFromResidualResultInfallibleE.from_residual
-        Bool (core.convert.From.Blanket Unit) residual
+      let r1 ←
+        core.result.Result.Insts.CoreOpsTry_traitFromResidualResultInfallibleE.from_residual
+          cnf.Literal (core.convert.From.Blanket Unit) residual
+      ok (r1, self1)
+  | expr.Expr.Disj e1 e2 =>
+    let (r, self1) ← cnf_transform_tseitin.Encoder.encode self e1
+    let cf ← core.result.Result.Insts.CoreOpsTry_traitTry.branch r
+    match cf with
+    | core.ops.control_flow.ControlFlow.Continue val =>
+      let (r1, self2) ← cnf_transform_tseitin.Encoder.encode self1 e2
+      let cf1 ← core.result.Result.Insts.CoreOpsTry_traitTry.branch r1
+      match cf1 with
+      | core.ops.control_flow.ControlFlow.Continue val1 =>
+        let (r2, self3) ← cnf_transform_tseitin.Encoder.fresh self2
+        let cf2 ← core.result.Result.Insts.CoreOpsTry_traitTry.branch r2
+        match cf2 with
+        | core.ops.control_flow.ControlFlow.Continue val2 =>
+          let l ← cnf_transform_tseitin.neg val2
+          let l1 ← cnf.Literal.Insts.CoreCloneClone.clone val
+          let l2 ← cnf.Literal.Insts.CoreCloneClone.clone val1
+          let y ←
+            lift (Std.Array.to_slice (Array.make 3#usize [ l, l1, l2 ] : Array
+              cnf.Literal 3#usize))
+          let ret ← alloc.slice.Slice.into_vec y
+          let v ← alloc.vec.Vec.push self3.clauses ret
+          let l3 ← cnf_transform_tseitin.pos val2
+          let l4 ← cnf_transform_tseitin.flip val
+          let y1 ←
+            lift (Std.Array.to_slice (Array.make 2#usize [ l3, l4 ] : Array
+              cnf.Literal 2#usize))
+          let ret1 ← alloc.slice.Slice.into_vec y1
+          let v1 ← alloc.vec.Vec.push v ret1
+          let l5 ← cnf_transform_tseitin.flip val1
+          let y2 ←
+            lift (Std.Array.to_slice (Array.make 2#usize [ l3, l5 ] : Array
+              cnf.Literal 2#usize))
+          let ret2 ← alloc.slice.Slice.into_vec y2
+          let v2 ← alloc.vec.Vec.push v1 ret2
+          ok (core.result.Result.Ok l3, { self3 with clauses := v2 })
+        | core.ops.control_flow.ControlFlow.Break residual =>
+          let r3 ←
+            core.result.Result.Insts.CoreOpsTry_traitFromResidualResultInfallibleE.from_residual
+              cnf.Literal (core.convert.From.Blanket Unit) residual
+          ok (r3, self3)
+      | core.ops.control_flow.ControlFlow.Break residual =>
+        let r2 ←
+          core.result.Result.Insts.CoreOpsTry_traitFromResidualResultInfallibleE.from_residual
+            cnf.Literal (core.convert.From.Blanket Unit) residual
+        ok (r2, self2)
+    | core.ops.control_flow.ControlFlow.Break residual =>
+      let r1 ←
+        core.result.Result.Insts.CoreOpsTry_traitFromResidualResultInfallibleE.from_residual
+          cnf.Literal (core.convert.From.Blanket Unit) residual
+      ok (r1, self1)
+  | expr.Expr.Neg e =>
+    let (r, self1) ← cnf_transform_tseitin.Encoder.encode self e
+    let cf ← core.result.Result.Insts.CoreOpsTry_traitTry.branch r
+    match cf with
+    | core.ops.control_flow.ControlFlow.Continue val =>
+      let l ← cnf_transform_tseitin.flip val
+      ok (core.result.Result.Ok l, self1)
+    | core.ops.control_flow.ControlFlow.Break residual =>
+      let r1 ←
+        core.result.Result.Insts.CoreOpsTry_traitFromResidualResultInfallibleE.from_residual
+          cnf.Literal (core.convert.From.Blanket Unit) residual
+      ok (r1, self1)
 partial_fixpoint
 
-/-- [sat_solver::cnf::eval_cnf]:
-    Source: 'src/cnf.rs', lines 119:0-126:1
+/-- [sat_solver::cnf_transform_tseitin::to_cnf]:
+    Source: 'src/cnf_transform_tseitin.rs', lines 141:0-147:1
     Visibility: public -/
-def cnf.eval_cnf
-  (cnf1 : cnf.Cnf) (valuation : expr.Map) :
-  RustM (core.result.Result Bool Unit)
-  := do
-  let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref cnf1
-  let iter ← core.slice.Slice.iter s
-  cnf.eval_cnf_loop iter valuation
+def cnf_transform_tseitin.to_cnf
+  (expr1 : expr.Expr) : RustM (core.result.Result cnf.Cnf Unit) := do
+  let encoder ← cnf_transform_tseitin.Encoder.new expr1
+  let (r, encoder1) ← cnf_transform_tseitin.Encoder.encode encoder expr1
+  let cf ← core.result.Result.Insts.CoreOpsTry_traitTry.branch r
+  match cf with
+  | core.ops.control_flow.ControlFlow.Continue val =>
+    let y ←
+      lift (Std.Array.to_slice (Array.make 1#usize [ val ] : Array cnf.Literal
+        1#usize))
+    let ret ← alloc.slice.Slice.into_vec y
+    let v ← alloc.vec.Vec.push encoder1.clauses ret
+    ok (core.result.Result.Ok v)
+  | core.ops.control_flow.ControlFlow.Break residual =>
+    core.result.Result.Insts.CoreOpsTry_traitFromResidualResultInfallibleE.from_residual
+      cnf.Cnf (core.convert.From.Blanket Unit) residual
 
 /-- Trait implementation: [sat_solver::expr::{impl core::fmt::Debug for sat_solver::expr::Map}]
     Source: 'src/expr.rs', lines 24:9-24:14 -/
@@ -748,92 +1341,13 @@ def expr.evaluate
       expr.evaluate.closure.Insts.CoreOpsFunctionFnOnceTupleBoolBool r ()
 partial_fixpoint
 
-/-- [sat_solver::expr::contains_var]: loop 0:
-    Source: 'src/expr.rs', lines 182:4-188:1 -/
-@[rust_loop]
-def expr.contains_var_loop
-  (iter : core.slice.iter.Iter Std.U16) (v : Std.U16) : RustM Bool := do
-  let (o, iter1) ←
-    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
-  match o with
-  | core.option.Option.None => ok false
-  | core.option.Option.Some x =>
-    if x = v
-    then ok true
-    else expr.contains_var_loop iter1 v
-partial_fixpoint
-
-/-- [sat_solver::expr::contains_var]:
-    Source: 'src/expr.rs', lines 181:0-188:1 -/
-def expr.contains_var (vars : Slice Std.U16) (v : Std.U16) : RustM Bool := do
-  let iter ← core.slice.Slice.iter vars
-  expr.contains_var_loop iter v
-
-/-- [sat_solver::expr::merge_vars]: loop 0:
-    Source: 'src/expr.rs', lines 191:4-195:5 -/
-@[rust_loop]
-def expr.merge_vars_loop
-  (iter : core.slice.iter.Iter Std.U16) (dst : alloc.vec.Vec Std.U16) :
-  RustM (alloc.vec.Vec Std.U16)
-  := do
-  let (o, iter1) ←
-    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
-  match o with
-  | core.option.Option.None => ok dst
-  | core.option.Option.Some v =>
-    let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref dst
-    let b ← expr.contains_var s v
-    if b
-    then expr.merge_vars_loop iter1 dst
-    else let dst1 ← alloc.vec.Vec.push dst v
-         expr.merge_vars_loop iter1 dst1
-partial_fixpoint
-
-/-- [sat_solver::expr::merge_vars]:
-    Source: 'src/expr.rs', lines 190:0-196:1 -/
-def expr.merge_vars
-  (dst : alloc.vec.Vec Std.U16) (src : Slice Std.U16) :
-  RustM (alloc.vec.Vec Std.U16)
-  := do
-  let iter ← core.slice.Slice.iter src
-  expr.merge_vars_loop iter dst
-
-/-- [sat_solver::expr::collect_vars_aux]:
-    Source: 'src/expr.rs', lines 198:0-214:1 -/
-def expr.collect_vars_aux
-  (expr1 : expr.Expr) : RustM (alloc.vec.Vec Std.U16) := do
-  match expr1 with
-  | expr.Expr.True => alloc.vec.Vec.new Std.U16
-  | expr.Expr.False => alloc.vec.Vec.new Std.U16
-  | expr.Expr.Variable v =>
-    let vars ← alloc.vec.Vec.new Std.U16
-    alloc.vec.Vec.push vars v
-  | expr.Expr.Conj e1 e2 =>
-    let vs1 ← expr.collect_vars_aux e1
-    let vs2 ← expr.collect_vars_aux e2
-    let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref vs2
-    expr.merge_vars vs1 s
-  | expr.Expr.Disj e1 e2 =>
-    let vs1 ← expr.collect_vars_aux e1
-    let vs2 ← expr.collect_vars_aux e2
-    let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref vs2
-    expr.merge_vars vs1 s
-  | expr.Expr.Neg e => expr.collect_vars_aux e
-partial_fixpoint
-
-/-- [sat_solver::expr::collect_vars]:
-    Source: 'src/expr.rs', lines 216:0-218:1
-    Visibility: public -/
-def expr.collect_vars (expr1 : expr.Expr) : RustM (alloc.vec.Vec Std.U16) := do
-  expr.collect_vars_aux expr1
-
 /-- [sat_solver::sat_dpll::is_satisfied]:
-    Source: 'src/sat_dpll.rs', lines 11:0-13:1 -/
+    Source: 'src/sat_dpll.rs', lines 12:0-14:1 -/
 def sat_dpll.is_satisfied (cnf1 : cnf.Cnf) : RustM Bool := do
   alloc.vec.Vec.is_empty cnf1
 
 /-- [sat_solver::sat_dpll::has_empty_clause]: loop 0:
-    Source: 'src/sat_dpll.rs', lines 19:4-25:1 -/
+    Source: 'src/sat_dpll.rs', lines 20:4-26:1 -/
 @[rust_loop]
 def sat_dpll.has_empty_clause_loop
   (iter : core.slice.iter.Iter cnf.Clause) : RustM Bool := do
@@ -849,14 +1363,14 @@ def sat_dpll.has_empty_clause_loop
 partial_fixpoint
 
 /-- [sat_solver::sat_dpll::has_empty_clause]:
-    Source: 'src/sat_dpll.rs', lines 18:0-25:1 -/
+    Source: 'src/sat_dpll.rs', lines 19:0-26:1 -/
 def sat_dpll.has_empty_clause (cnf1 : cnf.Cnf) : RustM Bool := do
   let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref cnf1
   let iter ← core.slice.Slice.iter s
   sat_dpll.has_empty_clause_loop iter
 
 /-- [sat_solver::sat_dpll::find_unit_literal]: loop 0:
-    Source: 'src/sat_dpll.rs', lines 32:4-38:1 -/
+    Source: 'src/sat_dpll.rs', lines 33:4-39:1 -/
 @[rust_loop]
 def sat_dpll.find_unit_literal_loop
   (iter : core.slice.iter.Iter cnf.Clause) :
@@ -880,7 +1394,7 @@ def sat_dpll.find_unit_literal_loop
 partial_fixpoint
 
 /-- [sat_solver::sat_dpll::find_unit_literal]:
-    Source: 'src/sat_dpll.rs', lines 31:0-38:1 -/
+    Source: 'src/sat_dpll.rs', lines 32:0-39:1 -/
 def sat_dpll.find_unit_literal
   (cnf1 : cnf.Cnf) : RustM (core.option.Option cnf.Literal) := do
   let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref cnf1
@@ -888,7 +1402,7 @@ def sat_dpll.find_unit_literal
   sat_dpll.find_unit_literal_loop iter
 
 /-- [sat_solver::sat_dpll::find_branch_var]: loop 0:
-    Source: 'src/sat_dpll.rs', lines 46:4-52:1 -/
+    Source: 'src/sat_dpll.rs', lines 47:4-53:1 -/
 @[rust_loop]
 def sat_dpll.find_branch_var_loop
   (iter : core.slice.iter.Iter cnf.Clause) :
@@ -911,7 +1425,7 @@ def sat_dpll.find_branch_var_loop
 partial_fixpoint
 
 /-- [sat_solver::sat_dpll::find_branch_var]:
-    Source: 'src/sat_dpll.rs', lines 45:0-52:1 -/
+    Source: 'src/sat_dpll.rs', lines 46:0-53:1 -/
 def sat_dpll.find_branch_var
   (cnf1 : cnf.Cnf) : RustM (core.option.Option Std.U16) := do
   let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref cnf1
@@ -919,7 +1433,7 @@ def sat_dpll.find_branch_var
   sat_dpll.find_branch_var_loop iter
 
 /-- [sat_solver::sat_dpll::assign_clause]: loop 0:
-    Source: 'src/sat_dpll.rs', lines 60:4-72:1 -/
+    Source: 'src/sat_dpll.rs', lines 61:4-73:1 -/
 @[rust_loop]
 def sat_dpll.assign_clause_loop
   (iter : core.slice.iter.Iter cnf.Literal) (var : Std.U16) (value : Bool)
@@ -943,7 +1457,7 @@ def sat_dpll.assign_clause_loop
 partial_fixpoint
 
 /-- [sat_solver::sat_dpll::assign_clause]:
-    Source: 'src/sat_dpll.rs', lines 58:0-72:1 -/
+    Source: 'src/sat_dpll.rs', lines 59:0-73:1 -/
 def sat_dpll.assign_clause
   (clause : cnf.Clause) (var : Std.U16) (value : Bool) :
   RustM (core.option.Option cnf.Clause)
@@ -954,7 +1468,7 @@ def sat_dpll.assign_clause
   sat_dpll.assign_clause_loop iter var value lits
 
 /-- [sat_solver::sat_dpll::assign_cnf]: loop 0:
-    Source: 'src/sat_dpll.rs', lines 80:4-84:5 -/
+    Source: 'src/sat_dpll.rs', lines 81:4-85:5 -/
 @[rust_loop]
 def sat_dpll.assign_cnf_loop
   (iter : core.slice.iter.Iter cnf.Clause) (var : Std.U16) (value : Bool)
@@ -976,7 +1490,7 @@ def sat_dpll.assign_cnf_loop
 partial_fixpoint
 
 /-- [sat_solver::sat_dpll::assign_cnf]:
-    Source: 'src/sat_dpll.rs', lines 78:0-86:1 -/
+    Source: 'src/sat_dpll.rs', lines 79:0-87:1 -/
 def sat_dpll.assign_cnf
   (cnf1 : cnf.Cnf) (var : Std.U16) (value : Bool) : RustM cnf.Cnf := do
   let clauses ← alloc.vec.Vec.new cnf.Clause
@@ -986,7 +1500,7 @@ def sat_dpll.assign_cnf
   ok clauses1
 
 /-- [sat_solver::sat_dpll::dpll]:
-    Source: 'src/sat_dpll.rs', lines 99:0-127:1 -/
+    Source: 'src/sat_dpll.rs', lines 100:0-128:1 -/
 def sat_dpll.dpll
   (cnf1 : cnf.Cnf) (val : expr.Map) : RustM (Bool × expr.Map) := do
   let b ← sat_dpll.is_satisfied cnf1
@@ -1019,6 +1533,89 @@ def sat_dpll.dpll
         sat_dpll.dpll c val1
 partial_fixpoint
 
+/-- Trait implementation: [sat_solver::sat_dpll::{impl core::fmt::Debug for sat_solver::sat_dpll::Transform}]
+    Source: 'src/sat_dpll.rs', lines 136:9-136:14 -/
+@[reducible]
+def sat_dpll.Transform.Insts.CoreFmtDebug : core.fmt.Debug sat_dpll.Transform
+  := {
+  fmt := sat_dpll.Transform.Insts.CoreFmtDebug.fmt
+}
+
+/-- [sat_solver::sat_dpll::{impl core::clone::Clone for sat_solver::sat_dpll::Transform}::clone]:
+    Source: 'src/sat_dpll.rs', lines 136:16-136:21
+    Visibility: public -/
+def sat_dpll.Transform.Insts.CoreCloneClone.clone
+  (self : sat_dpll.Transform) : RustM sat_dpll.Transform := do
+  ok self
+
+/-- Trait implementation: [sat_solver::sat_dpll::{impl core::clone::Clone for sat_solver::sat_dpll::Transform}]
+    Source: 'src/sat_dpll.rs', lines 136:16-136:21 -/
+@[reducible]
+impl_def sat_dpll.Transform.Insts.CoreCloneClone : core.clone.Clone
+  sat_dpll.Transform := {
+  clone := sat_dpll.Transform.Insts.CoreCloneClone.clone
+  clone_from := core.clone.Clone.clone_from.default
+    sat_dpll.Transform.Insts.CoreCloneClone
+}
+
+/-- Trait implementation: [sat_solver::sat_dpll::{impl core::marker::Copy for sat_solver::sat_dpll::Transform}]
+    Source: 'src/sat_dpll.rs', lines 136:23-136:27 -/
+@[reducible]
+def sat_dpll.Transform.Insts.CoreMarkerCopy : core.marker.Copy
+  sat_dpll.Transform := {
+  cloneCloneInst := sat_dpll.Transform.Insts.CoreCloneClone
+}
+
+/-- Trait implementation: [sat_solver::sat_dpll::{impl core::marker::StructuralPartialEq for sat_solver::sat_dpll::Transform}]
+    Source: 'src/sat_dpll.rs', lines 136:29-136:38 -/
+@[reducible]
+def sat_dpll.Transform.Insts.CoreMarkerStructuralPartialEq :
+  core.marker.StructuralPartialEq sat_dpll.Transform := {
+}
+
+/-- [sat_solver::sat_dpll::{impl core::cmp::PartialEq<sat_solver::sat_dpll::Transform> for sat_solver::sat_dpll::Transform}::eq]:
+    Source: 'src/sat_dpll.rs', lines 136:29-136:38
+    Visibility: public -/
+def sat_dpll.Transform.Insts.CoreCmpPartialEqTransform.eq
+  (self : sat_dpll.Transform) (other : sat_dpll.Transform) : RustM Bool := do
+  let self1 := read_discriminant self
+  let other1 := read_discriminant other
+  ok (self1 = other1)
+
+/-- Trait implementation: [sat_solver::sat_dpll::{impl core::cmp::PartialEq<sat_solver::sat_dpll::Transform> for sat_solver::sat_dpll::Transform}]
+    Source: 'src/sat_dpll.rs', lines 136:29-136:38 -/
+@[reducible]
+impl_def sat_dpll.Transform.Insts.CoreCmpPartialEqTransform :
+  core.cmp.PartialEq sat_dpll.Transform sat_dpll.Transform := {
+  eq := sat_dpll.Transform.Insts.CoreCmpPartialEqTransform.eq
+  ne := core.cmp.PartialEq.ne.default
+    sat_dpll.Transform.Insts.CoreCmpPartialEqTransform
+}
+
+/-- Trait implementation: [sat_solver::sat_dpll::{impl core::cmp::Eq for sat_solver::sat_dpll::Transform}]
+    Source: 'src/sat_dpll.rs', lines 136:40-136:42 -/
+@[reducible]
+def sat_dpll.Transform.Insts.CoreCmpEq : core.cmp.Eq sat_dpll.Transform := {
+  PartialEqInst := sat_dpll.Transform.Insts.CoreCmpPartialEqTransform
+}
+
+/-- [sat_solver::sat_dpll::encode]:
+    Source: 'src/sat_dpll.rs', lines 160:0-180:1 -/
+def sat_dpll.encode
+  (expr1 : expr.Expr) (transform : sat_dpll.Transform) : RustM cnf.Cnf := do
+  match transform with
+  | sat_dpll.Transform.Naive => cnf_transform_naive.to_cnf expr1
+  | sat_dpll.Transform.Tseitin =>
+    let r ← cnf_transform_tseitin.to_cnf expr1
+    match r with
+    | core.result.Result.Ok cnf1 => ok cnf1
+    | core.result.Result.Err _ => cnf_transform_naive.to_cnf expr1
+  | sat_dpll.Transform.Hybrid =>
+    let r ← cnf_transform_hybrid.to_cnf expr1
+    match r with
+    | core.result.Result.Ok cnf1 => ok cnf1
+    | core.result.Result.Err _ => cnf_transform_naive.to_cnf expr1
+
 /-- [sat_solver::sat_naive::initial_valuation]: loop 0:
     Source: 'src/sat_naive.rs', lines 10:4-12:5
     Visibility: public -/
@@ -1044,19 +1641,42 @@ def sat_naive.initial_valuation (vars : Slice Std.U16) : RustM expr.Map := do
       vars
   sat_naive.initial_valuation_loop iter map
 
-/-- [sat_solver::sat_dpll::solve_sat]:
-    Source: 'src/sat_dpll.rs', lines 129:0-142:1
+/-- [sat_solver::sat_dpll::solve_sat_with]:
+    Source: 'src/sat_dpll.rs', lines 182:0-201:1
     Visibility: public -/
-def sat_dpll.solve_sat
-  (expr1 : expr.Expr) : RustM (core.option.Option expr.Map) := do
+def sat_dpll.solve_sat_with
+  (expr1 : expr.Expr) (transform : sat_dpll.Transform) :
+  RustM (core.option.Option expr.Map)
+  := do
   let vars ← expr.collect_vars expr1
   let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref vars
   let val ← sat_naive.initial_valuation s
-  let cnf1 ← cnf.to_cnf expr1
+  let cnf1 ← sat_dpll.encode expr1 transform
   let (b, val1) ← sat_dpll.dpll cnf1 val
   if b
   then ok (core.option.Option.Some val1)
   else ok core.option.Option.None
+
+/-- [sat_solver::sat_dpll::solve_sat]:
+    Source: 'src/sat_dpll.rs', lines 205:0-207:1
+    Visibility: public -/
+def sat_dpll.solve_sat
+  (expr1 : expr.Expr) : RustM (core.option.Option expr.Map) := do
+  sat_dpll.solve_sat_with expr1 sat_dpll.Transform.Naive
+
+/-- [sat_solver::sat_dpll::solve_sat_tseitin]:
+    Source: 'src/sat_dpll.rs', lines 211:0-213:1
+    Visibility: public -/
+def sat_dpll.solve_sat_tseitin
+  (expr1 : expr.Expr) : RustM (core.option.Option expr.Map) := do
+  sat_dpll.solve_sat_with expr1 sat_dpll.Transform.Tseitin
+
+/-- [sat_solver::sat_dpll::solve_sat_hybrid]:
+    Source: 'src/sat_dpll.rs', lines 216:0-218:1
+    Visibility: public -/
+def sat_dpll.solve_sat_hybrid
+  (expr1 : expr.Expr) : RustM (core.option.Option expr.Map) := do
+  sat_dpll.solve_sat_with expr1 sat_dpll.Transform.Hybrid
 
 /-- [sat_solver::sat_naive::check_possible_valuations]:
     Source: 'src/sat_naive.rs', lines 17:0-36:1 -/

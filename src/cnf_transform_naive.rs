@@ -1,0 +1,248 @@
+#![allow(dead_code)]
+//! The textbook CNF transformation: push negations down to the literals, then
+//! distribute OR over AND until the formula is a conjunction of clauses.
+//!
+//! The result is logically *equivalent* to the input -- same variables, same
+//! models -- which is what makes it cheap to state correct (`Cnf.lean` proves
+//! `eval_cnf (to_cnf e) v = evaluate e v` at a fixed valuation). The price is
+//! `distribute`: a disjunction of `n` conjunctions becomes `2^n` clauses, one
+//! per way of picking a conjunct from each side. See
+//! [`crate::cnf_transform_tseitin`] for the linear-size alternative.
+
+#[cfg(test)]
+use crate::cnf::eval_cnf;
+use crate::cnf::{Clause, Cnf, Literal};
+use crate::expr::Expr;
+#[cfg(test)]
+use crate::expr::{Map, letter};
+
+fn clause_union(c1: &Clause, c2: &Clause) -> Clause {
+    let mut lits = Vec::new();
+    for l in c1.0.iter() {
+        lits.push(l.clone());
+    }
+    for l in c2.0.iter() {
+        lits.push(l.clone());
+    }
+    Clause(lits)
+}
+
+// Conjunction of two CNFs is just concatenating their clause lists.
+pub(crate) fn conj_cnf(c1: Cnf, c2: Cnf) -> Cnf {
+    let Cnf(mut clauses) = c1;
+    let Cnf(c2clauses) = c2;
+    for c in c2clauses {
+        clauses.push(c);
+    }
+    Cnf(clauses)
+}
+
+// Disjunction of two CNFs distributes: every clause of the result pairs one
+// clause from each side.
+pub(crate) fn distribute(c1: &Cnf, c2: &Cnf) -> Cnf {
+    let mut result = Vec::new();
+    for clause1 in c1.0.iter() {
+        for clause2 in c2.0.iter() {
+            result.push(clause_union(clause1, clause2));
+        }
+    }
+    Cnf(result)
+}
+
+// Converts `expr` to CNF, threading a polarity flag that pushes negations
+// down to literals and switches AND/OR (De Morgan) on the way -- this single
+// pass does the job of the textbook two-pass "push to NNF, then distribute
+// OR over AND" algorithm, and needs no auxiliary variables (unlike Tseitin),
+// so it stays logically *equivalent* to `expr`, not just equisatisfiable.
+fn cnf_rec(expr: &Expr, negate: bool) -> Cnf {
+    match expr {
+        Expr::True => {
+            if negate {
+                Cnf(vec![Clause(Vec::new())])
+            } else {
+                Cnf(Vec::new())
+            }
+        }
+        Expr::False => {
+            if negate {
+                Cnf(Vec::new())
+            } else {
+                Cnf(vec![Clause(Vec::new())])
+            }
+        }
+        Expr::Variable(v) => Cnf(vec![Clause(vec![Literal {
+            var: *v,
+            negated: negate,
+        }])]),
+        Expr::Neg(e) => cnf_rec(e, !negate),
+        Expr::Conj(e1, e2) => {
+            if negate {
+                distribute(&cnf_rec(e1, true), &cnf_rec(e2, true))
+            } else {
+                conj_cnf(cnf_rec(e1, false), cnf_rec(e2, false))
+            }
+        }
+        Expr::Disj(e1, e2) => {
+            if negate {
+                conj_cnf(cnf_rec(e1, true), cnf_rec(e2, true))
+            } else {
+                distribute(&cnf_rec(e1, false), &cnf_rec(e2, false))
+            }
+        }
+    }
+}
+
+pub fn to_cnf(expr: &Expr) -> Cnf {
+    cnf_rec(expr, false)
+}
+
+#[test]
+fn to_cnf_preserves_semantics_on_examples() {
+    use crate::expr::{evaluate, example_expr_sat, example_expr_unsat};
+
+    for expr in [example_expr_sat(), example_expr_unsat()] {
+        let mut valuation = Map::new();
+        valuation.insert(letter('x'), true);
+        valuation.insert(letter('y'), false);
+
+        let direct = evaluate(&expr, &valuation);
+        let via_cnf = eval_cnf(&to_cnf(&expr), &valuation);
+        assert_eq!(direct, via_cnf);
+    }
+}
+
+#[test]
+fn to_cnf_distributes_disjunction() {
+    // (x ∨ (y ∧ z)) should become (x ∨ y) ∧ (x ∨ z) -- two clauses, each of
+    // size 2.
+    let expr = Expr::Disj(
+        Box::new(Expr::Variable(letter('x'))),
+        Box::new(Expr::Conj(
+            Box::new(Expr::Variable(letter('y'))),
+            Box::new(Expr::Variable(letter('z'))),
+        )),
+    );
+    let Cnf(clauses) = to_cnf(&expr);
+    assert_eq!(clauses.len(), 2);
+    for Clause(lits) in clauses {
+        assert_eq!(lits.len(), 2);
+    }
+}
+
+#[test]
+fn clause_union_concatenates_literals() {
+    let x = Clause(vec![Literal {
+        var: letter('x'),
+        negated: false,
+    }]);
+    let y = Clause(vec![Literal {
+        var: letter('y'),
+        negated: true,
+    }]);
+    let Clause(lits) = clause_union(&x, &y);
+    assert_eq!(
+        lits,
+        vec![
+            Literal {
+                var: letter('x'),
+                negated: false,
+            },
+            Literal {
+                var: letter('y'),
+                negated: true,
+            },
+        ]
+    );
+}
+
+#[test]
+fn clause_union_with_empty_clause_is_identity() {
+    let x = Clause(vec![Literal {
+        var: letter('x'),
+        negated: false,
+    }]);
+    let empty = Clause(Vec::new());
+    assert_eq!(clause_union(&x, &empty), x);
+    assert_eq!(clause_union(&empty, &x), x);
+}
+
+#[test]
+fn conj_cnf_concatenates_clause_lists() {
+    let c1 = Cnf(vec![Clause(vec![Literal {
+        var: letter('x'),
+        negated: false,
+    }])]);
+    let c2 = Cnf(vec![
+        Clause(vec![Literal {
+            var: letter('y'),
+            negated: false,
+        }]),
+        Clause(vec![Literal {
+            var: letter('z'),
+            negated: true,
+        }]),
+    ]);
+    let Cnf(clauses) = conj_cnf(c1, c2);
+    assert_eq!(clauses.len(), 3);
+}
+
+#[test]
+fn distribute_cross_products_every_pair_of_clauses() {
+    let c1 = Cnf(vec![
+        Clause(vec![Literal {
+            var: letter('a'),
+            negated: false,
+        }]),
+        Clause(vec![Literal {
+            var: letter('b'),
+            negated: false,
+        }]),
+    ]);
+    let c2 = Cnf(vec![
+        Clause(vec![Literal {
+            var: letter('c'),
+            negated: false,
+        }]),
+        Clause(vec![Literal {
+            var: letter('d'),
+            negated: false,
+        }]),
+        Clause(vec![Literal {
+            var: letter('e'),
+            negated: false,
+        }]),
+    ]);
+    let Cnf(clauses) = distribute(&c1, &c2);
+    // 2 * 3 clauses, each the union of one literal from each side.
+    assert_eq!(clauses.len(), 6);
+    for Clause(lits) in &clauses {
+        assert_eq!(lits.len(), 2);
+    }
+}
+
+#[test]
+fn cnf_rec_pushes_negation_through_conjunction() {
+    // ¬(x ∧ y) should become ¬x ∨ ¬y -- a single clause with two negated
+    // literals (De Morgan, via the `negate` polarity flag rather than an
+    // explicit NNF pass).
+    let expr = Expr::Neg(Box::new(Expr::Conj(
+        Box::new(Expr::Variable(letter('x'))),
+        Box::new(Expr::Variable(letter('y'))),
+    )));
+    let Cnf(clauses) = cnf_rec(&expr, false);
+    assert_eq!(clauses.len(), 1);
+    let Clause(lits) = &clauses[0];
+    assert_eq!(
+        *lits,
+        vec![
+            Literal {
+                var: letter('x'),
+                negated: true,
+            },
+            Literal {
+                var: letter('y'),
+                negated: true,
+            },
+        ]
+    );
+}

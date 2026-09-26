@@ -26,7 +26,7 @@ set_option maxRecDepth 2048
 open sat_solver
 
 /-- [sat_solver::cnf::{impl core::fmt::Debug for sat_solver::cnf::Literal}::fmt]:
-    Source: 'src/cnf.rs', lines 8:9-8:14
+    Source: 'src/cnf.rs', lines 12:9-12:14
     Visibility: public -/
 axiom cnf.Literal.Insts.CoreFmtDebug.fmt
   :
@@ -35,7 +35,7 @@ axiom cnf.Literal.Insts.CoreFmtDebug.fmt
     core.fmt.Formatter))
 
 /-- [sat_solver::cnf::{impl core::fmt::Debug for sat_solver::cnf::Clause}::fmt]:
-    Source: 'src/cnf.rs', lines 14:9-14:14
+    Source: 'src/cnf.rs', lines 18:9-18:14
     Visibility: public -/
 axiom cnf.Clause.Insts.CoreFmtDebug.fmt
   :
@@ -44,7 +44,7 @@ axiom cnf.Clause.Insts.CoreFmtDebug.fmt
     core.fmt.Formatter))
 
 /-- [sat_solver::cnf::{impl core::fmt::Debug for sat_solver::cnf::Cnf}::fmt]:
-    Source: 'src/cnf.rs', lines 17:9-17:14
+    Source: 'src/cnf.rs', lines 21:9-21:14
     Visibility: public -/
 axiom cnf.Cnf.Insts.CoreFmtDebug.fmt
   :
@@ -76,6 +76,15 @@ axiom expr.Expr.Insts.CoreFmtDebug.fmt
 axiom expr.Expr.Insts.CoreFmtDisplay.fmt
   :
   expr.Expr → core.fmt.Formatter → RustM ((core.result.Result Unit
+    core.fmt.Error) × core.fmt.Formatter × (core.fmt.Formatter →
+    core.fmt.Formatter))
+
+/-- [sat_solver::sat_dpll::{impl core::fmt::Debug for sat_solver::sat_dpll::Transform}::fmt]:
+    Source: 'src/sat_dpll.rs', lines 136:9-136:14
+    Visibility: public -/
+axiom sat_dpll.Transform.Insts.CoreFmtDebug.fmt
+  :
+  sat_dpll.Transform → core.fmt.Formatter → RustM ((core.result.Result Unit
     core.fmt.Error) × core.fmt.Formatter × (core.fmt.Formatter →
     core.fmt.Formatter))
 

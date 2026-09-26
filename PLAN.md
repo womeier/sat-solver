@@ -16,6 +16,18 @@
 > the `char`→`u8` note under "Progress" landed on (the ceiling moved from 255 to 65535 variables;
 > the substitution was mechanical and needed no proof restructuring), and `Map` grew a `Cnf.lean`
 > sibling plus `SatDpll.lean` that this plan never mentions.
+>
+> Most recently, `src/cnf.rs` was split: it keeps the `Literal`/`Clause`/`Cnf` types and
+> `eval_cnf`, while the transformation moved to `src/cnf_transform_naive.rs` and gained two
+> siblings, `cnf_transform_tseitin.rs` and `cnf_transform_hybrid.rs`. `sat_dpll::solve_sat` now
+> goes through `solve_sat_with(e, Transform::Naive)`, so `Verification/Cnf.lean` refers to
+> `cnf_transform_naive.*` throughout and the two top-level `SatDpll.lean` theorems open with
+> `simp only [solve_sat, solve_sat_with, encode]` where they used to `unfold solve_sat`. **Only
+> the `Naive` arm is proved.** The Tseitin and hybrid transformations are extracted (aeneas
+> translates both) and tested in Rust, but carry no Lean theorems: both are merely
+> *equisatisfiability*-preserving, so `Cnf.eval_cnfPure` — the step the completeness proof turns
+> on — does not apply to them without first extending the witness to the auxiliary variables.
+> That is the piece of work a proof for `Transform::Hybrid` would have to start from.
 
 ## Context
 

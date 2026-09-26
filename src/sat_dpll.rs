@@ -1,10 +1,11 @@
 #![allow(dead_code)]
-use crate::cnf::{Clause, Cnf, Literal, to_cnf};
+use crate::cnf::{Clause, Cnf, Literal};
 #[cfg(test)]
 use crate::expr::letter;
 use crate::expr::{Expr, Map, collect_vars};
 use crate::sat::SatSolver;
 use crate::sat_naive::initial_valuation;
+use crate::{cnf_transform_hybrid, cnf_transform_naive, cnf_transform_tseitin};
 
 // A CNF with no clauses left is trivially satisfied: every original clause has
 // been discharged by the partial assignment built so far.
@@ -126,13 +127,71 @@ fn dpll(cnf: &Cnf, val: &mut Map) -> bool {
     }
 }
 
-pub fn solve_sat(expr: &Expr) -> Option<Map> {
+/// Which CNF transformation the search runs on.
+///
+/// The two are interchangeable as far as the *verdict* goes -- `solve_sat_with`
+/// returns the same satisfiability answer either way, and a `Some` model always
+/// satisfies the original `expr`. They differ only in the CNF that DPLL has to
+/// search, and the difference is large in both directions.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Transform {
+    /// Distribute OR over AND ([`cnf_transform_naive`]). Worst-case
+    /// exponential, but a near no-op on input that is already in CNF -- which
+    /// is everything `dimacs` reads, so it is what the SATLIB benchmarks want
+    /// and the default here.
+    Naive,
+    /// Name every internal node with a gate variable ([`cnf_transform_tseitin`]).
+    /// Linear in the size of `expr`, which is the only way to get through a
+    /// deeply nested non-clausal formula at all -- but it names nodes whether or
+    /// not they needed naming, so on an already-clausal input it is pure
+    /// overhead: a uf50-218 instance goes from 218 clauses over 50 variables to
+    /// 1960 over 703, and DPLL then branches on gate variables that are in fact
+    /// determined by the original ones.
+    Tseitin,
+    /// Distribute where that is cheap, name only where it is not
+    /// ([`cnf_transform_hybrid`]). Reproduces `Naive` exactly on already-clausal
+    /// input while staying linear on the formulas that make `Naive` blow up, so
+    /// it strictly dominates both -- it is the default in waiting, pending the
+    /// Lean proof that `Naive` already has.
+    Hybrid,
+}
+
+// The CNF the search actually runs on.
+fn encode(expr: &Expr, transform: Transform) -> Cnf {
+    match transform {
+        Transform::Naive => cnf_transform_naive::to_cnf(expr),
+        Transform::Tseitin => match cnf_transform_tseitin::to_cnf(expr) {
+            Ok(cnf) => cnf,
+            // Out of `u16` room to name gates: reachable only for a formula
+            // with more internal nodes than there are variable indices left
+            // above its largest variable. Falling back costs less than it looks
+            // like -- an input that large comes from `dimacs`, whose `Expr` is
+            // already in CNF, and on those the naive transformation's
+            // distribution step never fires.
+            Err(()) => cnf_transform_naive::to_cnf(expr),
+        },
+        Transform::Hybrid => match cnf_transform_hybrid::to_cnf(expr) {
+            Ok(cnf) => cnf,
+            // Same fallback, and rarer still: only the subformulas that
+            // actually needed naming consume a variable index.
+            Err(()) => cnf_transform_naive::to_cnf(expr),
+        },
+    }
+}
+
+pub fn solve_sat_with(expr: &Expr, transform: Transform) -> Option<Map> {
     let vars = collect_vars(expr);
     // Start from a *total* valuation over `expr`'s variables (all false), not an
     // empty map: callers get a map `evaluate` can actually run on (it errors on
     // an incomplete one), and the search is free to leave variables undecided.
+    //
+    // Under `Transform::Tseitin` the gate variables are deliberately left out of
+    // this seed. `dpll` inserts whichever ones it decides, and the rest stay
+    // unset -- which is harmless, because `evaluate` only ever looks up the
+    // variables of `expr` itself. A caller model-checking the returned map
+    // against `expr`, the way `tests/satlib.rs` does, never sees them.
     let mut val = initial_valuation(&vars);
-    let cnf = to_cnf(expr);
+    let cnf = encode(expr, transform);
 
     if dpll(&cnf, &mut val) {
         Some(val)
@@ -141,9 +200,36 @@ pub fn solve_sat(expr: &Expr) -> Option<Map> {
     }
 }
 
+/// DPLL on the default ([`Transform::Naive`]) encoding. This is the signature
+/// `SatSolver` wants, and the one the Lean proofs are stated about.
+pub fn solve_sat(expr: &Expr) -> Option<Map> {
+    solve_sat_with(expr, Transform::Naive)
+}
+
+/// DPLL on the Tseitin encoding, as a plain `fn(&Expr) -> Option<Map>` so it can
+/// sit in a [`SatSolver`] next to the default one and be benchmarked against it.
+pub fn solve_sat_tseitin(expr: &Expr) -> Option<Map> {
+    solve_sat_with(expr, Transform::Tseitin)
+}
+
+/// DPLL on the hybrid encoding, likewise shaped for a [`SatSolver`].
+pub fn solve_sat_hybrid(expr: &Expr) -> Option<Map> {
+    solve_sat_with(expr, Transform::Hybrid)
+}
+
 pub static SAT_SOLVER_DPLL: SatSolver = SatSolver {
     solve: solve_sat,
     description: "dpll",
+};
+
+pub static SAT_SOLVER_DPLL_TSEITIN: SatSolver = SatSolver {
+    solve: solve_sat_tseitin,
+    description: "dpll-tseitin",
+};
+
+pub static SAT_SOLVER_DPLL_HYBRID: SatSolver = SatSolver {
+    solve: solve_sat_hybrid,
+    description: "dpll-hybrid",
 };
 
 #[cfg(test)]
@@ -300,13 +386,20 @@ fn dpll_finds_an_assignment_that_needs_backtracking() {
 fn solve_sat_agrees_with_the_naive_solver_on_the_examples() {
     use crate::expr::{evaluate, example_expr_sat, example_expr_unsat};
 
-    let sat = example_expr_sat();
-    let val = solve_sat(&sat).expect("example_expr_sat is satisfiable");
-    // The returned valuation must cover every variable (so `evaluate` can run at
-    // all) and actually satisfy the formula.
-    assert_eq!(evaluate(&sat, &val), Ok(true));
+    for transform in [Transform::Naive, Transform::Tseitin, Transform::Hybrid] {
+        let sat = example_expr_sat();
+        let val = solve_sat_with(&sat, transform).expect("example_expr_sat is satisfiable");
+        // The returned valuation must cover every variable (so `evaluate` can
+        // run at all) and actually satisfy the formula. Under `Tseitin` it also
+        // carries gate variables, which `evaluate` simply never reads.
+        assert_eq!(evaluate(&sat, &val), Ok(true), "{transform:?}");
 
-    assert_eq!(solve_sat(&example_expr_unsat()), None);
+        assert_eq!(
+            solve_sat_with(&example_expr_unsat(), transform),
+            None,
+            "{transform:?}"
+        );
+    }
 }
 
 #[test]
@@ -329,19 +422,48 @@ fn solve_sat_matches_the_naive_solver_exhaustively() {
         "((x | y) & ((~x | z) & (~y | ~z)))",
     ] {
         let expr = parse_expr(src).unwrap().1;
-        let dpll_res = solve_sat(&expr);
         let naive_res = crate::sat_naive::solve_sat(&expr);
-        assert_eq!(
-            dpll_res.is_some(),
-            naive_res.is_some(),
-            "disagreement on {src}"
-        );
-        if let Some(val) = dpll_res {
+        // Both encodings have to reach the same verdict, and any model either
+        // of them returns has to satisfy the original formula.
+        for transform in [Transform::Naive, Transform::Tseitin, Transform::Hybrid] {
+            let dpll_res = solve_sat_with(&expr, transform);
             assert_eq!(
-                crate::expr::evaluate(&expr, &val),
-                Ok(true),
-                "bad witness for {src}"
+                dpll_res.is_some(),
+                naive_res.is_some(),
+                "disagreement on {src} under {transform:?}"
             );
+            if let Some(val) = dpll_res {
+                assert_eq!(
+                    crate::expr::evaluate(&expr, &val),
+                    Ok(true),
+                    "bad witness for {src} under {transform:?}"
+                );
+            }
         }
     }
+}
+
+#[test]
+fn the_default_transform_is_the_naive_one() {
+    // What keeps the SATLIB numbers (and the Lean theorems) about `solve_sat`
+    // honest: the exported entry point must not quietly be the Tseitin one.
+    use crate::expr::parse_expr;
+
+    let expr = parse_expr("((x | y) & ((~x | z) & (~y | ~z)))").unwrap().1;
+    assert_eq!(
+        solve_sat(&expr),
+        solve_sat_with(&expr, Transform::Naive),
+        "solve_sat must agree with Transform::Naive exactly, model included"
+    );
+    // ...and Tseitin really is a different object, so the assertion above is
+    // not vacuous. (The hybrid deliberately *is* identical here -- the formula
+    // is already clausal, which is the whole point of it.)
+    assert_ne!(
+        encode(&expr, Transform::Naive),
+        encode(&expr, Transform::Tseitin)
+    );
+    assert_eq!(
+        encode(&expr, Transform::Naive),
+        encode(&expr, Transform::Hybrid)
+    );
 }

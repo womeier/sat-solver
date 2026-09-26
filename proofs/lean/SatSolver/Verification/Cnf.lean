@@ -1,5 +1,5 @@
 /- Pure reference semantics for `cnf::to_cnf`/`cnf::eval_cnf`, and the specs connecting
-them to the extracted `cnf.to_cnf`/`cnf.eval_cnf`. `to_cnf` is a single recursive pass
+them to the extracted `cnf_transform_naive.to_cnf`/`cnf.eval_cnf`. `to_cnf` is a single recursive pass
 parametrized by a polarity flag (`negate`) that pushes negations to literals and swaps
 AND/OR (De Morgan) simultaneously -- no auxiliary variables are introduced, so it's
 logically *equivalent* to its input, not just equisatisfiable, which is what makes an
@@ -305,12 +305,12 @@ theorem cnf.Literal.Insts.CoreCloneClone.clone.spec (self : cnf.Literal) :
     from `iter` and push it onto `lits`, in order. Since `Literal`'s clone is the
     identity, the net effect is appending `iter`'s elements onto `lits`. -/
 @[step]
-theorem cnf.clause_union_loop0.spec (iter : core.slice.iter.Iter cnf.Literal)
+theorem cnf_transform_naive.clause_union_loop0.spec (iter : core.slice.iter.Iter cnf.Literal)
     (lits : alloc.vec.Vec cnf.Literal)
     (hlen : lits.val.length + iter.val.length ≤ Usize.max) :
-    cnf.clause_union_loop0 iter lits ⦃ (r : alloc.vec.Vec cnf.Literal) =>
+    cnf_transform_naive.clause_union_loop0 iter lits ⦃ (r : alloc.vec.Vec cnf.Literal) =>
       r.val = lits.val ++ iter.val ⦄ := by
-  unfold cnf.clause_union_loop0
+  unfold cnf_transform_naive.clause_union_loop0
   step*
   · obtain ⟨l, hl⟩ := iter
     cases l with
@@ -336,12 +336,12 @@ decreasing_by
   | cons e es => simp_all
 
 @[step]
-theorem cnf.clause_union_loop1.spec (iter : core.slice.iter.Iter cnf.Literal)
+theorem cnf_transform_naive.clause_union_loop1.spec (iter : core.slice.iter.Iter cnf.Literal)
     (lits : alloc.vec.Vec cnf.Literal)
     (hlen : lits.val.length + iter.val.length ≤ Usize.max) :
-    cnf.clause_union_loop1 iter lits ⦃ (r : alloc.vec.Vec cnf.Literal) =>
+    cnf_transform_naive.clause_union_loop1 iter lits ⦃ (r : alloc.vec.Vec cnf.Literal) =>
       r.val = lits.val ++ iter.val ⦄ := by
-  unfold cnf.clause_union_loop1
+  unfold cnf_transform_naive.clause_union_loop1
   step*
   · obtain ⟨l, hl⟩ := iter
     cases l with
@@ -369,21 +369,21 @@ decreasing_by
 /-- **Spec theorem for `sat_solver::cnf::clause_union`**: unions two clauses by
     concatenation. -/
 @[step]
-theorem cnf.clause_union.spec (c1 c2 : cnf.Clause)
+theorem cnf_transform_naive.clause_union.spec (c1 c2 : cnf.Clause)
     (hlen : c1.val.length + c2.val.length ≤ Usize.max) :
-    cnf.clause_union c1 c2 ⦃ (r : cnf.Clause) => r.val = c1.val ++ c2.val ⦄ := by
-  unfold cnf.clause_union
+    cnf_transform_naive.clause_union c1 c2 ⦃ (r : cnf.Clause) => r.val = c1.val ++ c2.val ⦄ := by
+  unfold cnf_transform_naive.clause_union
   step*
 
 /-- `conj_cnf_loop` pushes every remaining clause from `iter` onto `clauses`, in
     order (no cloning: `IntoIter` owns its elements outright). -/
 @[step]
-theorem cnf.conj_cnf_loop.spec (iter : alloc.vec.into_iter.IntoIter cnf.Clause)
+theorem cnf_transform_naive.conj_cnf_loop.spec (iter : alloc.vec.into_iter.IntoIter cnf.Clause)
     (clauses : alloc.vec.Vec cnf.Clause)
     (hlen : clauses.val.length + iter.val.length ≤ Usize.max) :
-    cnf.conj_cnf_loop iter clauses ⦃ (r : alloc.vec.Vec cnf.Clause) =>
+    cnf_transform_naive.conj_cnf_loop iter clauses ⦃ (r : alloc.vec.Vec cnf.Clause) =>
       r.val = clauses.val ++ iter.val ⦄ := by
-  unfold cnf.conj_cnf_loop
+  unfold cnf_transform_naive.conj_cnf_loop
   step*
   · obtain ⟨l, hl⟩ := iter
     cases l with
@@ -411,21 +411,21 @@ decreasing_by
 /-- **Spec theorem for `sat_solver::cnf::conj_cnf`**: unions two CNFs by
     concatenation (this is exactly AND, since `Cnf.eval` is `all` over clauses). -/
 @[step]
-theorem cnf.conj_cnf.spec (c1 c2 : cnf.Cnf) (hlen : c1.val.length + c2.val.length ≤ Usize.max) :
-    cnf.conj_cnf c1 c2 ⦃ (r : cnf.Cnf) => r.val = c1.val ++ c2.val ⦄ := by
-  unfold cnf.conj_cnf alloc.vec.Vec.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter
+theorem cnf_transform_naive.conj_cnf.spec (c1 c2 : cnf.Cnf) (hlen : c1.val.length + c2.val.length ≤ Usize.max) :
+    cnf_transform_naive.conj_cnf c1 c2 ⦃ (r : cnf.Cnf) => r.val = c1.val ++ c2.val ⦄ := by
+  unfold cnf_transform_naive.conj_cnf alloc.vec.Vec.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter
   step*
 
 /-- `distribute_loop0_loop0` unions `clause1` with every remaining clause from `iter`
     (in order) and pushes the result. -/
 @[step]
-theorem cnf.distribute_loop0_loop0.spec (iter : core.slice.iter.Iter cnf.Clause)
+theorem cnf_transform_naive.distribute_loop0_loop0.spec (iter : core.slice.iter.Iter cnf.Clause)
     (result : alloc.vec.Vec cnf.Clause) (clause1 : cnf.Clause)
     (hclause : ∀ clause2 ∈ iter.val, clause1.val.length + clause2.val.length ≤ Usize.max)
     (hlen : result.val.length + iter.val.length ≤ Usize.max) :
-    cnf.distribute_loop0_loop0 iter result clause1 ⦃ (r : alloc.vec.Vec cnf.Clause) =>
+    cnf_transform_naive.distribute_loop0_loop0 iter result clause1 ⦃ (r : alloc.vec.Vec cnf.Clause) =>
       Cnf.contents r = Cnf.contents result ++ iter.val.map (fun clause2 => clause1.val ++ clause2.val) ⦄ := by
-  unfold cnf.distribute_loop0_loop0
+  unfold cnf_transform_naive.distribute_loop0_loop0
   step*
   · obtain ⟨l, hl⟩ := iter
     cases l with
@@ -463,14 +463,14 @@ decreasing_by
 /-- `distribute_loop0` distributes every remaining clause from `iter` (in order)
     against all of `c2`. -/
 @[step]
-theorem cnf.distribute_loop0.spec (iter : core.slice.iter.Iter cnf.Clause) (c2 : cnf.Cnf)
+theorem cnf_transform_naive.distribute_loop0.spec (iter : core.slice.iter.Iter cnf.Clause) (c2 : cnf.Cnf)
     (result : alloc.vec.Vec cnf.Clause)
     (hclause : ∀ clause1 ∈ iter.val, ∀ clause2 ∈ c2.val,
       clause1.val.length + clause2.val.length ≤ Usize.max)
     (hlen : result.val.length + iter.val.length * c2.val.length ≤ Usize.max) :
-    cnf.distribute_loop0 iter c2 result ⦃ (r : alloc.vec.Vec cnf.Clause) =>
+    cnf_transform_naive.distribute_loop0 iter c2 result ⦃ (r : alloc.vec.Vec cnf.Clause) =>
       Cnf.contents r = Cnf.contents result ++ distributeList (iter.val.map (·.val)) (Cnf.contents c2) ⦄ := by
-  unfold cnf.distribute_loop0
+  unfold cnf_transform_naive.distribute_loop0
   step*
   · obtain ⟨l, hl⟩ := iter
     cases l with
@@ -531,13 +531,13 @@ decreasing_by
 /-- **Spec theorem for `sat_solver::cnf::distribute`**: the full cross join of `c1`
     and `c2`, unioning every pair of clauses -- this is `distributeList`. -/
 @[step]
-theorem cnf.distribute.spec (c1 c2 : cnf.Cnf)
+theorem cnf_transform_naive.distribute.spec (c1 c2 : cnf.Cnf)
     (hclause : ∀ clause1 ∈ c1.val, ∀ clause2 ∈ c2.val,
       clause1.val.length + clause2.val.length ≤ Usize.max)
     (hlen : c1.val.length * c2.val.length ≤ Usize.max) :
-    cnf.distribute c1 c2 ⦃ (r : cnf.Cnf) =>
+    cnf_transform_naive.distribute c1 c2 ⦃ (r : cnf.Cnf) =>
       Cnf.contents r = distributeList (Cnf.contents c1) (Cnf.contents c2) ⦄ := by
-  unfold cnf.distribute
+  unfold cnf_transform_naive.distribute
   step*
   · simp_all
   · simp_all [Cnf.contents_def]
@@ -550,10 +550,10 @@ theorem cnf.distribute.spec (c1 c2 : cnf.Cnf)
     `conj_cnf`/`distribute` (since the accumulated result's length is *exactly*
     `(cnfPure e negate).length` by construction). -/
 @[step]
-theorem cnf.cnf_rec.spec (e : expr.Expr) (negate : Bool) (hbound : 2 ^ exprSize e ≤ Usize.max) :
-    cnf.cnf_rec e negate ⦃ (r : cnf.Cnf) => Cnf.contents r = cnfPure e negate ⦄ := by
+theorem cnf_transform_naive.cnf_rec.spec (e : expr.Expr) (negate : Bool) (hbound : 2 ^ exprSize e ≤ Usize.max) :
+    cnf_transform_naive.cnf_rec e negate ⦃ (r : cnf.Cnf) => Cnf.contents r = cnfPure e negate ⦄ := by
   have main : ∀ n e, exprSize e ≤ n → ∀ negate, 2 ^ exprSize e ≤ Usize.max →
-      cnf.cnf_rec e negate ⦃ (r : cnf.Cnf) => Cnf.contents r = cnfPure e negate ⦄ := by
+      cnf_transform_naive.cnf_rec e negate ⦃ (r : cnf.Cnf) => Cnf.contents r = cnfPure e negate ⦄ := by
     intro n
     induction n with
     | zero => intro e he; exact absurd he (by cases e <;> simp [exprSize])
@@ -561,7 +561,7 @@ theorem cnf.cnf_rec.spec (e : expr.Expr) (negate : Bool) (hbound : 2 ^ exprSize 
       intro e he negate hbound
       cases e with
       | True =>
-        unfold cnf.cnf_rec
+        unfold cnf_transform_naive.cnf_rec
         split
         · unfold alloc.slice.Slice.into_vec alloc.slice.Dummy.into_vec
             rust_primitives.sequence.seq_from_boxed_slice alloc.vec.from_seq
@@ -570,7 +570,7 @@ theorem cnf.cnf_rec.spec (e : expr.Expr) (negate : Bool) (hbound : 2 ^ exprSize 
         · step*
           simp_all [cnfPure]
       | False =>
-        unfold cnf.cnf_rec
+        unfold cnf_transform_naive.cnf_rec
         split
         · step*
           simp_all [cnfPure]
@@ -579,13 +579,13 @@ theorem cnf.cnf_rec.spec (e : expr.Expr) (negate : Bool) (hbound : 2 ^ exprSize 
           step*
           simp_all [cnfPure, Cnf.contents_def, Array.to_slice, Array.make]
       | Variable v =>
-        unfold cnf.cnf_rec
+        unfold cnf_transform_naive.cnf_rec
         unfold alloc.slice.Slice.into_vec alloc.slice.Dummy.into_vec
           rust_primitives.sequence.seq_from_boxed_slice alloc.vec.from_seq
         step*
         simp_all [cnfPure, Cnf.contents_def, Array.to_slice, Array.make]
       | Conj e1 e2 =>
-        unfold cnf.cnf_rec
+        unfold cnf_transform_naive.cnf_rec
         have hlt1 : exprSize e1 < exprSize (expr.Expr.Conj e1 e2) := by
           simp only [exprSize]; exact Nat.lt_succ_of_le (Nat.le_add_right _ _)
         have hlt2 : exprSize e2 < exprSize (expr.Expr.Conj e1 e2) := by
@@ -636,7 +636,7 @@ theorem cnf.cnf_rec.spec (e : expr.Expr) (negate : Bool) (hbound : 2 ^ exprSize 
             exact le_trans (cnfPure_length_le _ false) hbound
           · simp_all [cnfPure]
       | Disj e1 e2 =>
-        unfold cnf.cnf_rec
+        unfold cnf_transform_naive.cnf_rec
         have hlt1 : exprSize e1 < exprSize (expr.Expr.Disj e1 e2) := by
           simp only [exprSize]; exact Nat.lt_succ_of_le (Nat.le_add_right _ _)
         have hlt2 : exprSize e2 < exprSize (expr.Expr.Disj e1 e2) := by
@@ -687,7 +687,7 @@ theorem cnf.cnf_rec.spec (e : expr.Expr) (negate : Bool) (hbound : 2 ^ exprSize 
             exact le_trans (cnfPure_length_le _ false) hbound
           · simp_all [cnfPure]
       | Neg e' =>
-        unfold cnf.cnf_rec
+        unfold cnf_transform_naive.cnf_rec
         have hlt : exprSize e' < exprSize (expr.Expr.Neg e') := by
           simp only [exprSize]; exact Nat.lt_succ_self _
         have hn' : exprSize e' ≤ n := Nat.le_of_lt_succ (lt_of_lt_of_le hlt he)
@@ -700,9 +700,9 @@ theorem cnf.cnf_rec.spec (e : expr.Expr) (negate : Bool) (hbound : 2 ^ exprSize 
 
 /-- **Spec theorem for `sat_solver::cnf::to_cnf`**: matches `cnfPure _ false`. -/
 @[step]
-theorem cnf.to_cnf.spec (e : expr.Expr) (hbound : 2 ^ exprSize e ≤ Usize.max) :
-    cnf.to_cnf e ⦃ (r : cnf.Cnf) => Cnf.contents r = cnfPure e false ⦄ := by
-  unfold cnf.to_cnf
+theorem cnf_transform_naive.to_cnf.spec (e : expr.Expr) (hbound : 2 ^ exprSize e ≤ Usize.max) :
+    cnf_transform_naive.to_cnf e ⦃ (r : cnf.Cnf) => Cnf.contents r = cnfPure e false ⦄ := by
+  unfold cnf_transform_naive.to_cnf
   step*
 
 /-- **Spec theorem for `sat_solver::cnf::eval_literal`**: matches `Literal.eval`. -/
@@ -833,7 +833,7 @@ theorem cnf.eval_cnf.spec (cnf1 : cnf.Cnf) (m : expr.Map) (w : Std.U16 → Bool)
 @[step]
 theorem cnf.eval_cnf_to_cnf.spec_of_represents (e : expr.Expr) (m : expr.Map) (w : Std.U16 → Bool)
     (hrepr : Map.represents m (varsOf e) w) (hbound : 2 ^ exprSize e ≤ Usize.max) :
-    (do let c ← cnf.to_cnf e; cnf.eval_cnf c m) ⦃ (r : core.result.Result Bool Unit) =>
+    (do let c ← cnf_transform_naive.to_cnf e; cnf.eval_cnf c m) ⦃ (r : core.result.Result Bool Unit) =>
       r = core.result.Result.Ok (evalPure w e) ⦄ := by
   step*
   · exact w
