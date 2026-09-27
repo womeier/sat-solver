@@ -78,7 +78,7 @@ structure cnf_transform_tseitin.Encoder where
 def expr.evaluate.closure := Unit
 
 /-- [sat_solver::sat_dpll::Transform]
-    Source: 'src/sat_dpll.rs', lines 137:0-157:1
+    Source: 'src/sat_dpll.rs', lines 137:0-159:1
     Visibility: public -/
 @[discriminant isize]
 inductive sat_dpll.Transform where

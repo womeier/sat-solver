@@ -20,9 +20,10 @@
 > Most recently, `src/cnf.rs` was split: it keeps the `Literal`/`Clause`/`Cnf` types and
 > `eval_cnf`, while the transformation moved to `src/cnf_transform_naive.rs` and gained two
 > siblings, `cnf_transform_tseitin.rs` and `cnf_transform_hybrid.rs`. `sat_dpll::solve_sat` now
-> goes through `solve_sat_with(e, Transform::Naive)`, so `Verification/Cnf.lean` refers to
+> goes through `solve_sat_with(e, Transform::Hybrid)`, so `Verification/Cnf.lean` refers to
 > `cnf_transform_naive.*` throughout and the two top-level `SatDpll.lean` theorems open with
-> `simp only [solve_sat, solve_sat_with, encode]` where they used to `unfold solve_sat`.
+> `simp only [solve_sat, solve_sat_with, encode]` where they used to `unfold solve_sat`, then
+> split on the hybrid's `Result` — see "The default encoding is the hybrid one" below.
 
 ## Where the Tseitin and hybrid proofs stand
 
@@ -75,9 +76,41 @@ files:
 One small addition outside these files: `Prelude.lean` gained an `alloc.vec.Vec.append` spec,
 which `Renamer::rename` needs and nothing in the repo previously called.
 
-`Transform::Naive` is still the default — not for want of proof now, but because it is the
-encoding that is *fastest* on the clausal input SATLIB consists of (see the benchmark table in
-the commit that introduced the three transforms).
+## The default encoding is the hybrid one
+
+`solve_sat` is `solve_sat_with(e, Transform::Hybrid)`, and both top-level `SatDpll.lean`
+theorems are stated about that. The hybrid dominates the other two: it distributes only where
+distributing is cheaper (`disjoin` compares the real clause counts, `n * m <= n + m`, of the
+operand CNFs it already has in hand), so on the clausal input SATLIB consists of it reproduces
+the naive CNF exactly, and on formulas where distribution would blow up it names subformulas
+instead. That local, exact decision is also why no size/depth heuristic for *choosing* between
+the three transformations would be an improvement — the choice is already made per node, on
+better information than any whole-formula proxy has.
+
+Two things had to change to keep the proofs on the default:
+
+- **`seed_cnf_vars`.** `dpll.spec`'s `hpresent` precondition wants a map that already holds
+  every variable of the CNF it is handed, and `initial_valuation (collect_vars e)` does not
+  cover gate variables. `sat_dpll::seed_cnf_vars` inserts `false` for every variable the CNF
+  mentions, right after `initial_valuation`; on `Transform::Naive` it is a no-op (that CNF
+  mentions nothing outside `e`, and those keys are already `false`). Its three specs mirror
+  `initial_valuation_loop.spec` — frame, all-set, and presence-monotone, the last being what
+  composes with the seed the search must not lose.
+- **Both arms of `encode`.** The hybrid `to_cnf` returns `Err` when gate variables exhaust
+  `u16`, and `encode` falls back to the naive transformation, so each theorem splits on that
+  `Result`. The arms differ only in why a model of the CNF is a model of `e`
+  (`cnf_transform_hybrid.Encodes.sound`/`.complete` versus `Cnf.eval_cnfPure`); the rest of
+  the argument is shared, in `sound_tail` for the soundness direction. This fallback is also
+  why `solve_sat_sound`/`solve_sat_complete` still carry the exponential `hbound` alongside
+  the hybrid's quadratic `hquad`.
+
+`HybridExtraction.lean` grew a `cnf_transform_hybrid.Encodes` predicate for this: it packages
+what `to_cnf.spec`'s `Ok` arm returns (a well-formed final state, a body, and the definitions
+appended to it) so `SatDpll.lean` consumes the transformation as two plain implications and
+never mentions `Hybrid.cnfRec`.
+
+`Transform::Naive` remains reachable through `solve_sat_naive`/`SAT_SOLVER_DPLL_NAIVE`, which
+is what `tests/satlib.rs` uses to check the two encodings agree on real instances.
 
 ## Context
 

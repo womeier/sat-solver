@@ -721,15 +721,55 @@ theorem cnf_transform_hybrid.Renamer.new.spec (e : expr.Expr)
     alloc.vec.Vec.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter
   step*
 
+/-- What `to_cnf` having returned `c` tells us about `c`: it is the body of a completed
+    `Hybrid.cnfRec` run, started from a well-formed state whose counter already sits above
+    every variable of `e`, with that run's definitions appended.
+
+    Naming this rather than inlining it into `to_cnf.spec` is what lets a caller consume
+    the extracted transformation without ever mentioning `Hybrid.cnfRec`: `SatDpll.lean`
+    steps through `to_cnf`, receives an `Encodes e c`, and hands it straight to
+    `Encodes.sound`/`Encodes.complete` below. The two `to_cnf.{sound,complete}` corollaries
+    are the same two facts packaged as Hoare triples, for a caller that would rather read
+    one statement about the generated code than two. -/
+def cnf_transform_hybrid.Encodes (e : expr.Expr) (c : cnf.Cnf) : Prop :=
+  ∃ s s' body, Hybrid.State.Wf s ∧ (∀ k ∈ varsOf e, k.val < s.next) ∧
+    s.defs = [] ∧ Hybrid.cnfRec s e false = some (body, s') ∧
+    absClauses c = body ++ s'.defs
+
+/-- **Soundness, as an implication**: every model of a CNF the extracted `to_cnf`
+    returned satisfies `e`. -/
+theorem cnf_transform_hybrid.Encodes.sound {e : expr.Expr} {c : cnf.Cnf}
+    {w : Std.U16 → Bool} (h : cnf_transform_hybrid.Encodes e c)
+    (hw : Cnf.eval w (Cnf.contents c) = true) : evalPure w e = true := by
+  obtain ⟨s, s', body, hwf, hvars, hdefs, hrec, habs⟩ := h
+  -- `absClauses c` and `Cnf.contents c` are the same list (`absClauses_eq_contents`).
+  have hw' : Cnf.eval w (absClauses c) = true := hw
+  rw [habs, Cnf.eval_append] at hw'
+  obtain ⟨hbody, hdefsev⟩ := Bool.and_eq_true _ _ |>.mp hw'
+  simpa using Hybrid.cnfRec_sound hrec hdefsev hbody
+
+/-- **Completeness, as an implication**: every model of `e` extends to a model of a CNF
+    the extracted `to_cnf` returned, agreeing with it on all of `e`'s own variables. -/
+theorem cnf_transform_hybrid.Encodes.complete {e : expr.Expr} {c : cnf.Cnf}
+    {w : Std.U16 → Bool} (h : cnf_transform_hybrid.Encodes e c)
+    (hsat : evalPure w e = true) :
+    ∃ w', (∀ k ∈ varsOf e, w' k = w k) ∧ Cnf.eval w' (Cnf.contents c) = true := by
+  obtain ⟨s, s', body, hwf, hvars, hdefs, hrec, habs⟩ := h
+  obtain ⟨w', hag, hdefsev, hbody⟩ :=
+    Hybrid.cnfRec_complete hwf hvars hrec w (by rw [hdefs]; simp [Cnf.eval])
+  refine ⟨w', fun k hk => hag k (hvars k hk), ?_⟩
+  show Cnf.eval w' (absClauses c) = true
+  rw [habs, Cnf.eval_append]
+  refine Bool.and_eq_true _ _ |>.mpr ⟨?_, hdefsev⟩
+  rw [hbody]
+  simp [hsat]
+
 @[step]
 theorem cnf_transform_hybrid.to_cnf.spec (e : expr.Expr)
     (hbound : exprSize e * exprSize e + exprSize e + 1 ≤ Usize.max) :
     cnf_transform_hybrid.to_cnf e ⦃ (r : core.result.Result cnf.Cnf Unit) =>
       match r with
-      | core.result.Result.Ok c =>
-        ∃ s s' body, Hybrid.State.Wf s ∧ (∀ k ∈ varsOf e, k.val < s.next) ∧
-          s.defs = [] ∧ Hybrid.cnfRec s e false = some (body, s') ∧
-          absClauses c = body ++ s'.defs
+      | core.result.Result.Ok c => cnf_transform_hybrid.Encodes e c
       | core.result.Result.Err _ => True ⦄ := by
   unfold cnf_transform_hybrid.to_cnf
   step*
@@ -773,10 +813,7 @@ theorem cnf_transform_hybrid.to_cnf.sound (e : expr.Expr) (w : Std.U16 → Bool)
   step*
   rw [r_post2] at r_post1
   simp only at r_post1
-  obtain ⟨s, s', body, hwf, hvars, hdefs, hrec, habs⟩ := r_post1
-  rw [habs, Cnf.eval_append] at r_post3
-  obtain ⟨hbody, hdefsev⟩ := Bool.and_eq_true _ _ |>.mp r_post3
-  simpa using Hybrid.cnfRec_sound hrec hdefsev hbody
+  exact cnf_transform_hybrid.Encodes.sound r_post1 r_post3
 
 /-- **Completeness**: every model of `e` extends to a model of the CNF that the
     extracted `to_cnf` returns, agreeing with it on all of `e`'s own variables. -/
@@ -789,15 +826,7 @@ theorem cnf_transform_hybrid.to_cnf.complete (e : expr.Expr) (w : Std.U16 → Bo
   step*
   rw [r_post2] at r_post1
   simp only at r_post1
-  obtain ⟨s, s', body, hwf, hvars, hdefs, hrec, habs⟩ := r_post1
-  obtain ⟨w', hag, hdefsev, hbody⟩ :=
-    Hybrid.cnfRec_complete hwf hvars hrec w (by rw [hdefs]; simp [Cnf.eval])
-  have hagree : ∀ k ∈ varsOf e, w' k = w k := fun k hk => hag k (hvars k hk)
-  refine ⟨w', hagree, ?_⟩
-  rw [habs, Cnf.eval_append]
-  refine Bool.and_eq_true _ _ |>.mpr ⟨?_, hdefsev⟩
-  rw [hbody]
-  simp [hsat]
+  exact cnf_transform_hybrid.Encodes.complete r_post1 hsat
 
 
 end sat_solver

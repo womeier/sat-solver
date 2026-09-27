@@ -8,8 +8,11 @@ The specification — soundness and completeness for both solvers — lives in
 which collects the theorems proved in
 [`SatNaive.lean`](proofs/lean/SatSolver/Verification/SatNaive.lean) and
 [`SatDpll.lean`](proofs/lean/SatSolver/Verification/SatDpll.lean), the latter of which
-rests on the CNF transformation proved correct in
-[`Cnf.lean`](proofs/lean/SatSolver/Verification/Cnf.lean).
+rests on the CNF transformations proved correct in
+[`Cnf.lean`](proofs/lean/SatSolver/Verification/Cnf.lean) (naive distribution) and
+[`Hybrid.lean`](proofs/lean/SatSolver/Verification/Hybrid.lean) (the Boy de la Tour
+hybrid, which is what `solve_sat` encodes with by default — `Cnf.lean`'s transformation
+is its fallback when gate variables run out).
 
 ## Benchmarks
 

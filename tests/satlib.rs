@@ -28,7 +28,7 @@ use std::time::{Duration, Instant};
 use sat_solver::dimacs::parse_dimacs;
 use sat_solver::expr::{Expr, Map, evaluate};
 use sat_solver::sat::SatSolver;
-use sat_solver::sat_dpll::{SAT_SOLVER_DPLL, SAT_SOLVER_DPLL_HYBRID};
+use sat_solver::sat_dpll::{SAT_SOLVER_DPLL, SAT_SOLVER_DPLL_NAIVE};
 use sat_solver::sat_naive::SAT_SOLVER_NAIVE;
 
 const SATLIB: &str = "benchmarks/satlib";
@@ -178,17 +178,19 @@ fn dpll_refutes_uuf50() {
     run_set(&SAT_SOLVER_DPLL, "uuf50-218", false, None);
 }
 
-/// The hybrid CNF transformation over all three sets. SATLIB instances arrive
-/// already in CNF, so the hybrid should reproduce the default encoding exactly
-/// and land on the same timings -- this is what makes it a safe swap for
-/// `Transform::Naive`, unlike `Transform::Tseitin` (~30x slower here, because it
-/// names every node of an input that needed no naming).
+/// The naive CNF transformation over all three sets. SATLIB instances arrive
+/// already in CNF, where the hybrid's rule never names anything -- so the
+/// non-default arm should reproduce the default encoding clause for clause and
+/// land on the same timings. That is what made swapping the default free here,
+/// and it is what would break first if the decision rule ever changed. (The
+/// third arm, `Transform::Tseitin`, is ~30x slower on these sets, because it
+/// names every node of an input that needed no naming.)
 #[test]
 #[ignore = "benchmark: use `just satlib-test`"]
-fn dpll_hybrid_matches_the_default_encoding() {
-    run_set(&SAT_SOLVER_DPLL_HYBRID, "uf20-91", true, None);
-    run_set(&SAT_SOLVER_DPLL_HYBRID, "uf50-218", true, None);
-    run_set(&SAT_SOLVER_DPLL_HYBRID, "uuf50-218", false, None);
+fn dpll_naive_arm_matches_the_default_encoding() {
+    run_set(&SAT_SOLVER_DPLL_NAIVE, "uf20-91", true, None);
+    run_set(&SAT_SOLVER_DPLL_NAIVE, "uf50-218", true, None);
+    run_set(&SAT_SOLVER_DPLL_NAIVE, "uuf50-218", false, None);
 }
 
 /// Both solvers on the same prefix of `uf20-91`, for a like-for-like comparison.

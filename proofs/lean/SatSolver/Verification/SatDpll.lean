@@ -1,5 +1,6 @@
 /- Soundness + completeness for `sat_dpll::solve_sat` (DPLL: unit propagation plus
-splitting, run on the CNF that `cnf::to_cnf` produces).
+splitting, run on the CNF that `sat_dpll::encode` produces -- by default the
+Boy de la Tour hybrid transformation, with the naive one as its fallback).
 
 Written the way the other proof files in this directory were (see `PLAN.md`): the
 whole theorem tree stated top-down first, so the shapes are fixed and mutually
@@ -23,6 +24,7 @@ import SatSolver.Verification.CollectVars
 import SatSolver.Verification.Semantics
 import SatSolver.Verification.Cnf
 import SatSolver.Verification.SatNaive
+import SatSolver.Verification.HybridExtraction
 
 open CoreModels Aeneas
 open Aeneas.Std hiding namespace core alloc
@@ -489,8 +491,6 @@ theorem sat_dpll.find_branch_var_loop.spec (iter : core.slice.iter.Iter cnf.Clau
       /- The head clause is empty, so it contributes no variables: both conjuncts
          come straight from the recursive call's. -/
       simp_all
-      intro v hv
-      simpa [cnfVars, clauseVars] using r_post1 v hv
   · /- The `hi` side-condition of indexing: the clause isn't empty. -/
     rename_i hb
     have hne : clause.val ≠ [] := fun h => hb (b_post.mpr h)
@@ -504,7 +504,7 @@ theorem sat_dpll.find_branch_var_loop.spec (iter : core.slice.iter.Iter cnf.Clau
          is one of the CNF's. -/
       simp_all
       have hmem : l ∈ e.val := List.mem_of_getElem? l_post
-      simp only [cnfVars, List.flatMap_cons, List.mem_append, clauseVars, List.mem_map]
+      simp only [cnfVars, clauseVars, List.mem_map]
       exact Or.inl ⟨l, hmem, rfl⟩
 termination_by iter.val.length
 decreasing_by
@@ -939,89 +939,261 @@ theorem sat_dpll.dpll.spec (cnf1 : cnf.Cnf) (val : expr.Map)
           exact hx
   exact main (cnfSize (Cnf.contents cnf1) + 1) cnf1 val (Nat.lt_succ_self _) hpresent
 
+/-! ### Seeding the valuation
+
+`solve_sat_with` starts the search from `initial_valuation (collect_vars e)`, which covers
+the variables of `e` -- but a transformation that names subformulas puts gate variables in
+the CNF that `collect_vars e` has never heard of, while `dpll.spec` demands
+(`hpresent`) a map that already covers *every* variable of the CNF it is given. Closing
+that gap is what `seed_cnf_vars` is for, and it is the only reason the two theorems below
+can be stated about the hybrid arm at all. -/
+
+/-- **Spec theorem for `sat_solver::sat_dpll::seed_cnf_vars`'s inner loop** (over the
+    literals of one clause): every variable it passes ends up set, and it touches nothing
+    else. -/
+@[step]
+theorem sat_dpll.seed_cnf_vars_loop0_loop0.spec
+    (iter : core.slice.iter.Iter cnf.Literal) (val : expr.Map) :
+    sat_dpll.seed_cnf_vars_loop0_loop0 iter val ⦃ (m : expr.Map) =>
+      (∀ k, k ∉ clauseVars iter.val → Map.lookupList m.val k = Map.lookupList val.val k) ∧
+      (∀ k ∈ clauseVars iter.val, Map.lookupList m.val k = some false) ⦄ := by
+  unfold sat_dpll.seed_cnf_vars_loop0_loop0
+  step*
+  · -- iterator exhausted: nothing was touched, and nothing is claimed
+    obtain ⟨l, hl⟩ := iter
+    cases l with
+    | nil => simp_all [clauseVars]
+    | cons a es => simp_all
+  · obtain ⟨l, hl⟩ := iter
+    cases l with
+    | nil => simp_all
+    | cons a es =>
+      obtain ⟨ho, hiter1⟩ := o_post
+      have hla : lit = a := by simp_all
+      refine ⟨?_, ?_⟩
+      · intro k hk
+        simp only [clauseVars, List.map_cons, List.mem_cons, not_or] at hk
+        obtain ⟨hka, hknotrest⟩ := hk
+        rw [m_post1 k (by rw [hiter1]; simpa [clauseVars] using hknotrest), __post2, hla,
+            Map.lookupList_upsertList_other _ _ _ _ hka]
+      · intro k hk
+        simp only [clauseVars, List.map_cons, List.mem_cons] at hk
+        rcases hk with rfl | hk'
+        · by_cases hrest : a.var ∈ clauseVars es
+          · exact m_post2 a.var (by rw [hiter1]; exact hrest)
+          · rw [m_post1 a.var (by rw [hiter1]; exact hrest), __post2, hla]
+            exact Map.lookupList_upsertList_self _ _ _
+        · exact m_post2 k (by rw [hiter1]; exact hk')
+termination_by iter.val.length
+decreasing_by
+  obtain ⟨l, hl⟩ := iter
+  cases l with
+  | nil => simp_all
+  | cons a es => simp_all
+
+/-- **Spec theorem for `sat_solver::sat_dpll::seed_cnf_vars`'s outer loop** (over the
+    clauses): the same two clauses, accumulated over `cnfVars`. -/
+@[step]
+theorem sat_dpll.seed_cnf_vars_loop0.spec
+    (iter : core.slice.iter.Iter cnf.Clause) (val : expr.Map) :
+    sat_dpll.seed_cnf_vars_loop0 iter val ⦃ (m : expr.Map) =>
+      (∀ k, k ∉ cnfVars (iter.val.map (·.val)) →
+        Map.lookupList m.val k = Map.lookupList val.val k) ∧
+      (∀ k ∈ cnfVars (iter.val.map (·.val)), Map.lookupList m.val k = some false) ⦄ := by
+  unfold sat_dpll.seed_cnf_vars_loop0
+  step*
+  · obtain ⟨l, hl⟩ := iter
+    cases l with
+    | nil => simp_all [cnfVars]
+    | cons a es => simp_all
+  · obtain ⟨l, hl⟩ := iter
+    cases l with
+    | nil => simp_all
+    | cons a es =>
+      obtain ⟨ho, hiter1⟩ := o_post
+      have hla : clause = a := by simp_all
+      refine ⟨?_, ?_⟩
+      · intro k hk
+        simp only [List.map_cons, cnfVars, List.flatMap_cons, List.mem_append, not_or] at hk
+        obtain ⟨hkhead, hknotrest⟩ := hk
+        rw [m_post1 k (by rw [hiter1]; simpa [cnfVars] using hknotrest),
+            val1_post1 k (by rw [iter2_post, s_post, hla]; exact hkhead)]
+      · intro k hk
+        simp only [List.map_cons, cnfVars, List.flatMap_cons, List.mem_append] at hk
+        rcases hk with hkhead | hkrest
+        · by_cases hrest : k ∈ cnfVars (es.map (·.val))
+          · exact m_post2 k (by rw [hiter1]; exact hrest)
+          · rw [m_post1 k (by rw [hiter1]; exact hrest)]
+            exact val1_post2 k (by rw [iter2_post, s_post, hla]; exact hkhead)
+        · exact m_post2 k (by rw [hiter1]; exact hkrest)
+termination_by iter.val.length
+decreasing_by
+  obtain ⟨l, hl⟩ := iter
+  cases l with
+  | nil => simp_all
+  | cons a es => simp_all
+
+/-- **Spec theorem for `sat_solver::sat_dpll::seed_cnf_vars`**: on top of the map it is
+    given, every variable of the CNF is set (to `false`, though no caller cares which),
+    and presence is monotone -- which is what makes it composable with
+    `initial_valuation`, whose keys have to survive. -/
+@[step]
+theorem sat_dpll.seed_cnf_vars.spec (cnf1 : cnf.Cnf) (val : expr.Map) :
+    sat_dpll.seed_cnf_vars cnf1 val ⦃ (m : expr.Map) =>
+      (∀ k, k ∉ cnfVars (Cnf.contents cnf1) →
+        Map.lookupList m.val k = Map.lookupList val.val k) ∧
+      (∀ k ∈ cnfVars (Cnf.contents cnf1), Map.lookupList m.val k = some false) ∧
+      (∀ k, Map.lookupList val.val k ≠ none → Map.lookupList m.val k ≠ none) ⦄ := by
+  unfold sat_dpll.seed_cnf_vars
+  step*
+  refine ⟨fun k hk => m_post1 k (by simpa [iter_post, s_post] using hk),
+    fun k hk => m_post2 k (by simpa [iter_post, s_post] using hk), fun k hk => ?_⟩
+  -- monotone: a key is either untouched (so still there) or newly set
+  by_cases hmem : k ∈ cnfVars (Cnf.contents cnf1)
+  · rw [m_post2 k (by simpa [iter_post, s_post] using hmem)]; simp
+  · rw [m_post1 k (by simpa [iter_post, s_post] using hmem)]; exact hk
+
+
+/-! ### The two arms of `encode`
+
+`solve_sat` encodes with `Transform.Hybrid`, whose `to_cnf` can fail (it runs out of
+gate variables once the formula needs more than `u16` can name), and `encode` falls
+back to the naive transformation when it does. Both theorems below therefore split on
+that `Result`, and both arms end in the same argument about the search -- which is
+what `sound_tail` and the `Cnf.eval`-level hypotheses of the two branches factor out.
+The only thing that genuinely differs between the arms is *why* a model of the CNF is
+a model of `e`: `cnf_transform_hybrid.Encodes.sound` on the hybrid arm,
+`Cnf.eval_cnfPure` on the naive one. -/
+
+/-- The shared tail of `solve_sat_sound`'s two arms: everything after `dpll` has
+    returned `true`, stated over the hypotheses the two arms supply.
+
+    `hcnf` is the arm-specific part -- a model of the CNF is a model of `e` -- and
+    the rest is bookkeeping: the returned map covers `varsOf e` (`hval` seeds it,
+    `hmono1`/`hmono2` carry presence through `seed_cnf_vars` and the search), so it
+    reads back as a total valuation, and it covers the CNF's own variables
+    (`hseed`) so `dpll.spec`'s soundness clause applies to that readback. -/
+theorem sat_dpll.sound_tail (e : expr.Expr) (cc : cnf.Cnf) (val val1 val2 : expr.Map)
+    (hval : ∀ k ∈ varsOf e, Map.lookupList val.val k = some false)
+    (hseed : ∀ k ∈ cnfVars (Cnf.contents cc), Map.lookupList val1.val k = some false)
+    (hmono1 : ∀ k, Map.lookupList val.val k ≠ none → Map.lookupList val1.val k ≠ none)
+    (hmono2 : ∀ k, Map.lookupList val1.val k ≠ none → Map.lookupList val2.val k ≠ none)
+    (hsearch : ∀ w : Std.U16 → Bool,
+      (∀ k ∈ cnfVars (Cnf.contents cc), Map.lookupList val2.val k = some (w k)) →
+      Cnf.eval w (Cnf.contents cc) = true)
+    (hcnf : ∀ w : Std.U16 → Bool, Cnf.eval w (Cnf.contents cc) = true → evalPure w e = true) :
+    expr.evaluate e val2 ⦃ (r : core.result.Result Bool Unit) =>
+      r = core.result.Result.Ok true ⦄ := by
+  have hrepr : Map.represents val2 (varsOf e) (Map.readback val2) :=
+    Map.represents_readback val2 (varsOf e)
+      fun k hk => hmono2 k (hmono1 k (by rw [hval k hk]; simp))
+  have hrepr' : Map.represents val2 (cnfVars (Cnf.contents cc)) (Map.readback val2) :=
+    Map.represents_readback val2 _ fun k hk => hmono2 k (by rw [hseed k hk]; simp)
+  have hpure : evalPure (Map.readback val2) e = true :=
+    hcnf (Map.readback val2) (hsearch (Map.readback val2) hrepr')
+  have hev := expr.evaluate.spec_of_represents e val2 (Map.readback val2) hrepr
+  rwa [hpure] at hev
+
 /-- **Soundness**: if `sat_dpll::solve_sat` returns a valuation, it satisfies `e`.
 
     The returned map is total on `varsOf e` (it starts life as
-    `sat_naive.initial_valuation (collect_vars e)` and the search only ever
-    overwrites entries), so `evaluate` cannot error on it -- the statement is
-    phrased as `Ok true`, never matched against `Err`, exactly like the naive
-    solvers'.
+    `sat_naive.initial_valuation (collect_vars e)`, `seed_cnf_vars` only adds keys,
+    and the search only ever overwrites entries), so `evaluate` cannot error on it --
+    the statement is phrased as `Ok true`, never matched against `Err`, exactly like
+    the naive solvers'.
 
-    `hbound` is the classic worst-case CNF blowup bound `cnf_transform_naive.to_cnf.spec` needs;
-    it subsumes the `exprSize e < Usize.max` that `initial_valuation.spec` and
-    `collect_vars.spec` ask for, since `exprSize e < 2 ^ exprSize e`. -/
-theorem sat_dpll.solve_sat_sound (e : expr.Expr) (hbound : 2 ^ exprSize e ≤ Usize.max) :
+    `hquad` is what the hybrid transformation needs (it names at most `exprSize e`
+    subformulas, each with at most `exprSize e` defining clauses).  `hbound` is the
+    classic worst-case blowup bound of the *naive* transformation, and it is still
+    here because `encode` falls back to it when the hybrid runs out of gate
+    variables -- there is no way to state the theorem about the default encoding
+    without covering that arm.  It also subsumes the `exprSize e < Usize.max` that
+    `initial_valuation.spec` and `collect_vars.spec` ask for, since
+    `exprSize e < 2 ^ exprSize e`. -/
+theorem sat_dpll.solve_sat_sound (e : expr.Expr) (hbound : 2 ^ exprSize e ≤ Usize.max)
+    (hquad : exprSize e * exprSize e + exprSize e + 1 ≤ Usize.max) :
     sat_dpll.solve_sat e ⦃ (result : core.option.Option expr.Map) =>
       ∀ v, result = some v →
         expr.evaluate e v ⦃ (r : core.result.Result Bool Unit) =>
           r = core.result.Result.Ok true ⦄ ⦄ := by
   have hsize : exprSize e ≤ Usize.max := le_trans Nat.lt_two_pow_self.le hbound
   have hsize' : exprSize e < Usize.max := lt_of_lt_of_le Nat.lt_two_pow_self hbound
-  /- `solve_sat` is now a thin wrapper: `solve_sat_with e Transform.Naive`,
-     whose `encode` matches on the transform. `simp only` unfolds the two
-     wrappers and iota-reduces that match away, leaving the same goal the
-     proof saw when `solve_sat` called `to_cnf` directly. -/
+  /- `solve_sat` is a thin wrapper: `solve_sat_with e Transform.Hybrid`, whose
+     `encode` matches on the transform. `simp only` unfolds the two wrappers and
+     iota-reduces that match away, leaving the `cnf_transform_hybrid.to_cnf` call
+     and the fallback that `cases x` below splits on. -/
   simp only [sat_dpll.solve_sat, sat_dpll.solve_sat_with, sat_dpll.encode]
   step*
-  · /- `dpll`'s presence precondition: `initial_valuation` covers every variable
-       of `e`, and the CNF only mentions those. -/
-    intro k hk
-    rw [cnf1_post] at hk
-    rw [val_post k (by rw [s_post]; exact (vars_post1 k).mpr (cnfVars_cnfPure_subset e false k hk))]
-    simp
-  · intro v hv
-    have hv' : val1 = v := by injection hv
-    subst hv'
-    /- The returned map still covers every variable of `e` (the search only
-       overwrites), so reading it back gives a total valuation it represents. -/
-    have htotal : ∀ k ∈ varsOf e, Map.lookupList val1.val k ≠ none := by
-      intro k hk
-      refine b_post2 k ?_
-      rw [val_post k (by rw [s_post]; exact (vars_post1 k).mpr hk)]
-      simp
-    have hrepr : Map.represents val1 (varsOf e) (Map.readback val1) :=
-      Map.represents_readback val1 (varsOf e) htotal
-    have heval : Cnf.eval (Map.readback val1) (Cnf.contents cnf1) = true := by
-      refine b_post3 ‹b = true› (Map.readback val1) fun k hk => ?_
-      rw [cnf1_post] at hk
-      exact hrepr k (cnfVars_cnfPure_subset e false k hk)
-    /- `to_cnf` is equivalence-preserving, so satisfying the CNF *is* satisfying `e`. -/
-    have hpure : evalPure (Map.readback val1) e = true := by
-      rw [cnf1_post, Cnf.eval_cnfPure] at heval
-      simpa using heval
-    have hev := expr.evaluate.spec_of_represents e val1 (Map.readback val1) hrepr
-    rwa [hpure] at hev
+  cases x with
+  | Ok c =>
+    /- The hybrid arm: `to_cnf` succeeded, so its CNF is equisatisfiable with `e`
+       and `cnf_transform_hybrid.Encodes.sound` reads a model of it as a model of
+       `e` -- including at the gate variables, which `seed_cnf_vars` is what put
+       into the map in the first place. -/
+    step*
+    · -- `dpll`'s presence precondition: `seed_cnf_vars` set every CNF variable
+      intro k hk; rw [val1_post2 k hk]; simp
+    · intro v hv
+      have hv' : val2 = v := by injection hv
+      subst hv'
+      refine sat_dpll.sound_tail e c val val1 val2
+        (fun k hk => val_post k (by rw [s_post]; exact (vars_post1 k).mpr hk))
+        val1_post2 val1_post3 b_post2 (b_post3 ‹b = true›) fun w hw => ?_
+      exact cnf_transform_hybrid.Encodes.sound (by simpa using x_post) hw
+  | Err u =>
+    /- The fallback arm: the naive transformation is logically *equivalent* to `e`
+       (`Cnf.eval_cnfPure`), which is the cheaper of the two soundness arguments. -/
+    step*
+    · intro k hk; rw [val1_post2 k hk]; simp
+    · intro v hv
+      have hv' : val2 = v := by injection hv
+      subst hv'
+      refine sat_dpll.sound_tail e cnf1 val val1 val2
+        (fun k hk => val_post k (by rw [s_post]; exact (vars_post1 k).mpr hk))
+        val1_post2 val1_post3 b_post2 (b_post3 ‹b = true›) fun w hw => ?_
+      rw [cnf1_post, Cnf.eval_cnfPure] at hw
+      simpa using hw
 
 /-- **Completeness**: if `e` has a satisfying valuation at all, `sat_dpll::solve_sat`
     finds one.
 
-    Unlike the naive solvers, this goes through the CNF: `Cnf.eval_cnfPure` turns
-    `evalPure w e = true` into `Cnf.eval w (cnfPure e false) = true`, which is
-    what `dpll.spec`'s completeness clause consumes. That step is only valid
-    because `to_cnf` is equivalence-preserving rather than merely
-    equisatisfiability-preserving (no auxiliary variables -- see `Cnf.lean`); a
-    Tseitin-style encoding would need the witness to be extended to the auxiliary
-    variables first. -/
+    Unlike the naive solvers, this goes through the CNF: `dpll.spec`'s completeness
+    clause consumes a model of the CNF, not of `e`.  On the fallback arm that model
+    is `w` itself (`Cnf.eval_cnfPure`: the naive transformation introduces no
+    variables, so it is logically *equivalent* to `e`).  On the hybrid arm `w` says
+    nothing about the gate variables, so `cnf_transform_hybrid.Encodes.complete`
+    extends it to a `w'` that agrees with `w` on `varsOf e` and satisfies the CNF --
+    equisatisfiability is all the default encoding gives, and all this direction
+    needs. -/
 theorem sat_dpll.solve_sat_complete (e : expr.Expr) (w : Std.U16 → Bool)
-    (hbound : 2 ^ exprSize e ≤ Usize.max) (hsat : evalPure w e = true) :
+    (hbound : 2 ^ exprSize e ≤ Usize.max)
+    (hquad : exprSize e * exprSize e + exprSize e + 1 ≤ Usize.max)
+    (hsat : evalPure w e = true) :
     sat_dpll.solve_sat e ⦃ (result : core.option.Option expr.Map) => result ≠ none ⦄ := by
   have hsize : exprSize e ≤ Usize.max := le_trans Nat.lt_two_pow_self.le hbound
   have hsize' : exprSize e < Usize.max := lt_of_lt_of_le Nat.lt_two_pow_self hbound
-  /- `solve_sat` is now a thin wrapper: `solve_sat_with e Transform.Naive`,
-     whose `encode` matches on the transform. `simp only` unfolds the two
-     wrappers and iota-reduces that match away, leaving the same goal the
-     proof saw when `solve_sat` called `to_cnf` directly. -/
+  /- `solve_sat` is a thin wrapper: `solve_sat_with e Transform.Hybrid`, whose
+     `encode` matches on the transform. `simp only` unfolds the two wrappers and
+     iota-reduces that match away, leaving the `cnf_transform_hybrid.to_cnf` call
+     and the fallback that `cases x` below splits on. -/
   simp only [sat_dpll.solve_sat, sat_dpll.solve_sat_with, sat_dpll.encode]
   step*
-  · /- `dpll`'s presence precondition, as in the soundness proof. -/
-    intro k hk
-    rw [cnf1_post] at hk
-    rw [val_post k (by rw [s_post]; exact (vars_post1 k).mpr (cnfVars_cnfPure_subset e false k hk))]
-    simp
-  · /- `w` satisfies `e`, hence the CNF, so the search cannot have failed. -/
-    have hcnf : Cnf.eval w (Cnf.contents cnf1) = true := by
-      rw [cnf1_post, Cnf.eval_cnfPure, hsat]
-      simp
-    exact absurd (b_post4 w hcnf) ‹¬b = true›
+  cases x with
+  | Ok c =>
+    /- The hybrid arm: `w` does not satisfy the CNF directly -- it says nothing about
+       the gate variables -- so `Encodes.complete` extends it to one that does, and
+       that extension is the witness `dpll.spec`'s completeness clause wants. -/
+    step*
+    · intro k hk; rw [val1_post2 k hk]; simp
+    · obtain ⟨w', -, hw'⟩ := cnf_transform_hybrid.Encodes.complete (by simpa using x_post) hsat
+      exact absurd (b_post4 w' hw') ‹¬b = true›
+  | Err u =>
+    /- The fallback arm: no new variables, so `w` itself satisfies the CNF. -/
+    step*
+    · intro k hk; rw [val1_post2 k hk]; simp
+    · have hcnf : Cnf.eval w (Cnf.contents cnf1) = true := by
+        rw [cnf1_post, Cnf.eval_cnfPure, hsat]
+        simp
+      exact absurd (b_post4 w hcnf) ‹¬b = true›
 
 end sat_solver
