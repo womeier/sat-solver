@@ -56,6 +56,7 @@ extract:
         --exclude crate::sat \
         --exclude crate::sat_naive::SAT_SOLVER_NAIVE \
         --exclude crate::sat_dpll::SAT_SOLVER_DPLL \
+        --exclude crate::sat_dpll::SAT_SOLVER_DPLL_NAIVE \
         --exclude crate::sat_dpll::SAT_SOLVER_DPLL_TSEITIN \
         --exclude crate::sat_dpll::SAT_SOLVER_DPLL_HYBRID \
         --exclude crate::sat_cdcl \

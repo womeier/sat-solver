@@ -129,16 +129,18 @@ fn dpll(cnf: &Cnf, val: &mut Map) -> bool {
 
 /// Which CNF transformation the search runs on.
 ///
-/// The two are interchangeable as far as the *verdict* goes -- `solve_sat_with`
-/// returns the same satisfiability answer either way, and a `Some` model always
-/// satisfies the original `expr`. They differ only in the CNF that DPLL has to
-/// search, and the difference is large in both directions.
+/// All three are interchangeable as far as the *verdict* goes -- `solve_sat_with`
+/// returns the same satisfiability answer whichever is picked, and a `Some` model
+/// always satisfies the original `expr`. They differ only in the CNF that DPLL
+/// has to search, and the difference is large in both directions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Transform {
     /// Distribute OR over AND ([`cnf_transform_naive`]). Worst-case
-    /// exponential, but a near no-op on input that is already in CNF -- which
-    /// is everything `dimacs` reads, so it is what the SATLIB benchmarks want
-    /// and the default here.
+    /// exponential, but a near no-op on input that is already in CNF -- which is
+    /// everything `dimacs` reads. Logically *equivalent* to `expr` rather than
+    /// merely equisatisfiable, which is what makes it the cheapest arm to state
+    /// correct: it introduces no variable, so `Cnf.lean` can prove
+    /// `eval_cnf (to_cnf e) v = evaluate e v` at a fixed valuation.
     Naive,
     /// Name every internal node with a gate variable ([`cnf_transform_tseitin`]).
     /// Linear in the size of `expr`, which is the only way to get through a
@@ -150,9 +152,9 @@ pub enum Transform {
     Tseitin,
     /// Distribute where that is cheap, name only where it is not
     /// ([`cnf_transform_hybrid`]). Reproduces `Naive` exactly on already-clausal
-    /// input while staying linear on the formulas that make `Naive` blow up, so
-    /// it strictly dominates both -- it is the default in waiting, pending the
-    /// Lean proof that `Naive` already has.
+    /// input -- same CNF, clause for clause -- while staying linear on the
+    /// formulas that make `Naive` blow up. It dominates the other two, and is
+    /// the default.
     Hybrid,
 }
 
@@ -179,19 +181,37 @@ fn encode(expr: &Expr, transform: Transform) -> Cnf {
     }
 }
 
+// Adds every variable the CNF mentions to `val`, set to false.
+//
+// `initial_valuation` covers the variables of the `Expr`, which is what the
+// caller needs to be able to `evaluate` the returned map -- but it is not all
+// the search will touch. A transformation that names subformulas
+// (`cnf_transform_tseitin`, `cnf_transform_hybrid`) puts gate variables in the
+// CNF that `collect_vars` of the original `Expr` has never heard of, and `dpll`
+// has to start from a map that already covers every variable it can branch on:
+// a variable it decides but cannot record is one the returned model would be
+// silently missing.
+//
+// Called immediately after `initial_valuation`, where every variable present is
+// false already, so inserting `false` unconditionally clobbers nothing -- and
+// for `Transform::Naive`, whose CNF mentions no variable outside `expr`, it
+// leaves the map exactly as it found it.
+fn seed_cnf_vars(cnf: &Cnf, val: &mut Map) {
+    for clause in cnf.0.iter() {
+        for lit in clause.0.iter() {
+            val.insert(lit.var, false);
+        }
+    }
+}
+
 pub fn solve_sat_with(expr: &Expr, transform: Transform) -> Option<Map> {
     let vars = collect_vars(expr);
-    // Start from a *total* valuation over `expr`'s variables (all false), not an
-    // empty map: callers get a map `evaluate` can actually run on (it errors on
-    // an incomplete one), and the search is free to leave variables undecided.
-    //
-    // Under `Transform::Tseitin` the gate variables are deliberately left out of
-    // this seed. `dpll` inserts whichever ones it decides, and the rest stay
-    // unset -- which is harmless, because `evaluate` only ever looks up the
-    // variables of `expr` itself. A caller model-checking the returned map
-    // against `expr`, the way `tests/satlib.rs` does, never sees them.
+    // Start from a *total* valuation (all false), not an empty map: callers get
+    // a map `evaluate` can actually run on (it errors on an incomplete one), and
+    // the search is free to leave variables undecided.
     let mut val = initial_valuation(&vars);
     let cnf = encode(expr, transform);
+    seed_cnf_vars(&cnf, &mut val);
 
     if dpll(&cnf, &mut val) {
         Some(val)
@@ -200,19 +220,25 @@ pub fn solve_sat_with(expr: &Expr, transform: Transform) -> Option<Map> {
     }
 }
 
-/// DPLL on the default ([`Transform::Naive`]) encoding. This is the signature
+/// DPLL on the default ([`Transform::Hybrid`]) encoding. This is the signature
 /// `SatSolver` wants, and the one the Lean proofs are stated about.
 pub fn solve_sat(expr: &Expr) -> Option<Map> {
+    solve_sat_with(expr, Transform::Hybrid)
+}
+
+/// DPLL on the naive encoding, as a plain `fn(&Expr) -> Option<Map>` so it can
+/// sit in a [`SatSolver`] next to the default one and be benchmarked against it.
+pub fn solve_sat_naive(expr: &Expr) -> Option<Map> {
     solve_sat_with(expr, Transform::Naive)
 }
 
-/// DPLL on the Tseitin encoding, as a plain `fn(&Expr) -> Option<Map>` so it can
-/// sit in a [`SatSolver`] next to the default one and be benchmarked against it.
+/// DPLL on the Tseitin encoding, likewise shaped for a [`SatSolver`].
 pub fn solve_sat_tseitin(expr: &Expr) -> Option<Map> {
     solve_sat_with(expr, Transform::Tseitin)
 }
 
-/// DPLL on the hybrid encoding, likewise shaped for a [`SatSolver`].
+/// DPLL on the hybrid encoding -- the same search `solve_sat` runs, exported
+/// under its own name so the benchmark harness can label it.
 pub fn solve_sat_hybrid(expr: &Expr) -> Option<Map> {
     solve_sat_with(expr, Transform::Hybrid)
 }
@@ -220,6 +246,11 @@ pub fn solve_sat_hybrid(expr: &Expr) -> Option<Map> {
 pub static SAT_SOLVER_DPLL: SatSolver = SatSolver {
     solve: solve_sat,
     description: "dpll",
+};
+
+pub static SAT_SOLVER_DPLL_NAIVE: SatSolver = SatSolver {
+    solve: solve_sat_naive,
+    description: "dpll-naive",
 };
 
 pub static SAT_SOLVER_DPLL_TSEITIN: SatSolver = SatSolver {
@@ -444,24 +475,27 @@ fn solve_sat_matches_the_naive_solver_exhaustively() {
 }
 
 #[test]
-fn the_default_transform_is_the_naive_one() {
+fn the_default_transform_is_the_hybrid_one() {
     // What keeps the SATLIB numbers (and the Lean theorems) about `solve_sat`
-    // honest: the exported entry point must not quietly be the Tseitin one.
+    // honest: the exported entry point must be the hybrid arm, not one of the
+    // other two.
     use crate::expr::parse_expr;
 
     let expr = parse_expr("((x | y) & ((~x | z) & (~y | ~z)))").unwrap().1;
     assert_eq!(
         solve_sat(&expr),
-        solve_sat_with(&expr, Transform::Naive),
-        "solve_sat must agree with Transform::Naive exactly, model included"
+        solve_sat_with(&expr, Transform::Hybrid),
+        "solve_sat must agree with Transform::Hybrid exactly, model included"
     );
-    // ...and Tseitin really is a different object, so the assertion above is
-    // not vacuous. (The hybrid deliberately *is* identical here -- the formula
-    // is already clausal, which is the whole point of it.)
+    // Tseitin really is a different object, so the assertion above is not
+    // vacuous...
     assert_ne!(
         encode(&expr, Transform::Naive),
         encode(&expr, Transform::Tseitin)
     );
+    // ...while the naive arm deliberately *is* identical here: the formula is
+    // already clausal, so the hybrid's rule never names anything, which is why
+    // changing the default cost the SATLIB numbers nothing.
     assert_eq!(
         encode(&expr, Transform::Naive),
         encode(&expr, Transform::Hybrid)

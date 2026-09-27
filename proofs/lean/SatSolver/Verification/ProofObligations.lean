@@ -12,7 +12,10 @@ equisatisfiability-preserving, against pure models of them built on
 `Encoding.lean`'s shared framework; `TseitinExtraction.lean` and
 `HybridExtraction.lean` then join those models to the extracted Rust with
 `@[step]` specs, so `cnf_transform_{tseitin,hybrid}.to_cnf.{sound,complete}`
-are statements about the generated code itself. -/
+are statements about the generated code itself. `sat_dpll::solve_sat` encodes with
+the hybrid, so `SatDpll.lean`'s two theorems consume `HybridExtraction.lean`'s
+`Encodes.sound`/`.complete` on their main arm and `Cnf.lean` only on the fallback
+arm `encode` takes when the hybrid runs out of gate variables. -/
 import SatSolver.Verification.Prelude
 import SatSolver.Verification.MapLemmas
 import SatSolver.Verification.CollectVars
