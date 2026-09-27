@@ -3,7 +3,11 @@
 Implementation of various SAT solving algorithms in Rust,
 extracted to and verified in Lean 4 with [hax](https://github.com/hacspec/hax).
 
-The specification — soundness and completeness for both solvers — lives in
+Three solvers: `sat_naive` (backtracking search over `Expr`), `sat_dpll` (DPLL
+on the CNF: unit propagation plus splitting) and `sat_cdcl` (DPLL plus
+conflict-driven clause learning). The first two are verified; CDCL is not, yet.
+
+The specification — soundness and completeness for the two verified solvers — lives in
 [`proofs/lean/SatSolver/Verification/ProofObligations.lean`](proofs/lean/SatSolver/Verification/ProofObligations.lean),
 which collects the theorems proved in
 [`SatNaive.lean`](proofs/lean/SatSolver/Verification/SatNaive.lean) and
@@ -20,17 +24,26 @@ is its fallback when gate variables run out).
 uniform-random-3-SAT sets into `benchmarks/`; `just satlib-test` runs the solvers over them.
 
 Every `SAT` answer is model-checked with `expr::evaluate`, the way SAT
-competitions check solver output — all 3000 verdicts are correct.
+competitions check solver output — all 3000 verdicts are correct for each solver
+that can attempt the set.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/benchmarks-dark.svg">
   <img src="docs/benchmarks.svg" width="780"
-       alt="Mean solve time per instance, log scale, 100 instances per set. On uf20-91 (20 variables, satisfiable) dpll averages 0.14 ms (worst 0.43 ms) and naive 131 ms (worst 386 ms). On uf50-218 dpll averages 4.32 ms (worst 16.5 ms) and on the unsatisfiable uuf50-218 12.0 ms (worst 41.4 ms); naive is out of reach on the 50-variable sets because it enumerates all 2^50 valuations.">
+       alt="Mean solve time per instance, log scale, 100 instances per set. On uf20-91 (20 variables, satisfiable) cdcl averages 0.056 ms (worst 0.085 ms), dpll 0.147 ms (worst 0.446 ms) and naive 138 ms (worst 422 ms). On uf50-218 cdcl averages 0.322 ms (worst 1.19 ms) and dpll 4.66 ms (worst 19.0 ms); on the unsatisfiable uuf50-218 cdcl averages 0.589 ms (worst 1.52 ms) and dpll 12.0 ms (worst 42.8 ms). Naive is out of reach on the 50-variable sets because it enumerates all 2^50 valuations.">
 </picture>
 
 `just satlib-figure` re-measures and prints the dataset as CSV;
 [`docs/make_benchmarks_svg.py`](docs/make_benchmarks_svg.py) (stdlib only)
 redraws the two SVGs from it.
+
+DPLL and CDCL search the *same* CNF (`sat_dpll::encode` under
+`Transform::Hybrid`), so the gap between them is the value of clause learning and
+nothing else: 2.6x on the 20-variable set, 14x on uf50-218, and 20x on the
+unsatisfiable uuf50-218 — most where refuting the formula means exhausting the
+search space, which is exactly what learned clauses prune. CDCL manages that
+while *rescanning every clause* to propagate; with watched literals the gap would
+be wider still.
 
 ## Todo
 
@@ -42,8 +55,8 @@ redraws the two SVGs from it.
       parser and `to_cnf`. `sat_dpll.rs` has a small hand-written version of
       this; it should be generative and run on many more instances.
 - [ ] **Scaling curve** — `criterion` benchmark sweeping the clause/variable
-      ratio through the 4.26 phase transition, naive vs DPLL. This is the plot
-      that shows why DPLL exists.
+      ratio through the 4.26 phase transition, naive vs DPLL vs CDCL. This is the
+      plot that shows why each of them exists.
 - [ ] **Resolution-hard families** — pigeonhole (`hole-n`) and friends, with a
       timeout. These are exponential for any DPLL-style solver, so they document
       the limit that motivates CDCL. [CNFgen](https://massimolauria.net/cnfgen/)
@@ -68,6 +81,20 @@ Known limits worth fixing (or at least documenting) alongside the above:
       correctness proof clean (each recursive call is self-contained), and it is
       also the performance ceiling. Watched literals would fix it at a
       substantial cost in proof effort.
+- [ ] **CDCL propagates by rescanning every clause.** Same trade one level up:
+      `sat_cdcl::Solver::propagate` is O(clauses) per round where a production
+      solver visits only the clauses that could have become unit. It also never
+      deletes a learned clause (indices into the clause vector are used as
+      `reason` handles) and does not minimize learned clauses. All three are
+      engineering, not algorithm — the numbers above are what the algorithm alone
+      buys.
+- [ ] **CDCL is unverified.** `sat_naive` and `sat_dpll` have machine-checked
+      soundness and completeness; `sat_cdcl` has tests only — including a
+      300-instance random 3-SAT differential check against the proved-correct
+      naive solver, and all 3000 SATLIB verdicts. Learning makes the proof a
+      different animal: the invariant is that every learned clause is implied by
+      the original ones (resolution soundness), on top of DPLL's trail
+      invariants.
 - [ ] **The verified guarantee doesn't cover benchmark-sized inputs.** The
       soundness/completeness theorems carry `2 ^ exprSize e ≤ Usize.max`, i.e.
       formulas of at most ~63 AST nodes, inherited from the worst-case CNF blowup

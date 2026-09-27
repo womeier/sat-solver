@@ -1600,7 +1600,8 @@ def sat_dpll.Transform.Insts.CoreCmpEq : core.cmp.Eq sat_dpll.Transform := {
 }
 
 /-- [sat_solver::sat_dpll::encode]:
-    Source: 'src/sat_dpll.rs', lines 162:0-182:1 -/
+    Source: 'src/sat_dpll.rs', lines 166:0-186:1
+    Visibility: public -/
 def sat_dpll.encode
   (expr1 : expr.Expr) (transform : sat_dpll.Transform) : RustM cnf.Cnf := do
   match transform with
@@ -1617,7 +1618,7 @@ def sat_dpll.encode
     | core.result.Result.Err _ => cnf_transform_naive.to_cnf expr1
 
 /-- [sat_solver::sat_dpll::seed_cnf_vars]: loop 1:
-    Source: 'src/sat_dpll.rs', lines 201:8-203:9 -/
+    Source: 'src/sat_dpll.rs', lines 205:8-207:9 -/
 @[rust_loop]
 def sat_dpll.seed_cnf_vars_loop0_loop0
   (iter : core.slice.iter.Iter cnf.Literal) (val : expr.Map) :
@@ -1633,7 +1634,7 @@ def sat_dpll.seed_cnf_vars_loop0_loop0
 partial_fixpoint
 
 /-- [sat_solver::sat_dpll::seed_cnf_vars]: loop 0:
-    Source: 'src/sat_dpll.rs', lines 200:4-204:5 -/
+    Source: 'src/sat_dpll.rs', lines 204:4-208:5 -/
 @[rust_loop]
 def sat_dpll.seed_cnf_vars_loop0
   (iter : core.slice.iter.Iter cnf.Clause) (val : expr.Map) :
@@ -1651,7 +1652,7 @@ def sat_dpll.seed_cnf_vars_loop0
 partial_fixpoint
 
 /-- [sat_solver::sat_dpll::seed_cnf_vars]:
-    Source: 'src/sat_dpll.rs', lines 199:0-205:1 -/
+    Source: 'src/sat_dpll.rs', lines 203:0-209:1 -/
 def sat_dpll.seed_cnf_vars
   (cnf1 : cnf.Cnf) (val : expr.Map) : RustM expr.Map := do
   let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref cnf1
@@ -1684,7 +1685,7 @@ def sat_naive.initial_valuation (vars : Slice Std.U16) : RustM expr.Map := do
   sat_naive.initial_valuation_loop iter map
 
 /-- [sat_solver::sat_dpll::solve_sat_with]:
-    Source: 'src/sat_dpll.rs', lines 207:0-221:1
+    Source: 'src/sat_dpll.rs', lines 211:0-225:1
     Visibility: public -/
 def sat_dpll.solve_sat_with
   (expr1 : expr.Expr) (transform : sat_dpll.Transform) :
@@ -1701,28 +1702,28 @@ def sat_dpll.solve_sat_with
   else ok core.option.Option.None
 
 /-- [sat_solver::sat_dpll::solve_sat]:
-    Source: 'src/sat_dpll.rs', lines 225:0-227:1
+    Source: 'src/sat_dpll.rs', lines 229:0-231:1
     Visibility: public -/
 def sat_dpll.solve_sat
   (expr1 : expr.Expr) : RustM (core.option.Option expr.Map) := do
   sat_dpll.solve_sat_with expr1 sat_dpll.Transform.Hybrid
 
 /-- [sat_solver::sat_dpll::solve_sat_naive]:
-    Source: 'src/sat_dpll.rs', lines 231:0-233:1
+    Source: 'src/sat_dpll.rs', lines 235:0-237:1
     Visibility: public -/
 def sat_dpll.solve_sat_naive
   (expr1 : expr.Expr) : RustM (core.option.Option expr.Map) := do
   sat_dpll.solve_sat_with expr1 sat_dpll.Transform.Naive
 
 /-- [sat_solver::sat_dpll::solve_sat_tseitin]:
-    Source: 'src/sat_dpll.rs', lines 236:0-238:1
+    Source: 'src/sat_dpll.rs', lines 240:0-242:1
     Visibility: public -/
 def sat_dpll.solve_sat_tseitin
   (expr1 : expr.Expr) : RustM (core.option.Option expr.Map) := do
   sat_dpll.solve_sat_with expr1 sat_dpll.Transform.Tseitin
 
 /-- [sat_solver::sat_dpll::solve_sat_hybrid]:
-    Source: 'src/sat_dpll.rs', lines 242:0-244:1
+    Source: 'src/sat_dpll.rs', lines 246:0-248:1
     Visibility: public -/
 def sat_dpll.solve_sat_hybrid
   (expr1 : expr.Expr) : RustM (core.option.Option expr.Map) := do
