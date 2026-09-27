@@ -158,8 +158,12 @@ pub enum Transform {
     Hybrid,
 }
 
-// The CNF the search actually runs on.
-fn encode(expr: &Expr, transform: Transform) -> Cnf {
+/// The CNF the search actually runs on.
+///
+/// Public because `sat_cdcl` encodes with it too: the two searches are only
+/// comparable if they are handed the same CNF, so there is one definition of
+/// what "the default encoding" means and both solvers call it.
+pub fn encode(expr: &Expr, transform: Transform) -> Cnf {
     match transform {
         Transform::Naive => cnf_transform_naive::to_cnf(expr),
         Transform::Tseitin => match cnf_transform_tseitin::to_cnf(expr) {

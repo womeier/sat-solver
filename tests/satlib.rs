@@ -14,8 +14,8 @@
 //! | `uf50-218`  |   50 |     218 |      1000 | SAT     |
 //! | `uuf50-218` |   50 |     218 |      1000 | UNSAT   |
 //!
-//! Only DPLL can attempt the 50-variable sets: `naive` enumerates all `2^n`
-//! valuations, so 50 variables is out of reach by roughly ten orders of
+//! Only DPLL and CDCL can attempt the 50-variable sets: `naive` enumerates all
+//! `2^n` valuations, so 50 variables is out of reach by roughly ten orders of
 //! magnitude. It is exercised on `uf20-91` instead.
 //!
 //! Run the heavy sets (they are `#[ignore]`d) with `just satlib-test`, which
@@ -28,6 +28,7 @@ use std::time::{Duration, Instant};
 use sat_solver::dimacs::parse_dimacs;
 use sat_solver::expr::{Expr, Map, evaluate};
 use sat_solver::sat::SatSolver;
+use sat_solver::sat_cdcl::SAT_SOLVER_CDCL;
 use sat_solver::sat_dpll::{SAT_SOLVER_DPLL, SAT_SOLVER_DPLL_NAIVE};
 use sat_solver::sat_naive::SAT_SOLVER_NAIVE;
 
@@ -193,15 +194,40 @@ fn dpll_naive_arm_matches_the_default_encoding() {
     run_set(&SAT_SOLVER_DPLL_NAIVE, "uuf50-218", false, None);
 }
 
-/// Both solvers on the same prefix of `uf20-91`, for a like-for-like comparison.
+/// CDCL over the same three sets DPLL is measured on. Both search the same CNF
+/// (`sat_dpll::encode` under `Transform::Hybrid`), so these numbers compare the
+/// two *searches*: clause learning against chronological backtracking.
+#[test]
+#[ignore = "benchmark: use `just satlib-test`"]
+fn cdcl_solves_uf20() {
+    run_set(&SAT_SOLVER_CDCL, "uf20-91", true, None);
+}
+
+#[test]
+#[ignore = "benchmark: use `just satlib-test`"]
+fn cdcl_solves_uf50() {
+    run_set(&SAT_SOLVER_CDCL, "uf50-218", true, None);
+}
+
+/// The set where learning should show: refuting an instance means exhausting the
+/// search space, and a learned clause prunes every branch that would have failed
+/// for the same reason.
+#[test]
+#[ignore = "benchmark: use `just satlib-test`"]
+fn cdcl_refutes_uuf50() {
+    run_set(&SAT_SOLVER_CDCL, "uuf50-218", false, None);
+}
+
+/// Every solver on the same prefix of `uf20-91`, for a like-for-like comparison.
 /// The sample is small because `naive` is `2^20`-bound: it costs ~0.2 s per
-/// instance where DPLL costs ~0.2 ms.
+/// instance where the other two cost well under a millisecond.
 #[test]
 #[ignore = "benchmark: use `just satlib-test`"]
 fn all_solvers_on_uf20_sample() {
     let sample = Some(25);
     run_set(&SAT_SOLVER_NAIVE, "uf20-91", true, sample);
     run_set(&SAT_SOLVER_DPLL, "uf20-91", true, sample);
+    run_set(&SAT_SOLVER_CDCL, "uf20-91", true, sample);
 }
 
 /// `naive` over a larger slice of `uf20-91`, as a check that the sample above
@@ -255,5 +281,6 @@ fn figure_data() {
         let naive_feasible = set == "uf20-91";
         row(&SAT_SOLVER_NAIVE, set, expect_sat, naive_feasible);
         row(&SAT_SOLVER_DPLL, set, expect_sat, true);
+        row(&SAT_SOLVER_CDCL, set, expect_sat, true);
     }
 }

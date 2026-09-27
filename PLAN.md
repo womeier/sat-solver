@@ -112,6 +112,38 @@ never mentions `Hybrid.cnfRec`.
 `Transform::Naive` remains reachable through `solve_sat_naive`/`SAT_SOLVER_DPLL_NAIVE`, which
 is what `tests/satlib.rs` uses to check the two encodings agree on real instances.
 
+## Where CDCL stands (unverified)
+
+`src/sat_cdcl.rs` is now a real solver rather than the stub this plan refers to: the classic
+CDCL loop — 1-UIP conflict analysis, non-chronological backjumping, VSIDS-style decisions with
+periodic activity decay, phase saving, geometric restarts. It encodes through
+`sat_dpll::encode` (made `pub` for it), so DPLL and CDCL search the identical CNF and the
+benchmark gap between them is the value of clause learning alone: 2.6x on `uf20-91`, 14x on
+`uf50-218`, 20x on `uuf50-218`.
+
+**Nothing about it is proved.** It has tests only: unit tests for each piece (including that
+`analyze` returns the asserting clause and the backjump level a worked example demands, and
+that it leaves no scratch state behind), a 300-instance random 3-SAT differential check at the
+phase transition against the proved-correct `sat_naive`, and all 3000 SATLIB verdicts with
+every model model-checked.
+
+It is also still excluded from extraction (`--exclude crate::sat_cdcl` in the `justfile`). What
+a proof would need, beyond everything `SatDpll.lean` already has:
+
+- **Resolution soundness of learning** — every clause `analyze` appends is implied by the
+  clauses it started from, because each step of the loop is one resolution step. This is the
+  invariant the whole file rests on, and the one that makes CDCL's proof qualitatively
+  different from DPLL's: the clause database changes as the search runs.
+- **Trail invariants** — every propagated literal's `reason` is a clause all of whose other
+  literals are false and which was already in the database; levels along the trail are
+  monotone; `backtrack` restores a prefix.
+- **Termination** — DPLL's "one variable fewer per level" argument does not apply. The standard
+  argument is that the learned clause is asserting at the backjump level, so the state
+  immediately after a conflict is one the search has not been in before.
+- **Extraction shape** — the loops are `while`/`for` over indices with a mutable struct, which
+  `-loops-to-rec` turns into `partial_fixpoint` definitions over the whole `Solver` state. That
+  is a much larger state to thread through specs than `dpll`'s `(cnf, val)`.
+
 ## Context
 
 The repo has two "naive" SAT solvers:

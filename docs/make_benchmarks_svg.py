@@ -9,22 +9,26 @@ renders the whole figure black. Dark mode is therefore a second file, swapped by
 import math
 import sys
 
-SERIES = [  # label, shape; colors come from the theme
-    ("dpll", "circle"),
-    ("naive", "square"),
+SERIES = [  # label, shape; colors come from the theme. Fastest first.
+    ("cdcl", "circle"),
+    ("dpll", "square"),
+    ("naive", "triangle"),
 ]
 
 GROUPS = [
     ("uf20-91", "20 variables · 91 clauses · satisfiable", {
-        "dpll": (0.13512, 0.43176),
-        "naive": (130.543, 385.536),
+        "cdcl": (0.05572, 0.08494),
+        "dpll": (0.14749, 0.44554),
+        "naive": (137.766, 422.068),
     }),
     ("uf50-218", "50 variables · 218 clauses · satisfiable", {
-        "dpll": (4.32390, 16.53200),
+        "cdcl": (0.32241, 1.18635),
+        "dpll": (4.65974, 18.96795),
         "naive": None,
     }),
     ("uuf50-218", "50 variables · 218 clauses · unsatisfiable", {
-        "dpll": (12.01726, 41.44567),
+        "cdcl": (0.58922, 1.52250),
+        "dpll": (12.03110, 42.84943),
         "naive": None,
     }),
 ]
@@ -41,8 +45,9 @@ THEMES = {
 W = 780
 PLOT_L, PLOT_R = 168.0, 636.0
 MEAN_COL, WORST_COL = 700.0, 764.0
-DOM_LO, DOM_HI = -1.0, 3.0
-TICKS = [(0.1, "0.1 ms"), (1, "1 ms"), (10, "10 ms"), (100, "100 ms"), (1000, "1 s")]
+DOM_LO, DOM_HI = -2.0, 3.0
+TICKS = [(0.01, "0.01 ms"), (0.1, "0.1 ms"), (1, "1 ms"), (10, "10 ms"), (100, "100 ms"),
+         (1000, "1 s")]
 TOP = 116.0
 HEADER_H, ROW_H, GROUP_GAP = 20.0, 23.0, 16.0
 BLOCK = HEADER_H + len(SERIES) * ROW_H + GROUP_GAP
@@ -56,7 +61,13 @@ def x_of(ms):
 
 
 def fmt(ms):
-    return f"{ms:.2f} ms" if ms < 10 else (f"{ms:.1f} ms" if ms < 100 else f"{ms:.0f} ms")
+    # Three decimals below 1 ms: CDCL's uf20 mean is 0.056 ms, and "0.06 ms"
+    # would round away most of what separates it from DPLL's 0.15 ms.
+    if ms < 1:
+        return f"{ms:.3f} ms"
+    if ms < 10:
+        return f"{ms:.2f} ms"
+    return f"{ms:.1f} ms" if ms < 100 else f"{ms:.0f} ms"
 
 
 def text(x, y, s, fill, size, weight=None, anchor=None, style=None, spacing=None):
@@ -99,12 +110,13 @@ def build(theme_name):
     a(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" '
       f'role="img" aria-labelledby="figTitle figDesc" font-family="{FONT}">')
     a('<title id="figTitle">SATLIB solve time by solver</title>')
-    a('<desc id="figDesc">Mean solve time per instance on a logarithmic scale, for two solvers across three '
-      'SATLIB random 3-SAT sets, 100 instances each. On uf20-91 (20 variables, satisfiable): dpll 0.14 ms mean '
-      'and 0.43 ms worst; naive 131 ms mean and 386 ms worst. On uf50-218 (50 variables, satisfiable): dpll '
-      '4.32 ms mean, 16.5 ms worst. On uuf50-218 (50 variables, unsatisfiable): dpll 12.0 ms mean, 41.4 ms '
-      'worst. The naive solver is out of reach on the 50-variable sets, since it enumerates all 2^50 '
-      'valuations.</desc>')
+    a('<desc id="figDesc">Mean solve time per instance on a logarithmic scale, for three solvers across three '
+      'SATLIB random 3-SAT sets, 100 instances each. On uf20-91 (20 variables, satisfiable): cdcl 0.056 ms '
+      'mean and 0.085 ms worst; dpll 0.147 ms mean and 0.446 ms worst; naive 138 ms mean and 422 ms worst. '
+      'On uf50-218 (50 variables, satisfiable): cdcl 0.322 ms mean, 1.19 ms worst; dpll 4.66 ms mean, 19.0 ms '
+      'worst. On uuf50-218 (50 variables, unsatisfiable): cdcl 0.589 ms mean, 1.52 ms worst; dpll 12.0 ms '
+      'mean, 42.8 ms worst. The naive solver is out of reach on the 50-variable sets, since it enumerates all '
+      '2^50 valuations.</desc>')
     a(f'<rect x="0" y="0" width="{W}" height="{H}" fill="{surface}"/>')
 
     block, plot_bottom = BLOCK, PLOT_BOTTOM
