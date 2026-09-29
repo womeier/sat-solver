@@ -77,6 +77,30 @@ structure cnf_transform_tseitin.Encoder where
 @[reducible]
 def expr.evaluate.closure := Unit
 
+/-- [sat_solver::sat_cdcl::Status]
+    Source: 'src/sat_cdcl.rs', lines 71:0-80:1 -/
+@[discriminant isize]
+inductive sat_cdcl.Status where
+| Conflict : sat_cdcl.Status
+| Unit : cnf.Literal → sat_cdcl.Status
+| Silent : sat_cdcl.Status
+
+/-- [sat_solver::sat_cdcl::Solver]
+    Source: 'src/sat_cdcl.rs', lines 88:0-122:1 -/
+structure sat_cdcl.Solver where
+  clauses : alloc.vec.Vec cnf.Clause
+  problem_clauses : Std.Usize
+  value : alloc.vec.Vec (core.option.Option Bool)
+  level : alloc.vec.Vec Std.Usize
+  reason : alloc.vec.Vec (core.option.Option Std.Usize)
+  phase : alloc.vec.Vec Bool
+  activity : alloc.vec.Vec Std.U32
+  occurs : alloc.vec.Vec Bool
+  seen : alloc.vec.Vec Bool
+  trail : alloc.vec.Vec Std.U16
+  trail_lim : alloc.vec.Vec Std.Usize
+  conflicts : Std.U32
+
 /-- [sat_solver::sat_dpll::Transform]
     Source: 'src/sat_dpll.rs', lines 137:0-159:1
     Visibility: public -/

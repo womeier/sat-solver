@@ -200,6 +200,71 @@ theorem disjoin_next_le {s s' : State} {c1 c2 C : List (List cnf.Literal)}
         subst hs'
         exact rename_next_le hr
 
+/-- Naming costs exactly one gate. -/
+theorem rename_next_eq {s s' : State} {c named : List (List cnf.Literal)}
+    (h : rename s c = some (named, s')) : s'.next = s.next + 1 := by
+  simp only [rename] at h
+  split at h
+  · simp at h
+  · rename_i g s1 hf
+    injection h with h
+    obtain ⟨-, hs'⟩ := Prod.mk.injEq .. ▸ h
+    rw [fresh_eq_some] at hf
+    obtain ⟨-, -, rfl⟩ := hf
+    subst hs'
+    rfl
+
+/-- ...and `disjoin` names at most one side, so it costs at most one. -/
+theorem disjoin_next_le_succ {s s' : State} {c1 c2 C : List (List cnf.Literal)}
+    (h : disjoin s c1 c2 = some (C, s')) : s'.next ≤ s.next + 1 := by
+  simp only [disjoin] at h
+  split at h
+  · injection h with h
+    obtain ⟨-, hs'⟩ := Prod.mk.injEq .. ▸ h
+    subst hs'; omega
+  · split at h <;>
+    · split at h
+      · simp at h
+      · rename_i hr
+        injection h with h
+        obtain ⟨-, hs'⟩ := Prod.mk.injEq .. ▸ h
+        subst hs'
+        rw [rename_next_eq hr]
+
+/-- **At most one gate per AST node.** The counterpart of `cnfRec_next_le`, and the bound
+    a caller needs to size an array by the encoded CNF: `disjoin` is the only thing that
+    allocates, and there is one `disjoin` per binary node. -/
+theorem cnfRec_next_le_add {e : expr.Expr} {negate : Bool} {s s' : State}
+    {C : List (List cnf.Literal)} (h : cnfRec s e negate = some (C, s')) :
+    s'.next ≤ s.next + exprSize e := by
+  induction e generalizing s s' C negate with
+  | True | False | Variable v =>
+    injection h with h
+    obtain ⟨-, hs'⟩ := Prod.mk.injEq .. ▸ h
+    subst hs'; simp [exprSize]
+  | Neg e ih =>
+    have := ih h
+    simp only [exprSize]
+    omega
+  | Conj e1 e2 ih1 ih2 | Disj e1 e2 ih1 ih2 =>
+    simp only [cnfRec] at h
+    split at h
+    · simp at h
+    · rename_i c1 s1 h1
+      split at h
+      · simp at h
+      · rename_i c2 s2 h2
+        have hb1 := ih1 h1
+        have hb2 := ih2 h2
+        simp only [exprSize]
+        split at h
+        all_goals
+          first
+          | (injection h with h
+             obtain ⟨-, hs'⟩ := Prod.mk.injEq .. ▸ h
+             subst hs'; omega)
+          | (have := disjoin_next_le_succ h; omega)
+
 theorem cnfRec_defs_prefix {e : expr.Expr} {negate : Bool} {s s' : State}
     {C : List (List cnf.Literal)} (h : cnfRec s e negate = some (C, s')) :
     s.defs <+: s'.defs := by

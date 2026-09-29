@@ -15,20 +15,20 @@ SERIES = [  # label, shape; colors come from the theme. Fastest first.
     ("naive", "triangle"),
 ]
 
-GROUPS = [
+GROUPS = [  # milliseconds, (mean, worst); `just satlib-figure` emits microseconds.
     ("uf20-91", "20 variables · 91 clauses · satisfiable", {
-        "cdcl": (0.05572, 0.08494),
-        "dpll": (0.14749, 0.44554),
-        "naive": (137.766, 422.068),
+        "cdcl": (0.06009, 0.10554),
+        "dpll": (0.15193, 0.47561),
+        "naive": (140.765, 507.416),
     }),
     ("uf50-218", "50 variables · 218 clauses · satisfiable", {
-        "cdcl": (0.32241, 1.18635),
-        "dpll": (4.65974, 18.96795),
+        "cdcl": (0.34471, 1.26957),
+        "dpll": (4.94646, 16.60225),
         "naive": None,
     }),
     ("uuf50-218", "50 variables · 218 clauses · unsatisfiable", {
-        "cdcl": (0.58922, 1.52250),
-        "dpll": (12.03110, 42.84943),
+        "cdcl": (0.63377, 1.59337),
+        "dpll": (12.72316, 44.12740),
         "naive": None,
     }),
 ]
@@ -41,6 +41,8 @@ THEMES = {
                  grid="#2c2c2a", axis="#383835",
                  series=("#3987e5", "#d95926", "#199e70")),
 }
+
+INSTANCES = 100  # `FIGURE_INSTANCES` in tests/satlib.rs
 
 W = 780
 PLOT_L, PLOT_R = 168.0, 636.0
@@ -61,13 +63,32 @@ def x_of(ms):
 
 
 def fmt(ms):
-    # Three decimals below 1 ms: CDCL's uf20 mean is 0.056 ms, and "0.06 ms"
+    # Three decimals below 1 ms: CDCL's uf20 mean is 0.060 ms, and "0.06 ms"
     # would round away most of what separates it from DPLL's 0.15 ms.
     if ms < 1:
         return f"{ms:.3f} ms"
     if ms < 10:
         return f"{ms:.2f} ms"
     return f"{ms:.1f} ms" if ms < 100 else f"{ms:.0f} ms"
+
+
+def describe():
+    """The `<desc>` text, from the same numbers the marks are drawn from.
+
+    Screen readers get this instead of the figure, so it has to carry every value
+    -- and writing it by hand is how it goes stale.
+    """
+    words = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
+    out = [f"Mean solve time per instance on a logarithmic scale, for {words[len(SERIES)]} solvers "
+           f"across {words[len(GROUPS)]} SATLIB random 3-SAT sets, {INSTANCES} instances each."]
+    for gname, ann, rows in GROUPS:
+        bits = ann.split(" · ")
+        cells = [f"{name} {fmt(rows[name][0])} mean, {fmt(rows[name][1])} worst"
+                 for name, _ in SERIES if rows[name] is not None]
+        out.append(f"On {gname} ({bits[0]}, {bits[-1]}): " + "; ".join(cells) + ".")
+    out.append("The naive solver is out of reach on the 50-variable sets, since it enumerates "
+               "all 2^50 valuations.")
+    return " ".join(out)
 
 
 def text(x, y, s, fill, size, weight=None, anchor=None, style=None, spacing=None):
@@ -110,13 +131,7 @@ def build(theme_name):
     a(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" '
       f'role="img" aria-labelledby="figTitle figDesc" font-family="{FONT}">')
     a('<title id="figTitle">SATLIB solve time by solver</title>')
-    a('<desc id="figDesc">Mean solve time per instance on a logarithmic scale, for three solvers across three '
-      'SATLIB random 3-SAT sets, 100 instances each. On uf20-91 (20 variables, satisfiable): cdcl 0.056 ms '
-      'mean and 0.085 ms worst; dpll 0.147 ms mean and 0.446 ms worst; naive 138 ms mean and 422 ms worst. '
-      'On uf50-218 (50 variables, satisfiable): cdcl 0.322 ms mean, 1.19 ms worst; dpll 4.66 ms mean, 19.0 ms '
-      'worst. On uuf50-218 (50 variables, unsatisfiable): cdcl 0.589 ms mean, 1.52 ms worst; dpll 12.0 ms '
-      'mean, 42.8 ms worst. The naive solver is out of reach on the 50-variable sets, since it enumerates all '
-      '2^50 valuations.</desc>')
+    a(f'<desc id="figDesc">{describe()}</desc>')
     a(f'<rect x="0" y="0" width="{W}" height="{H}" fill="{surface}"/>')
 
     block, plot_bottom = BLOCK, PLOT_BOTTOM
@@ -134,8 +149,8 @@ def build(theme_name):
       f'stroke="{t["axis"]}" stroke-width="1"/>')
 
     a(text(24, 34, "SATLIB solve time by solver", ink, 15, weight=600))
-    a(text(24, 53, "Mean per instance, 100 instances per set · mark is the mean, line runs to the "
-                   "worst instance", ink2, 11.5))
+    a(text(24, 53, f"Mean per instance, {INSTANCES} instances per set · mark is the mean, line runs "
+                   "to the worst instance", ink2, 11.5))
 
     # Legend: identity via swatch shape + label, never color alone.
     lx = 24.0

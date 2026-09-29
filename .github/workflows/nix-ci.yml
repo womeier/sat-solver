@@ -92,9 +92,13 @@ jobs:
       # Print the axiom set each top-level theorem depends on (run directly via
       # `lake env lean` rather than relying on `lake build`'s info-message output,
       # since that's skipped whenever Lake's incremental cache considers the file
-      # already up to date). Should always be the standard propext/Classical.choice/
-      # Quot.sound trio — anything else (sorryAx, or one of the axiom-declared
-      # Debug/Display stubs in SatSolver/Assumptions/) means a theorem's proof
-      # secretly depends on something it shouldn't.
+      # already up to date). The proved theorems should show the standard
+      # propext/Classical.choice/Quot.sound trio, plus the two `_native.decide`
+      # axioms the extraction brings in wherever a statement mentions a function
+      # with a `panic!` message; anything else (in particular one of the
+      # axiom-declared Debug/Display stubs in SatSolver/Assumptions/) means a proof
+      # secretly depends on something it shouldn't. The sat_cdcl statements that are
+      # still `sorry` print `sorryAx` on purpose — the file's `assert_no_sorry`
+      # block is what actually fails the build, and it lists only proved theorems.
       - name: Print axioms used by the top-level theorems
         run: nix develop --command bash -c "cd proofs/lean && lake env lean SatSolver/PrintAxioms.lean"

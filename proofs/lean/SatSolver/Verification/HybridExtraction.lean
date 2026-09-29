@@ -686,21 +686,32 @@ set_option linter.unnecessarySeqFocus false in
 theorem cnf_transform_hybrid.Renamer.new_loop.spec
     (iter : alloc.vec.into_iter.IntoIter Std.U16) (next : Std.U32) :
     cnf_transform_hybrid.Renamer.new_loop iter next ⦃ (r : Std.U32) =>
-      next.val ≤ r.val ∧ ∀ v ∈ iter.val, v.val < r.val ⦄ := by
+      next.val ≤ r.val ∧ (∀ v ∈ iter.val, v.val < r.val)
+      ∧ ∀ m, next.val ≤ m → (∀ v ∈ iter.val, v.val < m) → r.val ≤ m ⦄ := by
   unfold cnf_transform_hybrid.Renamer.new_loop
   step*
-  · obtain ⟨l, hl⟩ := iter
+  all_goals
+    obtain ⟨l, hl⟩ := iter
     cases l with
     | nil => simp_all
-    | cons e es => simp_all <;> scalar_tac
-  · obtain ⟨l, hl⟩ := iter
-    cases l with
-    | nil => simp_all
-    | cons e es => simp_all <;> scalar_tac
-  · obtain ⟨l, hl⟩ := iter
-    cases l with
-    | nil => simp_all
-    | cons e es => simp_all; scalar_tac
+    | cons e es =>
+      first
+      | (simp_all; done)
+      | (obtain ⟨heq, hiter⟩ := o_post
+         have hlite : v = e := by
+           have h1 : o = some v := by assumption
+           rw [h1] at heq; exact Option.some.inj heq
+         subst hlite
+         refine ⟨by scalar_tac, ?_, ?_⟩
+         · intro w hw
+           rcases List.mem_cons.mp (by simpa using hw) with rfl | hw'
+           · scalar_tac
+           · exact r_post2 w (by rw [hiter]; exact hw')
+         · intro m hm hall
+           have hm2 : v.val < m := hall v (by simp)
+           refine r_post3 m (by scalar_tac) ?_
+           intro w hw
+           exact hall w (by simp only [hiter] at hw; simp [hw]))
 termination_by iter.val.length
 decreasing_by
   · obtain ⟨l, hl⟩ := iter
@@ -716,10 +727,13 @@ decreasing_by
 theorem cnf_transform_hybrid.Renamer.new.spec (e : expr.Expr)
     (hbound : exprSize e ≤ Usize.max) :
     cnf_transform_hybrid.Renamer.new e ⦃ (ren : cnf_transform_hybrid.Renamer) =>
-      ren.defs.val = [] ∧ ∀ k ∈ varsOf e, k.val < ren.next.val ⦄ := by
+      ren.defs.val = [] ∧ (∀ k ∈ varsOf e, k.val < ren.next.val)
+      ∧ ∀ m, (∀ k ∈ varsOf e, k.val < m) → ren.next.val ≤ m ⦄ := by
   unfold cnf_transform_hybrid.Renamer.new
     alloc.vec.Vec.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter
   step*
+  exact ⟨v1_post, fun k hk => next_post2 k ((v_post1 k).mpr hk),
+    fun m hm => next_post3 m (Nat.zero_le _) fun w hw => hm w ((v_post1 w).mp hw)⟩
 
 /-- What `to_cnf` having returned `c` tells us about `c`: it is the body of a completed
     `Hybrid.cnfRec` run, started from a well-formed state whose counter already sits above
@@ -733,6 +747,7 @@ theorem cnf_transform_hybrid.Renamer.new.spec (e : expr.Expr)
     one statement about the generated code than two. -/
 def cnf_transform_hybrid.Encodes (e : expr.Expr) (c : cnf.Cnf) : Prop :=
   ∃ s s' body, Hybrid.State.Wf s ∧ (∀ k ∈ varsOf e, k.val < s.next) ∧
+    (∀ m, (∀ k ∈ varsOf e, k.val < m) → s.next ≤ m) ∧
     s.defs = [] ∧ Hybrid.cnfRec s e false = some (body, s') ∧
     absClauses c = body ++ s'.defs
 
@@ -741,7 +756,7 @@ def cnf_transform_hybrid.Encodes (e : expr.Expr) (c : cnf.Cnf) : Prop :=
 theorem cnf_transform_hybrid.Encodes.sound {e : expr.Expr} {c : cnf.Cnf}
     {w : Std.U16 → Bool} (h : cnf_transform_hybrid.Encodes e c)
     (hw : Cnf.eval w (Cnf.contents c) = true) : evalPure w e = true := by
-  obtain ⟨s, s', body, hwf, hvars, hdefs, hrec, habs⟩ := h
+  obtain ⟨s, s', body, hwf, hvars, -, hdefs, hrec, habs⟩ := h
   -- `absClauses c` and `Cnf.contents c` are the same list (`absClauses_eq_contents`).
   have hw' : Cnf.eval w (absClauses c) = true := hw
   rw [habs, Cnf.eval_append] at hw'
@@ -754,7 +769,7 @@ theorem cnf_transform_hybrid.Encodes.complete {e : expr.Expr} {c : cnf.Cnf}
     {w : Std.U16 → Bool} (h : cnf_transform_hybrid.Encodes e c)
     (hsat : evalPure w e = true) :
     ∃ w', (∀ k ∈ varsOf e, w' k = w k) ∧ Cnf.eval w' (Cnf.contents c) = true := by
-  obtain ⟨s, s', body, hwf, hvars, hdefs, hrec, habs⟩ := h
+  obtain ⟨s, s', body, hwf, hvars, -, hdefs, hrec, habs⟩ := h
   obtain ⟨w', hag, hdefsev, hbody⟩ :=
     Hybrid.cnfRec_complete hwf hvars hrec w (by rw [hdefs]; simp [Cnf.eval])
   refine ⟨w', fun k hk => hag k (hvars k hk), ?_⟩
@@ -763,6 +778,54 @@ theorem cnf_transform_hybrid.Encodes.complete {e : expr.Expr} {c : cnf.Cnf}
   refine Bool.and_eq_true _ _ |>.mpr ⟨?_, hdefsev⟩
   rw [hbody]
   simp [hsat]
+
+/-- **How wide the encoded CNF is**: every variable of it is either one of `e`'s own,
+    below whatever bound `m` those satisfy, or a gate -- and there is at most one gate per
+    AST node, since the only thing that allocates one is `disjoin`'s call to `rename`.
+
+    This is what a caller that has to *size an array* by the CNF needs, and it is the one
+    fact `Encodes` grew a field for: the bound is on `s.next`, the counter the first gate
+    gets, and only `Renamer::new` knows it sits no higher than `e`'s variables force. -/
+theorem cnf_transform_hybrid.Encodes.vars_lt {e : expr.Expr} {c : cnf.Cnf}
+    (h : cnf_transform_hybrid.Encodes e c) {m : Nat}
+    (hm : ∀ k ∈ varsOf e, k.val < m) :
+    ∀ v ∈ cnfVars (Cnf.contents c), v.val < m + exprSize e := by
+  obtain ⟨s, s', body, hwf, hvars, hlub, hdefs, hrec, habs⟩ := h
+  have hnext : s'.next ≤ m + exprSize e :=
+    le_trans (Hybrid.cnfRec_next_le_add hrec) (by have := hlub m hm; omega)
+  have hbody := Hybrid.cnfRec_vars_lt hvars hrec
+  have hdefsv := Hybrid.cnfRec_wf hwf hvars hrec
+  intro v hv
+  rw [← absClauses_eq_contents, habs, cnfVars_append, List.mem_append] at hv
+  rcases hv with hv | hv
+  · exact Nat.lt_of_lt_of_le (hbody v hv) hnext
+  · exact Nat.lt_of_lt_of_le (hdefsv v hv) hnext
+
+/-- **How long its clauses are**: at most one literal per AST node, plus the `neg g` a
+    definition clause carries. -/
+theorem cnf_transform_hybrid.Encodes.clause_length_le {e : expr.Expr} {c : cnf.Cnf}
+    (h : cnf_transform_hybrid.Encodes e c) :
+    ∀ cl ∈ Cnf.contents c, cl.length ≤ exprSize e + 1 := by
+  obtain ⟨s, s', body, hwf, hvars, hlub, hdefs, hrec, habs⟩ := h
+  intro cl hcl
+  rw [← absClauses_eq_contents, habs, List.mem_append] at hcl
+  rcases hcl with hcl | hcl
+  · exact le_trans (Hybrid.cnfRec_clause_length_le hrec cl hcl) (Nat.le_succ _)
+  · exact Hybrid.cnfRec_defs_clause_length_le hrec (Nat.le_refl _)
+      (by rw [hdefs]; simp) cl hcl
+
+/-- **How many clauses it has**: the body is one clause per node, the definitions one per
+    node per naming. -/
+theorem cnf_transform_hybrid.Encodes.length_le {e : expr.Expr} {c : cnf.Cnf}
+    (h : cnf_transform_hybrid.Encodes e c) :
+    (Cnf.contents c).length ≤ exprSize e * exprSize e + exprSize e := by
+  obtain ⟨s, s', body, hwf, hvars, hlub, hdefs, hrec, habs⟩ := h
+  have hb := Hybrid.cnfRec_length_le hrec
+  have hd := Hybrid.cnfRec_defs_length_le hrec
+  rw [hdefs] at hd
+  rw [← absClauses_eq_contents, habs, List.length_append]
+  simp only [List.length_nil, Nat.zero_add] at hd
+  omega
 
 @[step]
 theorem cnf_transform_hybrid.to_cnf.spec (e : expr.Expr)
@@ -789,7 +852,8 @@ theorem cnf_transform_hybrid.to_cnf.spec (e : expr.Expr)
         core.result.Result.Insts.CoreOpsTry_traitTryTResultInfallibleE.branch]
       step*
       · exact ⟨absRenamer renamer, absRenamer renamer1, absClauses body, hwf,
-          by simpa using renamer_post2, by simp [absRenamer, absClauses, renamer_post1],
+          by simpa using renamer_post2, by simpa using renamer_post3,
+          by simp [absRenamer, absClauses, renamer_post1],
           r_post, by simp [absClauses, c_post]⟩
     · simp only [core.result.Result.Insts.CoreOpsTry_traitTry.branch,
         core.result.Result.Insts.CoreOpsTry_traitTryTResultInfallibleE.branch,
