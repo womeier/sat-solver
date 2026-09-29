@@ -26,6 +26,11 @@ ride along wherever a statement so much as *mentions* an extracted function hold
 #print axioms sat_cdcl.solve_sat_sound
 #print axioms sat_cdcl.solve_sat_complete
 
+/- The CNF roots, which are the ones that carry no hypotheses at all -- so what these
+print is the entire content of "`sat_cdcl::solve_cnf` is correct for every CNF". -/
+#print axioms sat_cdcl.solve_cnf_sound
+#print axioms sat_cdcl.solve_cnf_complete
+
 /- `#print axioms` above is informational -- it prints, it does not fail. These lines
 do fail the build, so "no `sorry`" is machine-checked rather than grep-checked, per
 theorem: everything listed here is proved outright. -/
@@ -42,6 +47,10 @@ assert_no_sorry sat_cdcl.Solver.pick_branch_var.spec
 assert_no_sorry sat_cdcl.Solver.decay.spec
 assert_no_sorry sat_cdcl.Solver.search_loop.spec
 assert_no_sorry sat_cdcl.Solver.search.spec
+assert_no_sorry sat_cdcl.MAX_CLAUSE_LEN.spec
+assert_no_sorry sat_cdcl.clauses_short.spec
+assert_no_sorry sat_cdcl.solve_cnf_unchecked_sound
+assert_no_sorry sat_cdcl.solve_cnf_unchecked_complete
 assert_no_sorry sat_cdcl.solve_cnf_sound
 assert_no_sorry sat_cdcl.solve_cnf_complete
 assert_no_sorry sat_cdcl.solve_sat_sound

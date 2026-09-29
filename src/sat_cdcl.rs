@@ -50,11 +50,23 @@
 //! 1-UIP conflict analysis, the solver invariant, and termination of the search.
 //! One thing to know when reading the code: the theorems are total-correctness
 //! triples, so every *checked* arithmetic operation in the extraction has to be
-//! proved not to overflow. That is why [`Solver::search`] increments
-//! `self.conflicts` with `checked_add` and answers [`SatResult::Unknown`] rather
-//! than asserting there is room -- the only provable bound on the conflicts still
+//! proved not to overflow. Rather than assume that, this module checks it, in
+//! all three places where the search can run out of something, and answers
+//! [`SatResult::Unknown`] when a check fires:
+//!
+//! - the conflict counter, via `self.conflicts.checked_add(1)`;
+//! - the clause vector, compared against `usize::MAX` before a learned clause is
+//!   pushed (learned clauses are never deleted, so it only grows);
+//! - the input's clause lengths, via [`clauses_short`], which is what
+//!   [`Solver::analyze`]'s `i32` literal count needs.
+//!
+//! That is why [`solve_cnf`]'s soundness and completeness theorems hold of *any*
+//! CNF, with no size hypothesis: the only provable bound on the conflicts still
 //! to come is exponential in the variable count, so at benchmark size there is no
-//! fixed width that suffices. The tests below are what stands in for a proof of
+//! fixed width that suffices, and a limit that has to exist is one that has to be
+//! reported. Only the input check is skippable ([`solve_cnf_unchecked`]), and
+//! skipping it leaves the verified statement behind. None of the three is
+//! measurable against the search. The tests below are what stands in for a proof of
 //! the parts the theorems do not reach: the pieces individually, a 300-instance
 //! random 3-SAT differential check against `sat_naive`, the pigeonhole family,
 //! and (in `tests/satlib.rs`) all 3000 SATLIB instances with every model
@@ -77,6 +89,29 @@ const DECAY_INTERVAL: u32 = 128;
 // last. Growth is what makes the restarts finite: a search that needs n
 // conflicts to finish is eventually given an interval longer than n.
 const FIRST_RESTART: u32 = 100;
+
+// The longest clause [`Solver::analyze`] can be handed. It counts a clause's
+// conflict-level literals in an `i32`, and marks at most one variable per trail
+// entry -- and the trail holds at most one entry per variable, of which there
+// are at most `2 ^ 16` -- so a clause plus a trail's worth of marks has to fit
+// an `i32`.
+//
+// Nothing real comes near this: a CNF holding a single clause of two billion
+// literals would exhaust memory in the parser first. The check exists so that
+// `solve_cnf`'s theorems can drop the hypothesis, not because the bound binds.
+const MAX_CLAUSE_LEN: usize = (i32::MAX as usize) - (1 << 16);
+
+// Whether every clause is short enough for `analyze`. This is the one size
+// limit that is a property of the *input* rather than of the search, so it is
+// checked once, up front, rather than maintained as an invariant.
+fn clauses_short(cnf: &Cnf) -> bool {
+    for clause in cnf.0.iter() {
+        if clause.0.len() > MAX_CLAUSE_LEN {
+            return false;
+        }
+    }
+    true
+}
 
 // What one clause has to say about the current assignment.
 enum Status {
@@ -479,6 +514,16 @@ impl Solver {
                     // records the new clause as the reason, so the next conflict
                     // analysis can resolve through this one.
                     let idx = self.clauses.len();
+                    // The clause vector is the search's other finite resource,
+                    // and it gets the same treatment as the conflict counter
+                    // above: one learned clause per conflict, never deleted
+                    // (indices into it are `reason` handles), so it too can run
+                    // out. Checking it is what lets the theorems drop the
+                    // "there is room for every clause still to be learned"
+                    // hypothesis -- an answer instead of an assumption.
+                    if idx == usize::MAX {
+                        return SatResult::Unknown;
+                    }
                     let asserting = learned.0[0].clone();
                     self.clauses.push(learned);
                     self.assign(asserting.var, !asserting.negated, Some(idx));
@@ -527,10 +572,36 @@ impl Solver {
 /// actually lives -- the `Expr` layer above it is just the encoding -- and
 /// because it is what a DIMACS front end wants.
 ///
-/// [`SatResult::Unknown`] if the search exhausted the `u32` conflict counter --
-/// 2^32 conflicts, which no instance here comes near, but which is what the
-/// verification needs an answer for rather than an assumption about.
+/// [`SatResult::Unknown`] if the search ran out of one of its finite resources:
+/// the `u32` conflict counter, the clause vector, or -- checked here, before
+/// the search starts -- a clause longer than [`MAX_CLAUSE_LEN`]. No instance
+/// here comes near any of the three, but each is something the verification
+/// needs an answer for rather than an assumption about.
+///
+/// This is the function `solve_cnf_sound` and `solve_cnf_complete` are about,
+/// and they assume nothing whatsoever: any `Cnf` at all, on any platform. See
+/// [`solve_cnf_unchecked`] for the way around the input check, and for what
+/// that costs.
 pub fn solve_cnf(cnf: &Cnf) -> SatResult<Vec<(u16, bool)>> {
+    if !clauses_short(cnf) {
+        return SatResult::Unknown;
+    }
+    solve_cnf_unchecked(cnf)
+}
+
+/// [`solve_cnf`] without the clause-length pre-pass.
+///
+/// **Not covered by the correctness theorems.** `Solver::analyze` counts a
+/// clause's conflict-level literals in an `i32`; on a clause longer than
+/// [`MAX_CLAUSE_LEN`] that count overflows, which is a panic in a debug build
+/// and a wrong answer in a release one. `solve_cnf` rules that out by checking,
+/// and this is the door out of the checked path.
+///
+/// The clause-vector check inside the search is *not* skipped here -- it is a
+/// single comparison per conflict, the same trade [`SatResult::Unknown`] is
+/// already paying for the conflict counter, and skipping it would buy nothing
+/// measurable.
+pub fn solve_cnf_unchecked(cnf: &Cnf) -> SatResult<Vec<(u16, bool)>> {
     let mut solver = Solver::new(cnf);
     match solver.solve() {
         SatResult::Unsat => return SatResult::Unsat,
@@ -791,6 +862,46 @@ fn solve_cnf_assigns_every_variable_on_success() {
         panic!("satisfiable")
     };
     assert_eq!(model.len(), 3);
+}
+
+#[test]
+fn max_clause_len_is_what_analyze_needs() {
+    // `Solver::analyze` counts conflict-level literals in an `i32` while at most
+    // `2 ^ 16` variables can be marked, so a clause plus a trail's worth of
+    // marks has to fit. This is `CnfShort` in `SatCdcl.lean`, and the two have
+    // to agree for the check to discharge the hypothesis.
+    assert_eq!(MAX_CLAUSE_LEN, 2_147_418_111);
+    assert_eq!(MAX_CLAUSE_LEN + (1 << 16), i32::MAX as usize);
+}
+
+#[test]
+fn clauses_short_accepts_ordinary_cnfs() {
+    assert!(clauses_short(&cnf(&[])));
+    assert!(clauses_short(&cnf(&[&[]])));
+    assert!(clauses_short(&cnf(&[
+        &[(false, 0), (true, 1)],
+        &[(true, 0), (false, 2)],
+    ])));
+
+    // The rejecting branch is not reachable from a test: it needs a clause of
+    // 2^31 - 65536 literals, which is some 12 GB of `Literal`s. That branch is
+    // what `solve_cnf_sound`'s case split covers instead.
+}
+
+#[test]
+fn the_checked_and_unchecked_entry_points_agree() {
+    // They differ only in the input pre-pass, which passes on every CNF small
+    // enough to build -- so on anything testable the two are the same function.
+    let sat = cnf(&[&[(false, 0), (false, 1)], &[(true, 0), (false, 2)]]);
+    let unsat = cnf(&[
+        &[(false, 0), (false, 1)],
+        &[(false, 0), (true, 1)],
+        &[(true, 0), (false, 1)],
+        &[(true, 0), (true, 1)],
+    ]);
+    assert_eq!(solve_cnf(&sat), solve_cnf_unchecked(&sat));
+    assert_eq!(solve_cnf(&unsat), solve_cnf_unchecked(&unsat));
+    assert_eq!(solve_cnf_unchecked(&unsat), SatResult::Unsat);
 }
 
 #[test]

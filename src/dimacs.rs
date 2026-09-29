@@ -1,11 +1,17 @@
 //! Reader for the DIMACS CNF format, which is what every SAT benchmark suite
 //! (SATLIB, the DIMACS challenge sets, the SAT competition archives) speaks.
 //!
-//! A formula is returned as an `Expr` -- a conjunction of disjunctions of
-//! (possibly negated) variables -- so the existing solvers can run on it
-//! unchanged. Feeding such an `Expr` through `cnf_transform_naive::to_cnf`
-//! costs nothing: it is already in CNF, so no `Disj` ever sits above a `Conj`
-//! and the distribution step never fires.
+//! [`parse_dimacs_cnf`] returns a [`Cnf`], which is what the format already is.
+//! That is the one a front end should call: `sat_cdcl::solve_cnf` takes a `Cnf`,
+//! and its correctness theorems assume nothing about it.
+//!
+//! [`parse_dimacs`] returns the same formula as an `Expr` -- a conjunction of
+//! disjunctions of (possibly negated) variables -- so the `Expr`-level solvers
+//! can run on it unchanged. Feeding such an `Expr` back through
+//! `cnf_transform_naive::to_cnf` costs nothing at run time (it is already in
+//! CNF, so no `Disj` ever sits above a `Conj` and the distribution step never
+//! fires) but it does cost a hypothesis: the naive transformation's worst-case
+//! blowup bound is what restricts `solve_sat`'s theorems to small expressions.
 //!
 //! Variables are `Expr::Variable(u16)`, so instances may use at most 65535
 //! variables; anything larger is rejected rather than silently truncated. That
@@ -15,6 +21,7 @@
 //! This module is excluded from the Lean extraction, like `expr.rs`'s parser:
 //! it is I/O plumbing around the verified core, not part of it.
 
+use crate::cnf::{Clause, Cnf, Literal};
 use crate::expr::Expr;
 use std::fmt;
 
@@ -55,16 +62,23 @@ impl fmt::Display for DimacsError {
     }
 }
 
-fn literal(n: i64) -> Result<Expr, DimacsError> {
+fn literal(n: i64) -> Result<Literal, DimacsError> {
     let var = n.abs();
     if var == 0 || var > MAX_VAR {
         return Err(DimacsError::VarOutOfRange(n));
     }
-    let atom = Expr::Variable(var as u16);
-    if n < 0 {
-        Ok(Expr::Neg(Box::new(atom)))
+    Ok(Literal {
+        var: var as u16,
+        negated: n < 0,
+    })
+}
+
+fn literal_expr(lit: &Literal) -> Expr {
+    let atom = Expr::Variable(lit.var);
+    if lit.negated {
+        Expr::Neg(Box::new(atom))
     } else {
-        Ok(atom)
+        atom
     }
 }
 
@@ -97,9 +111,31 @@ fn conjunction(clauses: Vec<Expr>) -> Expr {
 /// would otherwise read as an extra empty clause and turn every instance
 /// unsatisfiable).
 pub fn parse_dimacs(input: &str) -> Result<Expr, DimacsError> {
+    let cnf = parse_dimacs_cnf(input)?;
+    Ok(conjunction(
+        cnf.0
+            .iter()
+            .map(|cl| disjunction(cl.0.iter().map(literal_expr).collect()))
+            .collect(),
+    ))
+}
+
+/// Parses a DIMACS CNF formula into a [`Cnf`], which is what the format already
+/// is: a conjunction of disjunctions of literals, with none of the `Expr`
+/// layer's tree in between.
+///
+/// This is the function a front end should call. [`parse_dimacs`] goes on to
+/// build an `Expr`, and solving *that* means re-encoding it back to CNF through
+/// `sat_dpll::encode` -- whose naive fallback arm carries a worst-case blowup
+/// bound, and with it the only remaining size hypothesis on the solvers'
+/// correctness theorems. Handing the `Cnf` straight to `sat_cdcl::solve_cnf`
+/// skips the round trip and lands on the theorems that assume nothing.
+///
+/// Tolerates the same real-world sloppiness [`parse_dimacs`] does.
+pub fn parse_dimacs_cnf(input: &str) -> Result<Cnf, DimacsError> {
     let mut declared: Option<usize> = None;
-    let mut clauses: Vec<Expr> = Vec::new();
-    let mut current: Vec<Expr> = Vec::new();
+    let mut clauses: Vec<Clause> = Vec::new();
+    let mut current: Vec<Literal> = Vec::new();
     let mut in_clause = false;
 
     for line in input.lines() {
@@ -135,7 +171,7 @@ pub fn parse_dimacs(input: &str) -> Result<Expr, DimacsError> {
                 .parse()
                 .map_err(|_| DimacsError::BadToken(token.to_string()))?;
             if n == 0 {
-                clauses.push(disjunction(std::mem::take(&mut current)));
+                clauses.push(Clause(std::mem::take(&mut current)));
                 in_clause = false;
             } else {
                 current.push(literal(n)?);
@@ -155,7 +191,7 @@ pub fn parse_dimacs(input: &str) -> Result<Expr, DimacsError> {
         });
     }
 
-    Ok(conjunction(clauses))
+    Ok(Cnf(clauses))
 }
 
 #[cfg(test)]
@@ -173,6 +209,63 @@ mod tests {
         assert_eq!(evaluate(&expr, &val), Ok(true));
         val.insert(1, false);
         assert_eq!(evaluate(&expr, &val), Ok(false));
+    }
+
+    #[test]
+    fn parses_a_minimal_formula_to_cnf() {
+        // (1 ∨ ¬2) ∧ (2), as the clauses themselves rather than an `Expr`.
+        let cnf = parse_dimacs_cnf("p cnf 2 2\n1 -2 0\n2 0\n").unwrap();
+        assert_eq!(
+            cnf,
+            Cnf(vec![
+                Clause(vec![
+                    Literal {
+                        var: 1,
+                        negated: false
+                    },
+                    Literal {
+                        var: 2,
+                        negated: true
+                    },
+                ]),
+                Clause(vec![Literal {
+                    var: 2,
+                    negated: false
+                }]),
+            ])
+        );
+    }
+
+    #[test]
+    fn an_empty_clause_survives_into_the_cnf() {
+        // DIMACS `0` on its own is the empty clause, which is unsatisfiable.
+        // The `Expr` reading turns it into `False`; the `Cnf` reading keeps it
+        // as a clause with no literals, which is what `solve_cnf` refutes.
+        let cnf = parse_dimacs_cnf("p cnf 1 2\n1 0\n0\n").unwrap();
+        assert_eq!(cnf.0.len(), 2);
+        assert_eq!(cnf.0[1], Clause(vec![]));
+    }
+
+    #[test]
+    fn the_cnf_and_expr_readings_agree() {
+        // `parse_dimacs` is built on `parse_dimacs_cnf`, and this is what that
+        // is allowed to mean: the two describe the same formula, so a valuation
+        // satisfies one exactly when it satisfies the other.
+        let text = "p cnf 3 4\n1 -2 0\n2 3 0\n-1 -3 0\n-2 -3 1 0\n";
+        let cnf = parse_dimacs_cnf(text).unwrap();
+        let expr = parse_dimacs(text).unwrap();
+
+        for bits in 0u8..8 {
+            let mut val = Map::new();
+            for v in 1u16..=3 {
+                val.insert(v, bits & (1 << (v - 1)) != 0);
+            }
+            assert_eq!(
+                crate::cnf::eval_cnf(&cnf, &val),
+                evaluate(&expr, &val),
+                "valuation {bits:03b}"
+            );
+        }
     }
 
     #[test]

@@ -18,19 +18,24 @@ the hybrid, so `SatDpll.lean`'s two theorems consume `HybridExtraction.lean`'s
 `Encodes.sound`/`.complete` on their main arm and `Cnf.lean` only on the fallback
 arm `encode` takes when the hybrid runs out of gate variables.
 
-`SatCdcl.lean` does the same for `sat_cdcl::solve_sat`, through a tree of nine
-statements: `analyze.spec` (what 1-UIP conflict analysis computes, given a well-formed
+`SatCdcl.lean` does the same for `sat_cdcl::solve_sat`, through a tree of statements:
+`analyze.spec` (what 1-UIP conflict analysis computes, given a well-formed
 state), the four obligations that establish and preserve that state (`new`, `assign`,
 `propagate`, `backtrack`), `Solver.search.spec` (the CDCL loop -- soundness,
 completeness *and* termination, the last by a base-3 trail numeral paired with the room
-left in the conflict counter), the `solve_cnf` pair, and the two roots. All nine are
-proved.
+left in the conflict counter), `clauses_short.spec` (the input check), the `solve_cnf`
+pair, and the two roots. All of them are proved.
 
-Its roots carry the same size bound `sat_dpll`'s do and none of their own, because
-`sat_cdcl` checks its conflict counter (`checked_add`) rather than assuming it cannot
-overflow. What that costs is a third answer: `sat_cdcl::solve_sat` can return
+`sat_cdcl.solve_cnf_sound` and `solve_cnf_complete` carry **no hypotheses at all** -- any
+`cnf.Cnf`, on any platform. `sat_cdcl` checks each of the three things its search needs
+rather than assuming them: the conflict counter (`checked_add`), the clause vector
+(compared against `usize::MAX` before a learned clause is pushed) and the input's clause
+lengths (`clauses_short`). What that costs is a third answer: `solve_cnf` can return
 `SatResult::Unknown`, so its completeness theorem reads "never answers `Unsat` for a
-satisfiable formula" where the other two read "returns a model".
+satisfiable CNF" where `sat_naive`'s and `sat_dpll`'s read "returns a model".
+
+The `Expr`-layer roots still carry the size bound `sat_dpll`'s do, which belongs to
+`encode`'s naive fallback arm rather than to any search.
 `SatSolver/PrintAxioms.lean` is where the per-theorem claims are checked. -/
 import SatSolver.Verification.Prelude
 import SatSolver.Verification.MapLemmas

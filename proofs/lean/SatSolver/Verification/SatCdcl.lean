@@ -3,23 +3,42 @@ analysis at the heart of it.
 
 `sat_cdcl.solve_sat_sound` and `solve_sat_complete` are worded exactly as `SatDpll.lean`'s
 proved pair, because CDCL is meant to be a drop-in replacement for DPLL on the identical
-CNF. Beneath them is a tree of nine statements, and all nine are proved: `analyze.spec`
+CNF. Beneath them is a tree of statements, and all of them are proved: `analyze.spec`
 (1-UIP conflict analysis, given a well-formed state), the four obligations that establish
 and preserve that state (`new`, `assign`, `propagate`, `backtrack`),
-`Solver.search.spec` (the CDCL loop -- soundness, completeness *and* termination), the
-`solve_cnf` pair (CDCL's contract on a CNF, which is what a DIMACS front end calls) and
-the two roots. `conflictState.hypotheses` exhibits a state satisfying every hypothesis
-`analyze.spec` takes, so that theorem is not vacuous either.
+`Solver.search.spec` (the CDCL loop -- soundness, completeness *and* termination),
+`clauses_short.spec` (the input check), the `solve_cnf` pair (CDCL's contract on a CNF,
+which is what a DIMACS front end calls) and the two roots. `conflictState.hypotheses`
+exhibits a state satisfying every hypothesis `analyze.spec` takes, so that theorem is not
+vacuous either.
 
-The roots carry the same size bound `sat_dpll`'s do -- `2 ^ exprSize e ≤ usize::MAX`, from
-the worst-case CNF blowup -- and nothing beyond it about the *search*. That is what
-`self.conflicts.checked_add(1)` in the Rust buys: the conflict counter's headroom is checked
-at run time instead of proved from a bound on the input, so the search's own arithmetic
-costs no hypothesis and the theorems reach benchmark-sized CNFs. The price is a third
-answer. `solve_cnf` can return `SatResult::Unknown` -- only with `conflicts = u32::MAX`,
-which `search.spec` records -- so completeness reads "a satisfiable CNF is never called
-unsatisfiable" rather than "a satisfiable CNF gets a model". See "The termination measure"
+**`sat_cdcl.solve_cnf_sound` and `solve_cnf_complete` carry no hypotheses at all.** They
+hold of any `cnf.Cnf`, on a 32-bit platform as much as a 64-bit one, which is the point of
+the exercise: a correctness statement about a solver should not come with a size limit on
+what it is allowed to be run on. Getting there meant *checking* each of the three things
+the search needs rather than assuming them, and answering `SatResult::Unknown` when a
+check fires:
+
+* the conflict counter, via `self.conflicts.checked_add(1)`;
+* the clause vector, compared against `usize::MAX` before a learned clause is pushed;
+* the input itself, via `clauses_short` -- `CnfShort`, no clause longer than
+  `2 ^ 31 - 65537` literals, which `analyze`'s `i32` literal count needs.
+
+The last of the three is the only one that is a property of the input rather than of the
+search, so it is the only one a caller can sensibly opt out of:
+`sat_cdcl::solve_cnf_unchecked` skips it, and `solve_cnf_unchecked_sound`/`_complete` are
+the same theorems with `CnfShort` put back as a hypothesis. That is what the
+`--no-limit-checks` flag on the DIMACS front end selects, and it is outside the guarantee.
+
+The price of all this is the third answer, and it is a real one: completeness reads "a
+satisfiable CNF is never called `Unsat`" rather than "a satisfiable CNF gets a model". It
+cannot hide a cheap give-up -- `search.spec` records that an `Unknown` comes with
+`conflicts = u32::MAX` or a database of `usize::MAX` clauses. See "The termination measure"
 and `Solver.searchMeasure`.
+
+The `Expr`-layer roots still carry the size bound `sat_dpll`'s do --
+`2 ^ exprSize e ≤ usize::MAX`, from the worst-case CNF blowup of `encode`'s naive fallback
+arm. That one is the encoder's, not the search's, and removing it is a separate job.
 
 `SatSolver/PrintAxioms.lean` checks `sorry`-freedom per theorem. The two
 `native_decide` axioms the roots report come in with the extraction, not with any proof:
@@ -238,11 +257,12 @@ structure Solver.WF (s : sat_cdcl.Solver) : Prop where
       it after `Solver::new`, which is why every proof below discharges this field by
       rewriting with "`occurs` is untouched". -/
   occurs_length : s.occurs.val.length = s.value.val.length
-  /-- **Clauses are short.** The only assumption here that is about the *input* rather
+  /-- **Clauses are short.** The only field here that is about the *input* rather
       than about the solver: `analyze` counts conflict-level literals in an `i32` and
       pushes the rest onto `Vec`s, and a clause is scanned in one pass, so a clause plus
       a trail's worth of marks has to fit. At most `2 ^ 31 - 65537` literals per clause
-      on any platform -- the parser would run out of memory first. -/
+      on any platform -- the parser would run out of memory first, which is why checking
+      it costs nothing measurable (`CnfShort`, and `sat_cdcl::clauses_short`). -/
   db_len : ∀ d ∈ Solver.db s, d.length + 2 ^ 16 ≤ Std.I32.max
   /-- **Every variable a clause mentions has a slot.** `Solver::new` sizes the arrays from
       the CNF it is given, and a learned clause is built out of variables that are on the
@@ -2318,7 +2338,14 @@ in this directory uses it today.
 
 /-- The clause-length bound `Solver.WF.db_len` asks for, as a statement about the input:
     `Solver.new` copies the CNF's clauses across unchanged, so this is what makes that
-    field hold of the state it returns. -/
+    field hold of the state it returns.
+
+    This is no longer a hypothesis of anything public. `sat_cdcl::clauses_short` decides
+    it (`clauses_short.spec`), `solve_cnf` runs it before building the solver, and
+    `solve_cnf_sound`/`_complete` case-split on the answer -- so what used to be an
+    assumption about the caller's CNF is now a branch in the code. It survives as the
+    hypothesis of `solve_cnf_unchecked_sound`/`_complete`, which is exactly what skipping
+    the check costs. -/
 def CnfShort (c : List (List cnf.Literal)) : Prop :=
   ∀ cl ∈ c, cl.length + 2 ^ 16 ≤ Std.I32.max
 
@@ -5130,9 +5157,6 @@ structure Solver.Searching (s : sat_cdcl.Solver) (db₀ : List (List cnf.Literal
       is what keeps `since_restart += 1` in range without a check of its own: it is reset
       more often than `conflicts` and incremented no more often. -/
   window : since_restart.val ≤ s.conflicts.val
-  /-- The clause vector has room for every clause still to be learned: one per conflict,
-      and the counter says how many conflicts are left. -/
-  db_room : (Solver.db s).length + (Std.U32.max - s.conflicts.val) ≤ Std.Usize.max
 
 /-- `since_restart + 1` is in range whenever `self.conflicts + 1` was -- which is what
     `checked_add` has just established when the loop reaches it. -/
@@ -5185,8 +5209,7 @@ theorem Solver.Searching.propagate {s s' : sat_cdcl.Solver} {db₀ : List (List 
       vars := ?_
       levels := ?_
       budget_ge := hinv.budget_ge
-      window := ?_
-      db_room := ?_ }
+      window := ?_ }
   · intro v hv
     obtain ⟨h1, h2⟩ := hinv.vars v hv
     exact ⟨by rw [hlen]; exact h1, by rw [hocc]; exact h2⟩
@@ -5196,9 +5219,6 @@ theorem Solver.Searching.propagate {s s' : sat_cdcl.Solver} {db₀ : List (List 
       by rw [(hframe v hv).1]; exact hvlvl, by rw [(hframe v hv).2]; exact hvrsn⟩
   · have h := hinv.window
     rw [hconf]
-    omega
-  · have h := hinv.db_room
-    rw [hdb, hconf]
     omega
 
 /-- **A restart keeps the invariant**, and pays for the trail it throws away with the
@@ -5229,8 +5249,7 @@ theorem Solver.Searching.restart {s s' : sat_cdcl.Solver} {db₀ : List (List cn
       vars := ?_
       levels := ?_
       budget_ge := ?_
-      window := ?_
-      db_room := ?_ }
+      window := ?_ }
   · intro cl _ _ hpos
     rw [hdl] at hpos
     exact absurd hpos (by omega)
@@ -5243,9 +5262,6 @@ theorem Solver.Searching.restart {s s' : sat_cdcl.Solver} {db₀ : List (List cn
   · have h := hinv.budget_ge
     omega
   · omega
-  · have h := hinv.db_room
-    rw [hdb, hconf]
-    omega
 
 /-- **A decision keeps the invariant** and climbs the trail: one more digit where the
     numeral had a `0`. `hfix` is `propagate`'s answer -- nothing is falsified -- and it is
@@ -5288,8 +5304,7 @@ theorem Solver.Searching.decide {s s' : sat_cdcl.Solver} {db₀ : List (List cnf
       vars := ?_
       levels := ?_
       budget_ge := hinv.budget_ge
-      window := ?_
-      db_room := ?_ }
+      window := ?_ }
   -- the only literal that can have become false is the one just decided
   · intro cl hcl hall _
     obtain ⟨lit, hlit, hnf⟩ := hfix cl (by rw [hdb] at hcl; exact hcl)
@@ -5312,9 +5327,6 @@ theorem Solver.Searching.decide {s s' : sat_cdcl.Solver} {db₀ : List (List cnf
       exact ⟨var, by rw [htrail]; simp, by rw [hlvl, hkeq], hrsn⟩
   · have h := hinv.window
     rw [hconf]
-    omega
-  · have h := hinv.db_room
-    rw [hdb, hconf]
     omega
 
 /-- Only the conflict counter and the activity scores changed, so the trail numeral did not. -/
@@ -5418,7 +5430,6 @@ theorem Solver.Searching.learn {s₂ s₄ s₅ : sat_cdcl.Solver} {db₀ : List 
     (hbudget : 1 ≤ budget.val)
     (hwindow : since_restart.val ≤ c)
     (hconf₂ : s₂.conflicts.val = c + 1)
-    (hdbroom : (Solver.db s₂).length + (Std.U32.max - c) ≤ Std.Usize.max)
     (hsr : since_restart'.val = since_restart.val + 1)
     (hent : Entails (Solver.db s₂) learned)
     (hlfalse : ∀ lit ∈ learned, Solver.litFalse s₂ lit)
@@ -5530,8 +5541,7 @@ theorem Solver.Searching.learn {s₂ s₄ s₅ : sat_cdcl.Solver} {db₀ : List 
       vars := ?_
       levels := ?_
       budget_ge := hbudget
-      window := ?_
-      db_room := ?_ }
+      window := ?_ }
   -- the learned clause is entailed by the problem, so learning stays sound
   · intro cl hcl
     rw [h5db, h4db] at hcl
@@ -5579,12 +5589,6 @@ theorem Solver.Searching.learn {s₂ s₄ s₅ : sat_cdcl.Solver} {db₀ : List 
     · rw [(h5frame v hne).2.1, hlvl, hvlvl]
     · rw [(h5frame v hne).2.2, h4rsn v hv4, hvrsn]
   · rw [hsr, h5conf, h4conf, hconf₂]
-    omega
-  · have hlen : (Solver.db s₅).length = (Solver.db s₂).length + 1 := by
-      rw [h5db, h4db]
-      simp
-    have hc2 : s₂.conflicts.val ≤ Std.U32.max := by scalar_tac
-    rw [hlen, h5conf, h4conf, hconf₂]
     omega
 
 /-- **A level begins no earlier than its own index.** While every open level has a decision,
@@ -5669,7 +5673,8 @@ theorem sat_cdcl.Solver.search_loop.spec (s : sat_cdcl.Solver)
                 (∀ v b, Solver.valueOf s' v = some b → w v = b) →
                 Cnf.eval w db₀ = true)
         ∧ (res = sat_result.SatResult.Unsat → ∀ w : Std.U16 → Bool, Cnf.eval w db₀ ≠ true)
-        ∧ (res = sat_result.SatResult.Unknown → s'.conflicts.val = Std.U32.max) ⦄ := by
+        ∧ (res = sat_result.SatResult.Unknown →
+            s'.conflicts.val = Std.U32.max ∨ (Solver.db s').length = Std.Usize.max) ⦄ := by
   unfold sat_cdcl.Solver.search_loop
   step with (sat_cdcl.Solver.propagate.spec s hinv.wf hinv.falsified
     (fun hpos => hinv.levels _ hpos (Nat.le_refl _)))
@@ -5829,13 +5834,22 @@ theorem sat_cdcl.Solver.search_loop.spec (s : sat_cdcl.Solver)
         intro w; simp [Solver.reasonOf, hr3]
       step with (sat_cdcl.Solver.backtrack.spec self3 backjump hwf3)
       step*
-      -- the clause vector has room for the learned clause: one conflict's worth, and
-      -- `checked_add` has just said there was one to spend
-      · have h := hinv1.db_room
-        have hdblen : (Solver.db self4).length = (Solver.db self1).length := by
-          rw [self4_post2, hdb3, hdb2]
-        simp only [Solver.db, List.length_map] at hdblen h
-        omega
+      -- **the clause vector is full.** The search gives up here rather than pushing a
+      -- clause the vector has no room for -- the same answer, and for the same reason,
+      -- as the exhausted conflict counter above. Nothing is learned and nothing is
+      -- assigned, so the state is `backtrack`'s and the frame conditions are its
+      -- postconditions; what the `Unknown` answer reports is the right-hand disjunct.
+      · have hfull : idx = core.num.Usize.MAX := ‹idx = core.num.Usize.MAX›
+        refine ⟨self4_post1, ?_, ?_, by simp, by simp, ?_⟩
+        · intro cl hcl
+          rw [self4_post2, hdb3, hdb2] at hcl
+          exact hinv1.sound cl hcl
+        · rw [self4_post5, hv3, hv2, o_post8]
+        · intro _
+          refine Or.inr ?_
+          have : idx.val = Std.Usize.max := by rw [hfull]; simp [core.num.Usize.MAX]
+          simp only [Solver.db, List.length_map]
+          omega
       · -- name the learned clause's head, which is the literal the assertion assigns
         obtain ⟨uip, rest, hshape, huiplvl, hrestpos, hrestlvl⟩ :
             ∃ uip rest, learned.val = uip :: rest
@@ -5944,7 +5958,6 @@ theorem sat_cdcl.Solver.search_loop.spec (s : sat_cdcl.Solver)
             exact ⟨w, by rw [ht2]; exact hw, by rw [hlvl2]; exact hwlvl,
               by rw [hrsn2]; exact hwrsn⟩)
           hinv1.budget_ge hinv1.window (by rw [hconf2]; exact hcval)
-          (by rw [hdb2]; exact hinv1.db_room)
           since_restart1_post learned_post1 learned_post2 hshape huiplvl learned_post7
           self4_post1 (by rw [self4_post2, hdb3]) h4len (by rw [self4_post6, ho3])
           (by rw [self4_post10, hcl3]) hdl4
@@ -5990,12 +6003,15 @@ termination_by Solver.searchMeasure s since_restart
     clauses and the phases. That is also where the termination argument lives, and it is
     the one thing here `SatDpll.lean` has no analogue for.
 
-    Five hypotheses this statement did not have, and one answer it did not have.
+    Four hypotheses this statement did not have, and one answer it did not have.
 
-    The answer first: `search` is three-valued, and `Unknown` is what it says when
-    `self.conflicts.checked_add(1)` comes back `None`. That is not a hedge -- the
-    postcondition pins it down: an `Unknown` answer comes with `conflicts = u32::MAX`, so
-    the solver gave up only after `2 ^ 32` conflicts, and nothing weaker can produce it.
+    The answer first: `search` is three-valued, and `Unknown` is what it says when either
+    of its two finite resources runs out -- `self.conflicts.checked_add(1)` coming back
+    `None`, or the clause vector already standing at `usize::MAX` when a learned clause
+    is about to be pushed. That is not a hedge -- the postcondition pins both down: an
+    `Unknown` answer comes with `conflicts = u32::MAX` *or* a database of `usize::MAX`
+    clauses, so the solver gave up only after exhausting one of the two, and nothing
+    weaker can produce it.
 
     Two of the hypotheses make the statement false as it was written:
 
@@ -6007,12 +6023,8 @@ termination_by Solver.searchMeasure s since_restart
       nothing decreases -- the loop would not terminate, and a `⦃ ⦄` triple rules that out.
       `Solver::solve` passes `FIRST_RESTART = 100`.
 
-    One is bookkeeping, and one is not about machine integers at all:
+    And one is not about machine integers at all:
 
-    * `hdbroom`: pushing a learned clause needs the clause vector to have room, and the
-      search learns one clause per conflict, of which there are at most `u32::MAX` left.
-      So the clause count plus `u32::MAX` has to fit a `usize` -- which, at 64 bits against
-      32, is about as close to free as a hypothesis gets.
     * `hlevels`: **every open level was opened by a decision.** `Solver.WF` cannot state
       it: `search` pushes `trail_lim` and only *then* assigns, so the state `assign` is
       handed has an empty top level. It is an invariant of the loop
@@ -6029,12 +6041,13 @@ termination_by Solver.searchMeasure s since_restart
     state `Solver::new` returns -- it is vacuous, which is the point.
 
     What is *not* here is the point of the exercise. There is no bound on the number of
-    variables, none on the search measure, and none on the restart budget's growth. The
-    previous version of this theorem had all three, because the conflict counter's headroom
-    had to be *proved* rather than checked, and the only bound available for it was the
-    termination measure -- exponential in the variable count, so the theorem held for about
-    ten variables and said nothing about anything one would actually run the solver on.
-    `checked_add` buys the difference, and the `Unknown` answer is what it costs. -/
+    variables, none on the search measure, none on the restart budget's growth, and none
+    on the clause vector. Earlier versions of this theorem had all four, because each
+    resource's headroom had to be *proved* rather than checked, and the only bound
+    available for any of them was the termination measure -- exponential in the variable
+    count, so the theorem held for about ten variables and said nothing about anything one
+    would actually run the solver on. `checked_add` and the clause-vector comparison buy
+    the difference, and the `Unknown` answer is what they cost. -/
 theorem sat_cdcl.Solver.search.spec (s : sat_cdcl.Solver)
     (db₀ : List (List cnf.Literal)) (first_restart : Std.U32)
     (hwf : Solver.WF s)
@@ -6045,7 +6058,6 @@ theorem sat_cdcl.Solver.search.spec (s : sat_cdcl.Solver)
     (hfix : ∀ cl ∈ Solver.db s, (∀ lit ∈ cl, Solver.litFalse s lit) →
       0 < Solver.decisionLevel s →
       ∃ lit ∈ cl, Solver.levelOf s lit.var = Solver.decisionLevel s)
-    (hdbroom : (Solver.db s).length + (Std.U32.max - s.conflicts.val) ≤ Std.Usize.max)
     (hvars : ∀ v ∈ cnfVars db₀,
       v.val < s.value.val.length ∧ s.occurs.val[v.val]? = some true)
     (hlevels : ∀ k, 0 < k → k ≤ Solver.decisionLevel s → ∃ v ∈ s.trail.val,
@@ -6061,7 +6073,8 @@ theorem sat_cdcl.Solver.search.spec (s : sat_cdcl.Solver)
                 (∀ v b, Solver.valueOf s' v = some b → w v = b) →
                 Cnf.eval w db₀ = true)
         ∧ (res = sat_result.SatResult.Unsat → ∀ w : Std.U16 → Bool, Cnf.eval w db₀ ≠ true)
-        ∧ (res = sat_result.SatResult.Unknown → s'.conflicts.val = Std.U32.max) ⦄ := by
+        ∧ (res = sat_result.SatResult.Unknown →
+            s'.conflicts.val = Std.U32.max ∨ (Solver.db s').length = Std.Usize.max) ⦄ := by
   unfold sat_cdcl.Solver.search
   refine sat_cdcl.Solver.search_loop.spec s first_restart 0#u32 db₀
     { wf := hwf
@@ -6072,16 +6085,72 @@ theorem sat_cdcl.Solver.search.spec (s : sat_cdcl.Solver)
       vars := hvars
       levels := hlevels
       budget_ge := hbudget
-      window := by simp
-      db_room := hdbroom }
+      window := by simp }
 
 /-! #### The CNF layer
 
 Where CDCL's contract actually lives (`solve_cnf`'s own doc comment says so, and it is
-what a DIMACS front end calls). Soundness is stated over *any* valuation agreeing with
-the returned model, which is only a fair statement because the model fixes every
+what the DIMACS front end in `src/main.rs` calls -- on the `Cnf` the parser built, rather
+than on an `Expr` re-encoded back to CNF, precisely so that these theorems and not the
+`Expr` layer's are what covers it). Soundness is stated over *any* valuation agreeing
+with the returned model, which is only a fair statement because the model fixes every
 variable the CNF mentions -- hence the second conjunct, which the `Expr` layer above
-then needs in its own right, to read gate variables back out of the map. -/
+then needs in its own right, to read gate variables back out of the map.
+
+Four theorems, in two pairs. `solve_cnf_unchecked_sound`/`_complete` are the work, and
+take `CnfShort` of the input; `solve_cnf_sound`/`_complete` are those with
+`clauses_short` in front, and take nothing at all. -/
+
+/-- **The clause-length limit, as a number.** `MAX_CLAUSE_LEN` is
+    `i32::MAX as usize - (1 << 16)`, and neither step can fail: `Usize.max` is `U32.max`
+    or `U64.max` (`Std.Usize.bounds_eq`), and `i32::MAX` fits under both. -/
+@[step]
+theorem sat_cdcl.MAX_CLAUSE_LEN.spec :
+    sat_cdcl.MAX_CLAUSE_LEN ⦃ (r : Std.Usize) => r.val + 2 ^ 16 = Std.I32.max ⦄ := by
+  unfold sat_cdcl.MAX_CLAUSE_LEN
+  step* <;>
+    cases System.Platform.numBits_eq <;>
+    simp_all [Std.Usize.size, Std.Usize.numBits, Std.I32.rMax, Std.I32.max,
+      Std.I32.numBits]
+
+/-- **The input check's loop**, over the clauses it has not looked at yet: `true` exactly
+    when every one of them is short enough for `analyze` to count its literals in an
+    `i32`. Stated as an `iff` because both directions are worth having -- the `true`
+    direction is what discharges `Solver.WF.db_len` below, and the `false` direction is
+    what says the check cannot reject a CNF the solver would have handled. -/
+@[step]
+theorem sat_cdcl.clauses_short_loop.spec (iter : core.slice.iter.Iter cnf.Clause) :
+    sat_cdcl.clauses_short_loop iter ⦃ (r : Bool) =>
+      (r = true ↔ ∀ cl ∈ iter.val, cl.val.length + 2 ^ 16 ≤ Std.I32.max) ⦄ := by
+  unfold sat_cdcl.clauses_short_loop
+  step*
+  all_goals
+    obtain ⟨l, hl⟩ := iter
+    cases l with
+    | nil => simp_all
+    | cons e es =>
+      -- `MAX_CLAUSE_LEN + 2 ^ 16 = i32::MAX`, so the comparison the code makes on the
+      -- head clause is exactly the bound `CnfShort` asks of it
+      first
+      | (simp_all; done)
+      | (simp_all; omega)
+termination_by iter.val.length
+decreasing_by
+  all_goals
+    obtain ⟨l, hl⟩ := iter
+    cases l with
+    | nil => simp_all
+    | cons e es => simp_all
+
+/-- **`clauses_short` decides `CnfShort`.** The one hypothesis `solve_cnf` used to carry
+    about its input, turned into a `Bool` the code computes. -/
+@[step]
+theorem sat_cdcl.clauses_short.spec (cc : cnf.Cnf) :
+    sat_cdcl.clauses_short cc ⦃ (r : Bool) => (r = true ↔ CnfShort (Cnf.contents cc)) ⦄ := by
+  unfold sat_cdcl.clauses_short
+  step*
+  rw [r_post, iter_post, s_post]
+  simp [CnfShort, Cnf.contents]
 
 /-- **The model-reading loop**: one pass over the slot array, pushing every assigned slot
     as a `(u16, bool)` pair. Two things are claimed of the result, and both are needed:
@@ -6093,17 +6162,17 @@ then needs in its own right, to read gate variables back out of the map. -/
     `hbound` is spent on the `v as u16` cast, exactly as in `pick_branch_var`: without
     it the pair recorded for a slot past `2 ^ 16` would name a different variable. -/
 @[step]
-theorem sat_cdcl.solve_cnf_loop.spec (iter : core.ops.range.Range Std.Usize)
+theorem sat_cdcl.solve_cnf_unchecked_loop.spec (iter : core.ops.range.Range Std.Usize)
     (sv : sat_cdcl.Solver) (model : alloc.vec.Vec (Std.U16 × Bool))
     (hend : iter.«end».val ≤ sv.value.val.length)
     (hbound : sv.value.val.length ≤ 2 ^ 16)
     (hroom : model.val.length + (iter.«end».val - iter.start.val) ≤ Usize.max) :
-    sat_cdcl.solve_cnf_loop iter sv model ⦃ (m' : alloc.vec.Vec (Std.U16 × Bool)) =>
+    sat_cdcl.solve_cnf_unchecked_loop iter sv model ⦃ (m' : alloc.vec.Vec (Std.U16 × Bool)) =>
       (∀ p ∈ model.val, p ∈ m'.val)
       ∧ (∀ p ∈ m'.val, p ∈ model.val ∨ Solver.valueOf sv p.1 = some p.2)
       ∧ ∀ v : Std.U16, iter.start.val ≤ v.val → v.val < iter.«end».val →
           ∀ b, Solver.valueOf sv v = some b → (v, b) ∈ m'.val ⦄ := by
-  unfold sat_cdcl.solve_cnf_loop
+  unfold sat_cdcl.solve_cnf_unchecked_loop
   step*
   -- the cursor is past the end: the coverage claim is vacuous
   · obtain ⟨hge, -⟩ := o_post3 ‹o = none›
@@ -6164,36 +6233,31 @@ decreasing_by
     omega
 
 
-/-- **Soundness of `sat_cdcl::solve_cnf`**: a returned model satisfies the CNF, and
-    covers every variable it mentions.
+/-- **Soundness of `sat_cdcl::solve_cnf_unchecked`**: a returned model satisfies the CNF,
+    and covers every variable it mentions.
 
-    Two hypotheses. `CnfShort` is the one about the input the whole file rests on -- no
-    clause holds more than `2 ^ 31 - 65537` literals -- and `hdbroom` is the clause vector
-    having room for the `u32::MAX` clauses the search could still learn, which at 64 bits
-    against 32 rules out nothing that fits in memory.
+    One hypothesis, and it is the only property of the *input* anything here needs:
+    `CnfShort`, no clause longer than `2 ^ 31 - 65537` literals, which is what
+    `Solver.WF.db_len` asks so that `analyze` can count a clause's conflict-level literals
+    in an `i32`. `solve_cnf` establishes it by checking, and `solve_cnf_sound` below is
+    this theorem with the check in front of it; this is the door out of the checked path,
+    and the hypothesis is what going through it obliges the caller to know.
 
-    What is gone is the arithmetic. This theorem used to take a bound `n` on the CNF's
-    variables together with `9 ^ n + 2 * 3 ^ n ≤ u32::MAX` -- the search measure's room in
-    the conflict counter -- which held up to about ten variables. `checked_add` on the
-    counter removes the need for it, at the price of the `Unknown` answer, about which this
-    direction says nothing: soundness is a claim about `Sat`, and `Unknown` is not `Sat`.
-
-    `hfix` is not among the hypotheses either. `search.spec` asks only that a falsified
+    `hfix` is not among the hypotheses. `search.spec` asks only that a falsified
     clause mention the current level, and `Solver::new` returns a state at level 0, so the
     hypothesis is vacuous -- which is exactly why it is stated that way: "no clause is
     falsified" fails for a CNF containing the *empty* clause, and `solve_cnf` has to answer
     for that CNF too (it answers `Unsat`). -/
-theorem sat_cdcl.solve_cnf_sound (cc : cnf.Cnf)
-    (hshort : CnfShort (Cnf.contents cc))
-    (hdbroom : (Cnf.contents cc).length + Std.U32.max ≤ Std.Usize.max) :
-    sat_cdcl.solve_cnf cc ⦃ (result : sat_result.SatResult (alloc.vec.Vec
+theorem sat_cdcl.solve_cnf_unchecked_sound (cc : cnf.Cnf)
+    (hshort : CnfShort (Cnf.contents cc)) :
+    sat_cdcl.solve_cnf_unchecked cc ⦃ (result : sat_result.SatResult (alloc.vec.Vec
       (Std.U16 × Bool))) =>
         ∀ model, result = sat_result.SatResult.Sat model →
           (∀ w : Std.U16 → Bool, (∀ p ∈ model.val, w p.1 = p.2) →
               Cnf.eval w (Cnf.contents cc) = true)
           ∧ (∀ v ∈ cnfVars (Cnf.contents cc), ∃ b, (v, b) ∈ model.val)
           ∧ (∀ p ∈ model.val, ∀ q ∈ model.val, p.1 = q.1 → p.2 = q.2) ⦄ := by
-  unfold sat_cdcl.solve_cnf sat_cdcl.Solver.solve sat_cdcl.Solver.num_vars
+  unfold sat_cdcl.solve_cnf_unchecked sat_cdcl.Solver.solve sat_cdcl.Solver.num_vars
   step with (sat_cdcl.Solver.new.spec cc hshort)
   -- the state `new` returns satisfies every hypothesis of `search.spec`: the counter is at
   -- 0, the database is the problem, and the level is 0, which is what makes the two
@@ -6203,7 +6267,7 @@ theorem sat_cdcl.solve_cnf_sound (cc : cnf.Cnf)
     (fun cl hcl => Entails.of_mem (by rw [solver_post2] at hcl; exact hcl))
     (fun cl hcl => by rw [solver_post2]; exact hcl)
     (fun cl hcl hall hpos => absurd hpos (by rw [solver_post4]; omega))
-    (by rw [solver_post2, solver_post9]; simpa using hdbroom) solver_post6
+    solver_post6
     (fun k hk hle => absurd hle (by rw [solver_post4]; omega)))
   step*
   intro m hm
@@ -6232,15 +6296,16 @@ theorem sat_cdcl.solve_cnf_sound (cc : cnf.Cnf)
     rw [hkey, hqv] at hpv
     exact (Option.some.inj hpv).symm
 
-/-- **Completeness of `sat_cdcl::solve_cnf`**: a satisfiable CNF is never called
+/-- **Completeness of `sat_cdcl::solve_cnf_unchecked`**: a satisfiable CNF is never called
     unsatisfiable.
 
-    Same two input bounds as the soundness direction, and this is where the `Unknown`
-    answer is paid for. The old statement was "a satisfiable CNF gets a model", and it held
-    of CNFs of about ten variables. This one holds of every CNF, and says one thing less:
-    the answer is not `Unsat`. It is `Sat` unless the search burned through `2 ^ 32`
-    conflicts first, which `search.spec`'s last conjunct is what records -- but `solve_cnf`
-    does not return the counter, so that is as much as can be said here.
+    Same input bound as the soundness direction, and this is where the `Unknown` answer is
+    paid for. The old statement was "a satisfiable CNF gets a model", and it held of CNFs
+    of about ten variables. This one holds of every CNF, and says one thing less: the
+    answer is not `Unsat`. It is `Sat` unless the search burned through `2 ^ 32` conflicts
+    or filled the clause vector first, which `search.spec`'s last conjunct is what records
+    -- but `solve_cnf_unchecked` returns neither counter, so that is as much as can be said
+    here.
 
     That weakening is not an artifact of how this is proved. A `u32` cannot count the
     conflicts of a 250-variable run, the clause database grows by one clause per conflict
@@ -6248,22 +6313,75 @@ theorem sat_cdcl.solve_cnf_sound (cc : cnf.Cnf)
     a cap that can be hit is an answer that has to be reported. The choice is between a
     theorem that covers the benchmarks and says "not `Unsat`" and one that says "a model"
     about ten-variable formulas. -/
-theorem sat_cdcl.solve_cnf_complete (cc : cnf.Cnf) (w : Std.U16 → Bool)
+theorem sat_cdcl.solve_cnf_unchecked_complete (cc : cnf.Cnf) (w : Std.U16 → Bool)
     (hshort : CnfShort (Cnf.contents cc))
-    (hdbroom : (Cnf.contents cc).length + Std.U32.max ≤ Std.Usize.max)
     (hsat : Cnf.eval w (Cnf.contents cc) = true) :
-    sat_cdcl.solve_cnf cc ⦃ (result : sat_result.SatResult (alloc.vec.Vec
+    sat_cdcl.solve_cnf_unchecked cc ⦃ (result : sat_result.SatResult (alloc.vec.Vec
       (Std.U16 × Bool))) => result ≠ sat_result.SatResult.Unsat ⦄ := by
-  unfold sat_cdcl.solve_cnf sat_cdcl.Solver.solve sat_cdcl.Solver.num_vars
+  unfold sat_cdcl.solve_cnf_unchecked sat_cdcl.Solver.solve sat_cdcl.Solver.num_vars
   step with (sat_cdcl.Solver.new.spec cc hshort)
   step with (sat_cdcl.Solver.search.spec solver (Cnf.contents cc) sat_cdcl.FIRST_RESTART
     solver_post1 solver_post7 (by simp [sat_cdcl.FIRST_RESTART])
     (fun cl hcl => Entails.of_mem (by rw [solver_post2] at hcl; exact hcl))
     (fun cl hcl => by rw [solver_post2]; exact hcl)
     (fun cl hcl hall hpos => absurd hpos (by rw [solver_post4]; omega))
-    (by rw [solver_post2, solver_post9]; simpa using hdbroom) solver_post6
+    solver_post6
     (fun k hk hle => absurd hle (by rw [solver_post4]; omega)))
   step*
+
+/-- **Soundness of `sat_cdcl::solve_cnf`, with no hypotheses at all**: for *any* `Cnf`, on
+    any platform, a returned model satisfies it and covers every variable it mentions.
+
+    This is the statement the whole file is for, and what it took to reach it was to stop
+    assuming the three things the search needs and check them instead. The conflict
+    counter is `checked_add`; the clause vector is compared against `usize::MAX` before a
+    learned clause is pushed; and the one property of the *input* --  `CnfShort`, no
+    clause longer than `2 ^ 31 - 65537` literals -- is what `clauses_short` decides here,
+    in the pass this proof splits on. Each of the three answers `Unknown` rather than
+    failing, which is why there is nothing left to hypothesise.
+
+    The `Unknown` answer is what pays for it, and this direction says nothing about it:
+    soundness is a claim about `Sat`. -/
+theorem sat_cdcl.solve_cnf_sound (cc : cnf.Cnf) :
+    sat_cdcl.solve_cnf cc ⦃ (result : sat_result.SatResult (alloc.vec.Vec
+      (Std.U16 × Bool))) =>
+        ∀ model, result = sat_result.SatResult.Sat model →
+          (∀ w : Std.U16 → Bool, (∀ p ∈ model.val, w p.1 = p.2) →
+              Cnf.eval w (Cnf.contents cc) = true)
+          ∧ (∀ v ∈ cnfVars (Cnf.contents cc), ∃ b, (v, b) ∈ model.val)
+          ∧ (∀ p ∈ model.val, ∀ q ∈ model.val, p.1 = q.1 → p.2 = q.2) ⦄ := by
+  unfold sat_cdcl.solve_cnf
+  step with sat_cdcl.clauses_short.spec cc
+  split
+  -- the check passed, so `CnfShort` holds of the input and the search may run
+  · exact sat_cdcl.solve_cnf_unchecked_sound cc (b_post.mp ‹_›)
+  -- the check rejected the input: the answer is `Unknown`, and `Unknown` is not `Sat`
+  · simp
+
+/-- **Completeness of `sat_cdcl::solve_cnf`, with no hypotheses either**: a satisfiable
+    CNF -- any satisfiable CNF -- is never called unsatisfiable.
+
+    What this says is one thing less than "a satisfiable CNF gets a model", and the
+    missing thing is `Unknown`. That weakening is forced rather than chosen: the clause
+    database grows by one clause per conflict and never shrinks (indices into it are
+    `reason` handles), so *some* finite cap exists whatever the counter's width, and a cap
+    that can be reached is an outcome that has to be reported. The choice is between a
+    theorem that covers uf250-1065 and says "not `Unsat`", and one that says "a model"
+    about ten-variable formulas.
+
+    `search.spec`'s last conjunct is what keeps the weaker statement honest: an `Unknown`
+    from the search comes with `conflicts = u32::MAX` or a clause vector at `usize::MAX`,
+    so a give-up cannot be cheap. `solve_cnf` does not return either, so that is as much
+    as can be said here. -/
+theorem sat_cdcl.solve_cnf_complete (cc : cnf.Cnf) (w : Std.U16 → Bool)
+    (hsat : Cnf.eval w (Cnf.contents cc) = true) :
+    sat_cdcl.solve_cnf cc ⦃ (result : sat_result.SatResult (alloc.vec.Vec
+      (Std.U16 × Bool))) => result ≠ sat_result.SatResult.Unsat ⦄ := by
+  unfold sat_cdcl.solve_cnf
+  step with sat_cdcl.clauses_short.spec cc
+  split
+  · exact sat_cdcl.solve_cnf_unchecked_complete cc w (b_post.mp ‹_›) hsat
+  · simp
 
 /-- **`solve_sat_with` reading the model into the map.** Three things, and the third is
     the reason the second exists: keys already present stay present; a value already
@@ -6409,10 +6527,7 @@ functionality conjunct instead. -/
     for some ten of them, and removing it is what `checked_add` and the `Unknown` answer
     were for. -/
 theorem sat_cdcl.solve_sat_sound (e : expr.Expr) (hbound : 2 ^ exprSize e ≤ Usize.max)
-    (hquad : exprSize e * exprSize e + exprSize e + 1 ≤ Usize.max)
-    (hshort : exprSize e + 1 + 2 ^ 16 ≤ Std.I32.max)
-    (hdbroom : exprSize e * exprSize e + exprSize e + 2 ^ exprSize e
-      + Std.U32.max ≤ Std.Usize.max) :
+    (hquad : exprSize e * exprSize e + exprSize e + 1 ≤ Usize.max) :
     sat_cdcl.solve_sat e ⦃ (result : sat_result.SatResult expr.Map) =>
       ∀ v, result = sat_result.SatResult.Sat v →
         expr.evaluate e v ⦃ (r : core.result.Result Bool Unit) =>
@@ -6424,13 +6539,7 @@ theorem sat_cdcl.solve_sat_sound (e : expr.Expr) (hbound : 2 ^ exprSize e ≤ Us
   cases x with
   | Ok c =>
     have hEnc : cnf_transform_hybrid.Encodes e c := by simpa using x_post
-    have hshortC : CnfShort (Cnf.contents c) := by
-      intro cl hcl
-      have h := cnf_transform_hybrid.Encodes.clause_length_le hEnc cl hcl
-      omega
-    have hlenC : (Cnf.contents c).length ≤ exprSize e * exprSize e + exprSize e :=
-      cnf_transform_hybrid.Encodes.length_le hEnc
-    step with (sat_cdcl.solve_cnf_sound c hshortC (by omega))
+    step with (sat_cdcl.solve_cnf_sound c)
     step*
     obtain ⟨hsearch, hcov, hfunm⟩ := cnf1_post model ‹cnf1 = sat_result.SatResult.Sat model›
     unfold alloc.vec.Vec.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter
@@ -6446,13 +6555,7 @@ theorem sat_cdcl.solve_sat_sound (e : expr.Expr) (hbound : 2 ^ exprSize e ≤ Us
     simp
   | Err u =>
     step*
-    have hshortC : CnfShort (Cnf.contents cnf1) := by
-      intro cl hcl
-      have h := cnfPure_clause_length_le e false cl (by rw [← cnf1_post]; exact hcl)
-      omega
-    have hlenC : (Cnf.contents cnf1).length ≤ 2 ^ exprSize e := by
-      rw [cnf1_post]; exact cnfPure_length_le e false
-    step with (sat_cdcl.solve_cnf_sound cnf1 hshortC (by omega))
+    step with (sat_cdcl.solve_cnf_sound cnf1)
     step*
     obtain ⟨hsearch, hcov, hfunm⟩ := sr_post model ‹sr = sat_result.SatResult.Sat model›
     unfold alloc.vec.Vec.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter
@@ -6486,9 +6589,6 @@ theorem sat_cdcl.solve_sat_sound (e : expr.Expr) (hbound : 2 ^ exprSize e ≤ Us
 theorem sat_cdcl.solve_sat_complete (e : expr.Expr) (w : Std.U16 → Bool)
     (hbound : 2 ^ exprSize e ≤ Usize.max)
     (hquad : exprSize e * exprSize e + exprSize e + 1 ≤ Usize.max)
-    (hshort : exprSize e + 1 + 2 ^ 16 ≤ Std.I32.max)
-    (hdbroom : exprSize e * exprSize e + exprSize e + 2 ^ exprSize e
-      + Std.U32.max ≤ Std.Usize.max)
     (hsat : evalPure w e = true) :
     sat_cdcl.solve_sat e ⦃ (result : sat_result.SatResult expr.Map) =>
       result ≠ sat_result.SatResult.Unsat ⦄ := by
@@ -6499,27 +6599,15 @@ theorem sat_cdcl.solve_sat_complete (e : expr.Expr) (w : Std.U16 → Bool)
   cases x with
   | Ok c =>
     have hEnc : cnf_transform_hybrid.Encodes e c := by simpa using x_post
-    have hshortC : CnfShort (Cnf.contents c) := by
-      intro cl hcl
-      have h := cnf_transform_hybrid.Encodes.clause_length_le hEnc cl hcl
-      omega
-    have hlenC : (Cnf.contents c).length ≤ exprSize e * exprSize e + exprSize e :=
-      cnf_transform_hybrid.Encodes.length_le hEnc
     obtain ⟨w', -, hw'⟩ := cnf_transform_hybrid.Encodes.complete hEnc hsat
-    step with (sat_cdcl.solve_cnf_complete c w' hshortC (by omega) hw')
+    step with (sat_cdcl.solve_cnf_complete c w' hw')
     unfold alloc.vec.Vec.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter
     step*
   | Err u =>
     step*
-    have hshortC : CnfShort (Cnf.contents cnf1) := by
-      intro cl hcl
-      have h := cnfPure_clause_length_le e false cl (by rw [← cnf1_post]; exact hcl)
-      omega
-    have hlenC : (Cnf.contents cnf1).length ≤ 2 ^ exprSize e := by
-      rw [cnf1_post]; exact cnfPure_length_le e false
     have hcnf : Cnf.eval w (Cnf.contents cnf1) = true := by
       rw [cnf1_post, Cnf.eval_cnfPure, hsat]; simp
-    step with (sat_cdcl.solve_cnf_complete cnf1 w hshortC (by omega) hcnf)
+    step with (sat_cdcl.solve_cnf_complete cnf1 w hcnf)
     unfold alloc.vec.Vec.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter
     step*
 

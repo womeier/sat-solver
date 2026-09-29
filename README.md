@@ -7,10 +7,18 @@ All three are verified end to end - soundness and completeness, machine-checked,
 - `sat_dpll` (DPLL on the CNF: unit propagation plus splitting)
 - `sat_cdcl` (DPLL plus conflict-driven clause learning).
 
-`sat_cdcl` has a third answer, `SatResult::Unknown`, which it gives when the `u32`
-conflict counter is exhausted; its completeness theorem is correspondingly "never answers
+`sat_cdcl` has a third answer, `SatResult::Unknown`, which it gives when one of its three
+finite resources runs out; its completeness theorem is correspondingly "never answers
 `Unsat` for a satisfiable formula" where the other two say "returns a model". That is what
-lets it be verified with no bound on the search; the trade is spelled out under Todo below.
+buys the headline property:
+
+> **`sat_cdcl::solve_cnf`'s soundness and completeness theorems carry no hypotheses at
+> all** — no bound on the variables, the clauses, the search, or the platform.
+
+Rather than assume the three things the search needs, the code checks each and reports
+the failure: the conflict counter (`checked_add`), the clause vector (compared against
+`usize::MAX` before a learned clause is pushed) and the input's clause lengths. None of
+the three is measurable against the search. The trade is spelled out under Todo below.
 
 The specification — soundness and completeness for all three solvers — lives in
 [`proofs/lean/SatSolver/Verification/ProofObligations.lean`](proofs/lean/SatSolver/Verification/ProofObligations.lean),
@@ -18,6 +26,24 @@ which collects the theorems proved in
 [`SatNaive.lean`](proofs/lean/SatSolver/Verification/SatNaive.lean),
 [`SatDpll.lean`](proofs/lean/SatSolver/Verification/SatDpll.lean) and
 [`SatCdcl.lean`](proofs/lean/SatSolver/Verification/SatCdcl.lean).
+
+## Command line
+
+```
+cargo run --release -- FILE.cnf          # or DIMACS on stdin
+```
+
+Reads DIMACS CNF, prints `s SATISFIABLE` / `s UNSATISFIABLE` / `s UNKNOWN` with a `v` line
+on success, and exits 10 / 20 / 0 as the SAT competitions do. The formula goes to
+`solve_cnf` as the `Cnf` the parser built, not as an `Expr` re-encoded back to CNF, so the
+answers are inside the hypothesis-free theorems above. A returned model is checked against
+the formula before it is printed — the solver is verified, the I/O around it is not.
+
+`--no-limit-checks` skips the clause-length pre-pass. **It voids the verified guarantee
+for that run**, and it is not a performance feature: the pre-pass measured within noise of
+zero on every SATLIB set (+0.4% on uf20-91, where a whole solve is 24 µs, and negative on
+the larger ones). It exists because the choice belongs to whoever is running the solver,
+not because there is a reason to make it.
 
 ## Benchmarks
 
@@ -56,46 +82,49 @@ Known limits worth fixing (or at least documenting) alongside the above:
       `reason` handles) and does not minimize learned clauses. All three are
       engineering, not algorithm — the numbers above are what the algorithm alone
       buys.
-- [ ] **The verified guarantee doesn't cover benchmark-sized `Expr`s.** Every
-      soundness/completeness theorem here carries a size hypothesis. `sat_naive`,
-      `sat_dpll` and `sat_cdcl` all carry `2 ^ exprSize e ≤ Usize.max` — formulas
+- [ ] **The `Expr` layer still carries a size hypothesis.** `sat_naive`, `sat_dpll` and
+      `sat_cdcl`'s `solve_sat` theorems all carry `2 ^ exprSize e ≤ Usize.max` — formulas
       of at most ~63 AST nodes — inherited from the worst-case CNF blowup bound in
-      `Cnf.lean`, which `encode`'s naive-transform fallback arm can hit. That is
-      now the *only* binding one, and it is an artifact of the `Expr` layer, not
-      of any solver: `sat_cdcl::solve_cnf`, the entry point a DIMACS front end
-      calls, is verified with no bound on the CNF at all. So `solve_cnf_sound` and
-      `solve_cnf_complete` do cover `uf250-1065`.
+      `Cnf.lean`, which `encode`'s naive-transform fallback arm can hit. It is an artifact
+      of the *encoder*, not of any solver, and it is now the only one left:
+      `sat_cdcl::solve_cnf`, the entry point the CLI and any DIMACS front end call, is
+      verified with no hypotheses whatsoever, so it covers `uf250-1065` and everything
+      else. Removing it means making `cnf_transform_naive` fallible and threading the
+      failure through `Cnf.lean`'s `cnf_rec.spec` induction — the same trade again, one
+      layer up.
 
-      Getting there cost one thing, and it is worth spelling out because it is a
-      real trade rather than bookkeeping. `⦃ ⦄` is total correctness and rules out
-      failure, so proving anything about `search` means proving the extraction's
-      *checked* `self.conflicts += 1` never overflows. The only bound available on
-      the conflicts still to come is the termination measure, which is exponential
-      in the variable count — so as a hypothesis it read
-      `9^n + 2·3^n ≤ u32::MAX`, true for `n ≤ 10`, and the theorems spoke about
-      ten-variable formulas. `sat_cdcl` now *checks* the counter instead:
-      `self.conflicts.checked_add(1)` and a third answer,
-      `SatResult::Unknown`, when it is exhausted. Two instructions per conflict
-      (`cmp eax, -1` and a never-taken `je`) against ~85 µs of work, so the cost
-      is not measurable.
+      Getting the CNF layer there is worth spelling out, because it is a real trade rather
+      than bookkeeping. `⦃ ⦄` is total correctness and rules out failure, so proving
+      anything about `search` means proving that its checked arithmetic cannot overflow.
+      There were three such places, and the bound available for each was the termination
+      measure — exponential in the variable count. As hypotheses they read
+      `9^n + 2·3^n ≤ u32::MAX`, true for `n ≤ 10`. Worse, the clause-vector one
+      (`clauses + u32::MAX ≤ usize::MAX`) is *false* on a 32-bit platform for any
+      non-empty CNF, so the theorem was vacuous there.
 
-      What it buys: soundness and "never answers `Unsat` for a satisfiable CNF"
-      become unconditional. What it costs: completeness weakens from "a
-      satisfiable formula gets a model" to "a satisfiable formula does not get
+      `sat_cdcl` now checks all three instead — `self.conflicts.checked_add(1)`, a
+      comparison of the clause vector against `usize::MAX`, and a `clauses_short` pass
+      over the input — and answers `SatResult::Unknown` when one fires. The cost is not
+      measurable: two instructions per conflict for the counter, one more for the vector,
+      and one pass over the input that benchmarked within noise of zero.
+
+      What it buys: soundness and "never answers `Unsat` for a satisfiable CNF" become
+      unconditional, for every CNF and every platform. What it costs: completeness weakens
+      from "a satisfiable formula gets a model" to "a satisfiable formula does not get
       `Unsat`" — it gets a model or `Unknown`, and `Unknown` only with
-      `conflicts = u32::MAX`, which `search.spec` records, so the weaker statement
-      cannot hide a cheap give-up. And the termination argument's outer half is now
-      "at most `2^32` conflicts, because the code counts them" rather than "the
-      restart budget grows geometrically, so restarts run out". The geometric
-      growth is still in the code and still what makes the solver fast; it is just
-      no longer what the proof leans on.
+      `conflicts = u32::MAX` or a database of `usize::MAX` clauses, which `search.spec`
+      records, so the weaker statement cannot hide a cheap give-up. And the termination
+      argument's outer half is now "at most `2^32` conflicts, because the code counts
+      them" rather than "the restart budget grows geometrically, so restarts run out". The
+      geometric growth is still in the code and still what makes the solver fast; it is
+      just no longer what the proof leans on.
 
-      That weakening is forced, not chosen. The clause database grows by one
-      learned clause per conflict and never shrinks (clause indices are `reason`
-      handles — see above), `Vec::push` needs the length to fit a `usize`, and the
-      only provable bound on the conflicts of a 250-variable run is exponential. So
-      some finite cap exists whatever the counter's width, and a cap that can be
-      reached is an outcome that has to be reported.
+      That weakening is forced, not chosen. The clause database grows by one learned
+      clause per conflict and never shrinks (clause indices are `reason` handles — see
+      above), `Vec::push` needs the length to fit a `usize`, and the only provable bound on
+      the conflicts of a 250-variable run is exponential. So some finite cap exists
+      whatever the counter's width, and a cap that can be reached is an outcome that has to
+      be reported.
 
 - [ ] **No UNSAT proof output.** Competitions require DRAT proofs checked by
       `drat-trim`, because an `UNSAT` answer is otherwise unverifiable. The

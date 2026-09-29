@@ -168,7 +168,33 @@ loop — and the four state-invariant obligations `Solver.new.spec`/`assign.spec
 **All nine are proved, `sorry`-free**, checked per theorem by `assert_no_sorry` in
 `SatSolver/PrintAxioms.lean`; the roots report the standard trio plus the two
 `native_decide` axioms the extraction brings in for `analyze_loop0`'s two `.expect`
-messages. The order was leaves-up, and each layer sent one requirement down to the one
+messages.
+
+> **Since then (2026-09-29): the CNF roots carry no hypotheses at all.** The principle is
+> that a correctness statement should not come with a size limit — where the code needs a
+> limit, the code should check it and report the failure. `sat_cdcl` now does that in all
+> three places it can run out of something: the conflict counter
+> (`self.conflicts.checked_add(1)`), the clause vector (compared against `usize::MAX`
+> before a learned clause is pushed) and the input's clause lengths (`clauses_short`,
+> specified by `clauses_short.spec` and deciding `CnfShort`). Each answers
+> `SatResult::Unknown` rather than failing, so `sat_cdcl.solve_cnf_sound` and
+> `solve_cnf_complete` now take a `cnf.Cnf` and nothing else.
+>
+> Two of those were previously hypotheses of `solve_cnf_sound`, and one of them was worse
+> than merely restrictive: `clauses + u32::MAX ≤ usize::MAX` is *false* on a 32-bit
+> platform for any non-empty CNF (`Usize.max = U32.max` there, per `Usize.bounds_eq`), so
+> the theorem was vacuous on 32-bit rather than just narrow. Checking is what makes it say
+> something everywhere.
+>
+> The tree grew accordingly: `Solver.Searching` lost its `db_room` field,
+> `Solver.Searching.learn` lost `hdbroom`, `search.spec`'s `Unknown` conjunct weakened from
+> `conflicts = u32::MAX` to that *or* a database of `usize::MAX` clauses, and the old roots
+> live on as `solve_cnf_unchecked_sound`/`_complete` — the same theorems with `CnfShort`
+> put back, which is precisely what `sat_cdcl::solve_cnf_unchecked` (and the CLI's
+> `--no-limit-checks`) costs. The `Expr`-layer `hbound`/`hquad` are untouched: they belong
+> to `sat_dpll::encode`'s naive fallback arm, not to any search.
+>
+> Cost: unmeasurable. The pre-pass benchmarked within noise of zero on every SATLIB set. The order was leaves-up, and each layer sent one requirement down to the one
 below — which is the real argument for stating the tree before proving it: the corrections
 below were all found by a proof that could not close.
 `Solver.new.spec` went first because it is the cheap leaf: five loop specs for the three passes
