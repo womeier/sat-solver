@@ -193,7 +193,12 @@ impl Solver {
 
     fn status(&self, clause: usize) -> Status {
         let mut unassigned: Option<Literal> = None;
-        for lit in self.clauses[clause].0.iter() {
+        // By index rather than `.iter()`: aeneas cannot translate an early
+        // `return` out of a loop whose iterator was built from an indexed place,
+        // which is what `self.clauses[clause].0.iter()` is. `analyze` loops by
+        // index for the same reason.
+        for j in 0..self.clauses[clause].0.len() {
+            let lit = &self.clauses[clause].0[j];
             match self.lit_value(lit) {
                 Some(true) => return Status::Silent,
                 Some(false) => {}
@@ -232,21 +237,32 @@ impl Solver {
     // The rescan-everything shape is the honest O(clauses) version of what
     // watched literals do; see the module docs.
     fn propagate(&mut self) -> Option<usize> {
-        let mut progress = true;
-        while progress {
-            progress = false;
-            for i in 0..self.clauses.len() {
-                match self.status(i) {
-                    Status::Conflict => return Some(i),
-                    Status::Unit(lit) => {
-                        self.assign(lit.var, !lit.negated, Some(i));
-                        progress = true;
-                    }
-                    Status::Silent => {}
+        // One flat loop rather than "repeat a full pass until nothing changed":
+        // a cursor that wraps back to 0 whenever the pass it just finished
+        // assigned something. The passes, and their order, are exactly the
+        // nested version's -- but a `return` out of an *inner* loop is what
+        // aeneas cannot translate, and this shape has no inner loop.
+        let mut i = 0;
+        let mut progress = false;
+        loop {
+            if i == self.clauses.len() {
+                if !progress {
+                    return None;
                 }
+                progress = false;
+                i = 0;
+                continue;
             }
+            match self.status(i) {
+                Status::Conflict => return Some(i),
+                Status::Unit(lit) => {
+                    self.assign(lit.var, !lit.negated, Some(i));
+                    progress = true;
+                }
+                Status::Silent => {}
+            }
+            i += 1;
         }
-        None
     }
 
     fn bump(&mut self, var: u16) {

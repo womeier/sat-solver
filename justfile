@@ -31,7 +31,13 @@ satlib:
 satlib-test *args:
     cargo test --release --test satlib -- --ignored --nocapture --test-threads=1 {{args}}
 
-# Extract sat_naive/sat_dpll (and their dependencies) to proofs/lean.
+# Extract sat_naive/sat_dpll/sat_cdcl (and their dependencies) to proofs/lean.
+# Every function in those modules is translated: aeneas rejects a `return` out of an
+# *inner* loop, which is why `sat_cdcl::Solver::propagate` is one flat loop with a
+# wrapping cursor rather than nested passes, and why `status` indexes its clause
+# instead of iterating it. Charon's `--exclude` does not match inherent-impl methods,
+# so a function aeneas cannot translate cannot simply be skipped -- it would land in
+# `Funs.lean` as a `sorry`.
 # main.rs is moved aside for the duration: charon treats whichever cargo target it
 # compiles as "primary" and gives it full bodies, everything else becomes an opaque
 # dependency reference — so a bin target alongside the lib silently starves the lib's
@@ -59,7 +65,7 @@ extract:
         --exclude crate::sat_dpll::SAT_SOLVER_DPLL_NAIVE \
         --exclude crate::sat_dpll::SAT_SOLVER_DPLL_TSEITIN \
         --exclude crate::sat_dpll::SAT_SOLVER_DPLL_HYBRID \
-        --exclude crate::sat_cdcl \
+        --exclude crate::sat_cdcl::SAT_SOLVER_CDCL \
         --opaque 'crate::expr::{impl core::fmt::Debug for crate::expr::Map}' \
         --opaque 'crate::expr::{impl core::fmt::Debug for crate::expr::Expr}' \
         --opaque 'crate::expr::{impl core::fmt::Display for crate::expr::Expr}' \

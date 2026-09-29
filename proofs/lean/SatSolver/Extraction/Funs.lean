@@ -1341,6 +1341,1002 @@ def expr.evaluate
       expr.evaluate.closure.Insts.CoreOpsFunctionFnOnceTupleBoolBool r ()
 partial_fixpoint
 
+/-- [sat_solver::sat_cdcl::DECAY_INTERVAL]
+    Source: 'src/sat_cdcl.rs', lines 63:0-63:32 -/
+@[global_simps, irreducible] def sat_cdcl.DECAY_INTERVAL : Std.U32 := 128#u32
+
+/-- [sat_solver::sat_cdcl::FIRST_RESTART]
+    Source: 'src/sat_cdcl.rs', lines 68:0-68:31 -/
+@[global_simps, irreducible] def sat_cdcl.FIRST_RESTART : Std.U32 := 100#u32
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::new]: loop 1:
+    Source: 'src/sat_cdcl.rs', lines 131:12-135:13 -/
+@[rust_loop]
+def sat_cdcl.Solver.new_loop0_loop0
+  (iter : core.slice.iter.Iter cnf.Literal) (num_vars : Std.Usize) :
+  RustM Std.Usize
+  := do
+  let (o, iter1) ←
+    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
+  match o with
+  | core.option.Option.None => ok num_vars
+  | core.option.Option.Some lit =>
+    let i ← lift (UScalar.cast .Usize lit.var)
+    let i1 ← i + 1#usize
+    if i1 > num_vars
+    then
+      let i2 ← lift (UScalar.cast .Usize lit.var)
+      let num_vars1 ← i2 + 1#usize
+      sat_cdcl.Solver.new_loop0_loop0 iter1 num_vars1
+    else sat_cdcl.Solver.new_loop0_loop0 iter1 num_vars
+partial_fixpoint
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::new]: loop 0:
+    Source: 'src/sat_cdcl.rs', lines 130:8-136:9 -/
+@[rust_loop]
+def sat_cdcl.Solver.new_loop0
+  (iter : core.slice.iter.Iter cnf.Clause) (num_vars : Std.Usize) :
+  RustM Std.Usize
+  := do
+  let (o, iter1) ←
+    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
+  match o with
+  | core.option.Option.None => ok num_vars
+  | core.option.Option.Some clause =>
+    let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref clause
+    let iter2 ← core.slice.Slice.iter s
+    let num_vars1 ← sat_cdcl.Solver.new_loop0_loop0 iter2 num_vars
+    sat_cdcl.Solver.new_loop0 iter1 num_vars1
+partial_fixpoint
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::new]: loop 2:
+    Source: 'src/sat_cdcl.rs', lines 145:8-153:9 -/
+@[rust_loop]
+def sat_cdcl.Solver.new_loop1
+  (iter : core.ops.range.Range Std.Usize)
+  (value : alloc.vec.Vec (core.option.Option Bool))
+  (level : alloc.vec.Vec Std.Usize)
+  (reason : alloc.vec.Vec (core.option.Option Std.Usize))
+  (phase : alloc.vec.Vec Bool) (activity : alloc.vec.Vec Std.U32)
+  (seen : alloc.vec.Vec Bool) (occurs : alloc.vec.Vec Bool) :
+  RustM ((alloc.vec.Vec (core.option.Option Bool)) × (alloc.vec.Vec Std.Usize)
+    × (alloc.vec.Vec (core.option.Option Std.Usize)) × (alloc.vec.Vec Bool)
+    × (alloc.vec.Vec Std.U32) × (alloc.vec.Vec Bool) × (alloc.vec.Vec Bool))
+  := do
+  let (o, iter1) ←
+    core.ops.range.Range.Insts.CoreIterTraitsIteratorIterator.next
+      core.Usize.Insts.CoreIterRangeStep iter
+  match o with
+  | core.option.Option.None =>
+    ok (value, level, reason, phase, activity, seen, occurs)
+  | core.option.Option.Some _ =>
+    let value1 ← alloc.vec.Vec.push value core.option.Option.None
+    let level1 ← alloc.vec.Vec.push level 0#usize
+    let reason1 ← alloc.vec.Vec.push reason core.option.Option.None
+    let phase1 ← alloc.vec.Vec.push phase false
+    let activity1 ← alloc.vec.Vec.push activity 0#u32
+    let seen1 ← alloc.vec.Vec.push seen false
+    let occurs1 ← alloc.vec.Vec.push occurs false
+    sat_cdcl.Solver.new_loop1 iter1 value1 level1 reason1 phase1 activity1
+      seen1 occurs1
+partial_fixpoint
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::new]: loop 4:
+    Source: 'src/sat_cdcl.rs', lines 155:12-157:13 -/
+@[rust_loop]
+def sat_cdcl.Solver.new_loop2_loop0
+  (iter : core.slice.iter.Iter cnf.Literal) (occurs : alloc.vec.Vec Bool) :
+  RustM (alloc.vec.Vec Bool)
+  := do
+  let (o, iter1) ←
+    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
+  match o with
+  | core.option.Option.None => ok occurs
+  | core.option.Option.Some lit =>
+    let i ← lift (UScalar.cast .Usize lit.var)
+    let (_, index_mut_back) ←
+      alloc.vec.Vec.Insts.CoreOpsIndexIndexMut.index_mut
+        (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT Bool) occurs i
+    let occurs1 := index_mut_back true
+    sat_cdcl.Solver.new_loop2_loop0 iter1 occurs1
+partial_fixpoint
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::new]: loop 3:
+    Source: 'src/sat_cdcl.rs', lines 154:8-158:9 -/
+@[rust_loop]
+def sat_cdcl.Solver.new_loop2
+  (iter : core.slice.iter.Iter cnf.Clause) (occurs : alloc.vec.Vec Bool) :
+  RustM (alloc.vec.Vec Bool)
+  := do
+  let (o, iter1) ←
+    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
+  match o with
+  | core.option.Option.None => ok occurs
+  | core.option.Option.Some clause =>
+    let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref clause
+    let iter2 ← core.slice.Slice.iter s
+    let occurs1 ← sat_cdcl.Solver.new_loop2_loop0 iter2 occurs
+    sat_cdcl.Solver.new_loop2 iter1 occurs1
+partial_fixpoint
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::new]:
+    Source: 'src/sat_cdcl.rs', lines 125:4-174:5 -/
+def sat_cdcl.Solver.new (cnf1 : cnf.Cnf) : RustM sat_cdcl.Solver := do
+  let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref cnf1
+  let iter ← core.slice.Slice.iter s
+  let num_vars ← sat_cdcl.Solver.new_loop0 iter 0#usize
+  let value ← alloc.vec.Vec.new (core.option.Option Bool)
+  let level ← alloc.vec.Vec.new Std.Usize
+  let reason ← alloc.vec.Vec.new (core.option.Option Std.Usize)
+  let phase ← alloc.vec.Vec.new Bool
+  let activity ← alloc.vec.Vec.new Std.U32
+  let (value1, level1, reason1, phase1, activity1, seen, occurs) ←
+    sat_cdcl.Solver.new_loop1 { start := 0#usize, «end» := num_vars } value
+      level reason phase activity phase phase
+  let s1 ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref cnf1
+  let iter1 ← core.slice.Slice.iter s1
+  let occurs1 ← sat_cdcl.Solver.new_loop2 iter1 occurs
+  let v ←
+    alloc.vec.Vec.Insts.CoreCloneClone.clone cnf.Clause.Insts.CoreCloneClone
+      cnf1
+  let i ← alloc.vec.Vec.len cnf1
+  let v1 ← alloc.vec.Vec.new Std.U16
+  ok
+    {
+      clauses := v,
+      problem_clauses := i,
+      value := value1,
+      level := level1,
+      reason := reason1,
+      phase := phase1,
+      activity := activity1,
+      occurs := occurs1,
+      seen,
+      trail := v1,
+      trail_lim := level,
+      conflicts := 0#u32
+    }
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::num_vars]:
+    Source: 'src/sat_cdcl.rs', lines 176:4-178:5 -/
+def sat_cdcl.Solver.num_vars (self : sat_cdcl.Solver) : RustM Std.Usize := do
+  alloc.vec.Vec.len self.value
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::decision_level]:
+    Source: 'src/sat_cdcl.rs', lines 180:4-182:5 -/
+def sat_cdcl.Solver.decision_level
+  (self : sat_cdcl.Solver) : RustM Std.Usize := do
+  alloc.vec.Vec.len self.trail_lim
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::lit_value]:
+    Source: 'src/sat_cdcl.rs', lines 187:4-192:5 -/
+def sat_cdcl.Solver.lit_value
+  (self : sat_cdcl.Solver) (lit : cnf.Literal) :
+  RustM (core.option.Option Bool)
+  := do
+  let i ← lift (UScalar.cast .Usize lit.var)
+  let o ←
+    alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+      (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT (core.option.Option
+      Bool)) self.value i
+  match o with
+  | core.option.Option.None => ok core.option.Option.None
+  | core.option.Option.Some b =>
+    ok (core.option.Option.Some (b != lit.negated))
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::status]: loop 0:
+    Source: 'src/sat_cdcl.rs', lines 200:8-219:5 -/
+@[rust_loop]
+def sat_cdcl.Solver.status_loop
+  (iter : core.ops.range.Range Std.Usize) (v : alloc.vec.Vec cnf.Clause)
+  (i : Std.Usize) (v1 : alloc.vec.Vec (core.option.Option Bool))
+  (v2 : alloc.vec.Vec Std.Usize)
+  (v3 : alloc.vec.Vec (core.option.Option Std.Usize)) (v4 : alloc.vec.Vec Bool)
+  (v5 : alloc.vec.Vec Std.U32) (v6 : alloc.vec.Vec Bool)
+  (v7 : alloc.vec.Vec Bool) (v8 : alloc.vec.Vec Std.U16)
+  (v9 : alloc.vec.Vec Std.Usize) (i1 : Std.U32) (clause : Std.Usize)
+  (unassigned : core.option.Option cnf.Literal) :
+  RustM sat_cdcl.Status
+  := do
+  let (o, iter1) ←
+    core.ops.range.Range.Insts.CoreIterTraitsIteratorIterator.next
+      core.Usize.Insts.CoreIterRangeStep iter
+  match o with
+  | core.option.Option.None =>
+    match unassigned with
+    | core.option.Option.None => ok sat_cdcl.Status.Conflict
+    | core.option.Option.Some lit => ok (sat_cdcl.Status.Unit lit)
+  | core.option.Option.Some j =>
+    let c ←
+      alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+        (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT cnf.Clause) v clause
+    let lit ←
+      alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+        (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT cnf.Literal) c j
+    let o1 ←
+      sat_cdcl.Solver.lit_value
+        {
+          clauses := v,
+          problem_clauses := i,
+          value := v1,
+          level := v2,
+          reason := v3,
+          phase := v4,
+          activity := v5,
+          occurs := v6,
+          seen := v7,
+          trail := v8,
+          trail_lim := v9,
+          conflicts := i1
+        } lit
+    match o1 with
+    | core.option.Option.None =>
+      let b ← core.option.Option.is_some unassigned
+      if b
+      then ok sat_cdcl.Status.Silent
+      else
+        let l ← cnf.Literal.Insts.CoreCloneClone.clone lit
+        sat_cdcl.Solver.status_loop iter1 v i v1 v2 v3 v4 v5 v6 v7 v8 v9 i1
+          clause (core.option.Option.Some l)
+    | core.option.Option.Some b =>
+      if b
+      then ok sat_cdcl.Status.Silent
+      else
+        sat_cdcl.Solver.status_loop iter1 v i v1 v2 v3 v4 v5 v6 v7 v8 v9 i1
+          clause unassigned
+partial_fixpoint
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::status]:
+    Source: 'src/sat_cdcl.rs', lines 194:4-219:5 -/
+def sat_cdcl.Solver.status
+  (self : sat_cdcl.Solver) (clause : Std.Usize) : RustM sat_cdcl.Status := do
+  let c ←
+    alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+      (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT cnf.Clause) self.clauses
+      clause
+  let i ← alloc.vec.Vec.len c
+  sat_cdcl.Solver.status_loop { start := 0#usize, «end» := i } self.clauses
+    self.problem_clauses self.value self.level self.reason self.phase
+    self.activity self.occurs self.seen self.trail self.trail_lim
+    self.conflicts clause core.option.Option.None
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::assign]:
+    Source: 'src/sat_cdcl.rs', lines 224:4-231:5 -/
+def sat_cdcl.Solver.assign
+  (self : sat_cdcl.Solver) (var : Std.U16) (value : Bool)
+  (reason : core.option.Option Std.Usize) :
+  RustM sat_cdcl.Solver
+  := do
+  let i ← lift (UScalar.cast .Usize var)
+  let (_, index_mut_back) ←
+    alloc.vec.Vec.Insts.CoreOpsIndexIndexMut.index_mut
+      (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT (core.option.Option
+      Bool)) self.value i
+  let v := index_mut_back (core.option.Option.Some value)
+  let i1 ← sat_cdcl.Solver.decision_level { self with value := v }
+  let (_, index_mut_back1) ←
+    alloc.vec.Vec.Insts.CoreOpsIndexIndexMut.index_mut
+      (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT Std.Usize) self.level i
+  let (_, index_mut_back2) ←
+    alloc.vec.Vec.Insts.CoreOpsIndexIndexMut.index_mut
+      (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT (core.option.Option
+      Std.Usize)) self.reason i
+  let (_, index_mut_back3) ←
+    alloc.vec.Vec.Insts.CoreOpsIndexIndexMut.index_mut
+      (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT Bool) self.phase i
+  let v1 ← alloc.vec.Vec.push self.trail var
+  let v2 := index_mut_back1 i1
+  let v3 := index_mut_back2 reason
+  let v4 := index_mut_back3 value
+  ok
+    { self with value := v, level := v2, reason := v3, phase := v4, trail := v1
+    }
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::propagate]: loop 0:
+    Source: 'src/sat_cdcl.rs', lines 247:8-266:5 -/
+@[rust_loop]
+def sat_cdcl.Solver.propagate_loop
+  (self : sat_cdcl.Solver) (i : Std.Usize) (progress : Bool) :
+  RustM ((core.option.Option Std.Usize) × (alloc.vec.Vec cnf.Clause) ×
+    Std.Usize × (alloc.vec.Vec (core.option.Option Bool)) × (alloc.vec.Vec
+    Std.Usize) × (alloc.vec.Vec (core.option.Option Std.Usize)) ×
+    (alloc.vec.Vec Bool) × (alloc.vec.Vec Std.U32) × (alloc.vec.Vec Bool) ×
+    (alloc.vec.Vec Bool) × (alloc.vec.Vec Std.U16) × (alloc.vec.Vec
+    Std.Usize) × Std.U32)
+  := do
+  let i1 ← alloc.vec.Vec.len self.clauses
+  if i = i1
+  then
+    if progress
+    then sat_cdcl.Solver.propagate_loop self 0#usize false
+    else
+      ok (core.option.Option.None, self.clauses, self.problem_clauses,
+        self.value, self.level, self.reason, self.phase, self.activity,
+        self.occurs, self.seen, self.trail, self.trail_lim, self.conflicts)
+  else
+    let s ← sat_cdcl.Solver.status self i
+    match s with
+    | sat_cdcl.Status.Conflict =>
+      ok (core.option.Option.Some i, self.clauses, self.problem_clauses,
+        self.value, self.level, self.reason, self.phase, self.activity,
+        self.occurs, self.seen, self.trail, self.trail_lim, self.conflicts)
+    | sat_cdcl.Status.Unit lit =>
+      let self1 ←
+        sat_cdcl.Solver.assign self lit.var (¬ lit.negated)
+          (core.option.Option.Some i)
+      let i2 ← i + 1#usize
+      sat_cdcl.Solver.propagate_loop self1 i2 true
+    | sat_cdcl.Status.Silent =>
+      let i2 ← i + 1#usize
+      sat_cdcl.Solver.propagate_loop self i2 progress
+partial_fixpoint
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::propagate]:
+    Source: 'src/sat_cdcl.rs', lines 239:4-266:5 -/
+def sat_cdcl.Solver.propagate
+  (self : sat_cdcl.Solver) :
+  RustM ((core.option.Option Std.Usize) × sat_cdcl.Solver)
+  := do
+  let (o, v, i, v1, v2, v3, v4, v5, v6, v7, v8, v9, i1) ←
+    sat_cdcl.Solver.propagate_loop self 0#usize false
+  ok (o,
+    {
+      clauses := v,
+      problem_clauses := i,
+      value := v1,
+      level := v2,
+      reason := v3,
+      phase := v4,
+      activity := v5,
+      occurs := v6,
+      seen := v7,
+      trail := v8,
+      trail_lim := v9,
+      conflicts := i1
+    })
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::bump]:
+    Source: 'src/sat_cdcl.rs', lines 268:4-271:5 -/
+def sat_cdcl.Solver.bump
+  (self : sat_cdcl.Solver) (var : Std.U16) : RustM sat_cdcl.Solver := do
+  let i ← lift (UScalar.cast .Usize var)
+  let i1 ←
+    alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+      (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT Std.U32) self.activity i
+  let i2 ← core.num.U32.saturating_add i1 1#u32
+  let (_, index_mut_back) ←
+    alloc.vec.Vec.Insts.CoreOpsIndexIndexMut.index_mut
+      (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT Std.U32) self.activity i
+  let v := index_mut_back i2
+  ok { self with activity := v }
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::decay]: loop 0:
+    Source: 'src/sat_cdcl.rs', lines 274:8-276:9 -/
+@[rust_loop]
+def sat_cdcl.Solver.decay_loop
+  (iter : core.ops.range.Range Std.Usize) (v : alloc.vec.Vec Std.U32) :
+  RustM (alloc.vec.Vec Std.U32)
+  := do
+  let (o, iter1) ←
+    core.ops.range.Range.Insts.CoreIterTraitsIteratorIterator.next
+      core.Usize.Insts.CoreIterRangeStep iter
+  match o with
+  | core.option.Option.None => ok v
+  | core.option.Option.Some i =>
+    let (i1, index_mut_back) ←
+      alloc.vec.Vec.Insts.CoreOpsIndexIndexMut.index_mut
+        (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT Std.U32) v i
+    let i2 ← i1 >>> 1#i32
+    let v1 := index_mut_back i2
+    sat_cdcl.Solver.decay_loop iter1 v1
+partial_fixpoint
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::decay]:
+    Source: 'src/sat_cdcl.rs', lines 273:4-277:5 -/
+def sat_cdcl.Solver.decay
+  (self : sat_cdcl.Solver) : RustM sat_cdcl.Solver := do
+  let i ← alloc.vec.Vec.len self.activity
+  let v ←
+    sat_cdcl.Solver.decay_loop { start := 0#usize, «end» := i } self.activity
+  ok { self with activity := v }
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::analyze]: loop 1:
+    Source: 'src/sat_cdcl.rs', lines 309:12-329:13 -/
+@[rust_loop]
+def sat_cdcl.Solver.analyze_loop0_loop0
+  (iter : core.ops.range.Range Std.Usize) (v : alloc.vec.Vec cnf.Clause)
+  (i : Std.Usize) (v1 : alloc.vec.Vec (core.option.Option Bool))
+  (v2 : alloc.vec.Vec Std.Usize)
+  (v3 : alloc.vec.Vec (core.option.Option Std.Usize)) (v4 : alloc.vec.Vec Bool)
+  (v5 : alloc.vec.Vec Std.U32) (v6 : alloc.vec.Vec Bool)
+  (v7 : alloc.vec.Vec Bool) (v8 : alloc.vec.Vec Std.U16)
+  (v9 : alloc.vec.Vec Std.Usize) (i1 : Std.U32) (conflict_level : Std.Usize)
+  (lower : alloc.vec.Vec cnf.Literal) (pending : Std.I32)
+  (marked : alloc.vec.Vec Std.U16) (clause : Std.Usize)
+  (resolved : core.option.Option Std.U16) :
+  RustM ((alloc.vec.Vec cnf.Clause) × Std.Usize × (alloc.vec.Vec
+    (core.option.Option Bool)) × (alloc.vec.Vec Std.Usize) × (alloc.vec.Vec
+    (core.option.Option Std.Usize)) × (alloc.vec.Vec Bool) × (alloc.vec.Vec
+    Std.U32) × (alloc.vec.Vec Bool) × (alloc.vec.Vec Bool) × (alloc.vec.Vec
+    Std.U16) × (alloc.vec.Vec Std.Usize) × Std.U32 × (alloc.vec.Vec
+    cnf.Literal) × Std.I32 × (alloc.vec.Vec Std.U16))
+  := do
+  let (o, iter1) ←
+    core.ops.range.Range.Insts.CoreIterTraitsIteratorIterator.next
+      core.Usize.Insts.CoreIterRangeStep iter
+  match o with
+  | core.option.Option.None =>
+    ok (v, i, v1, v2, v3, v4, v5, v6, v7, v8, v9, i1, lower, pending, marked)
+  | core.option.Option.Some j =>
+    let c ←
+      alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+        (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT cnf.Clause) v clause
+    let l ←
+      alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+        (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT cnf.Literal) c j
+    let lit ← cnf.Literal.Insts.CoreCloneClone.clone l
+    let v10 ← lift (UScalar.cast .Usize lit.var)
+    let b ←
+      core.option.Option.Insts.CoreCmpPartialEqOption.eq
+        core.U16.Insts.CoreCmpPartialEqU16 (core.option.Option.Some lit.var)
+        resolved
+    if b
+    then
+      sat_cdcl.Solver.analyze_loop0_loop0 iter1 v i v1 v2 v3 v4 v5 v6 v7 v8 v9
+        i1 conflict_level lower pending marked clause resolved
+    else
+      let b1 ←
+        alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+          (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT Bool) v7 v10
+      if b1
+      then
+        sat_cdcl.Solver.analyze_loop0_loop0 iter1 v i v1 v2 v3 v4 v5 v6 v7 v8
+          v9 i1 conflict_level lower pending marked clause resolved
+      else
+        let i2 ←
+          alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+            (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT Std.Usize) v2 v10
+        if i2 = 0#usize
+        then
+          sat_cdcl.Solver.analyze_loop0_loop0 iter1 v i v1 v2 v3 v4 v5 v6 v7 v8
+            v9 i1 conflict_level lower pending marked clause resolved
+        else
+          let (_, index_mut_back) ←
+            alloc.vec.Vec.Insts.CoreOpsIndexIndexMut.index_mut
+              (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT Bool) v7 v10
+          let marked1 ← alloc.vec.Vec.push marked lit.var
+          let v11 := index_mut_back true
+          let self ←
+            sat_cdcl.Solver.bump
+              {
+                clauses := v,
+                problem_clauses := i,
+                value := v1,
+                level := v2,
+                reason := v3,
+                phase := v4,
+                activity := v5,
+                occurs := v6,
+                seen := v11,
+                trail := v8,
+                trail_lim := v9,
+                conflicts := i1
+              } lit.var
+          let i3 ←
+            alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+              (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT Std.Usize)
+              self.level v10
+          if i3 = conflict_level
+          then
+            let pending1 ← pending + 1#i32
+            sat_cdcl.Solver.analyze_loop0_loop0 iter1 self.clauses
+              self.problem_clauses self.value self.level self.reason 
+              self.phase self.activity self.occurs self.seen self.trail
+              self.trail_lim self.conflicts conflict_level lower pending1
+              marked1 clause resolved
+          else
+            let lower1 ← alloc.vec.Vec.push lower lit
+            sat_cdcl.Solver.analyze_loop0_loop0 iter1 self.clauses
+              self.problem_clauses self.value self.level self.reason 
+              self.phase self.activity self.occurs self.seen self.trail
+              self.trail_lim self.conflicts conflict_level lower1 pending
+              marked1 clause resolved
+partial_fixpoint
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::analyze]: loop 2:
+    Source: 'src/sat_cdcl.rs', lines 335:20-341:13 -/
+@[rust_loop]
+def sat_cdcl.Solver.analyze_loop0_loop1
+  (v : alloc.vec.Vec Std.Usize) (v1 : alloc.vec.Vec Bool)
+  (v2 : alloc.vec.Vec Std.U16) (conflict_level : Std.Usize) (index : Std.Usize)
+  :
+  RustM (Std.Usize × Std.U16)
+  := do
+  let index1 ← index - 1#usize
+  let v3 ←
+    alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+      (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT Std.U16) v2 index1
+  let i ← lift (UScalar.cast .Usize v3)
+  let b ←
+    alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+      (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT Bool) v1 i
+  if b
+  then
+    let i1 ← lift (UScalar.cast .Usize v3)
+    let i2 ←
+      alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+        (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT Std.Usize) v i1
+    if i2 = conflict_level
+    then ok (index1, v3)
+    else sat_cdcl.Solver.analyze_loop0_loop1 v v1 v2 conflict_level index1
+  else sat_cdcl.Solver.analyze_loop0_loop1 v v1 v2 conflict_level index1
+partial_fixpoint
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::analyze]: loop 3:
+    Source: 'src/sat_cdcl.rs', lines 365:8-371:9 -/
+@[rust_loop]
+def sat_cdcl.Solver.analyze_loop0_loop2
+  (iter : alloc.vec.into_iter.IntoIter cnf.Literal)
+  (v : alloc.vec.Vec Std.Usize) (lits : alloc.vec.Vec cnf.Literal)
+  (backjump : Std.Usize) :
+  RustM ((alloc.vec.Vec cnf.Literal) × Std.Usize)
+  := do
+  let (o, iter1) ←
+    alloc.vec.into_iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.next iter
+  match o with
+  | core.option.Option.None => ok (lits, backjump)
+  | core.option.Option.Some lit =>
+    let i ← lift (UScalar.cast .Usize lit.var)
+    let l ←
+      alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+        (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT Std.Usize) v i
+    let backjump1 ← if l > backjump
+                      then ok l
+                      else ok backjump
+    let lits1 ← alloc.vec.Vec.push lits lit
+    sat_cdcl.Solver.analyze_loop0_loop2 iter1 v lits1 backjump1
+partial_fixpoint
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::analyze]: loop 4:
+    Source: 'src/sat_cdcl.rs', lines 373:8-375:9 -/
+@[rust_loop]
+def sat_cdcl.Solver.analyze_loop0_loop3
+  (iter : alloc.vec.into_iter.IntoIter Std.U16) (v : alloc.vec.Vec Bool) :
+  RustM (alloc.vec.Vec Bool)
+  := do
+  let (o, iter1) ←
+    alloc.vec.into_iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.next iter
+  match o with
+  | core.option.Option.None => ok v
+  | core.option.Option.Some v1 =>
+    let i ← lift (UScalar.cast .Usize v1)
+    let (_, index_mut_back) ←
+      alloc.vec.Vec.Insts.CoreOpsIndexIndexMut.index_mut
+        (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT Bool) v i
+    let v2 := index_mut_back false
+    sat_cdcl.Solver.analyze_loop0_loop3 iter1 v2
+partial_fixpoint
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::analyze]: loop 0:
+    Source: 'src/sat_cdcl.rs', lines 308:12-378:5 -/
+@[rust_loop]
+def sat_cdcl.Solver.analyze_loop0
+  (lower : alloc.vec.Vec cnf.Literal) (v : alloc.vec.Vec cnf.Clause)
+  (i : Std.Usize) (v1 : alloc.vec.Vec (core.option.Option Bool))
+  (v2 : alloc.vec.Vec Std.Usize)
+  (v3 : alloc.vec.Vec (core.option.Option Std.Usize)) (v4 : alloc.vec.Vec Bool)
+  (v5 : alloc.vec.Vec Std.U32) (v6 : alloc.vec.Vec Bool)
+  (v7 : alloc.vec.Vec Bool) (v8 : alloc.vec.Vec Std.U16)
+  (v9 : alloc.vec.Vec Std.Usize) (i1 : Std.U32) (conflict_level : Std.Usize)
+  (lower1 : alloc.vec.Vec cnf.Literal) (pending : Std.I32)
+  (marked : alloc.vec.Vec Std.U16) (index : Std.Usize) (clause : Std.Usize)
+  (resolved : core.option.Option Std.U16) :
+  RustM ((alloc.vec.Vec cnf.Literal) × Std.Usize × (alloc.vec.Vec cnf.Clause)
+    × Std.Usize × (alloc.vec.Vec (core.option.Option Bool)) × (alloc.vec.Vec
+    Std.Usize) × (alloc.vec.Vec (core.option.Option Std.Usize)) ×
+    (alloc.vec.Vec Bool) × (alloc.vec.Vec Std.U32) × (alloc.vec.Vec Bool) ×
+    (alloc.vec.Vec Bool) × (alloc.vec.Vec Std.U16) × (alloc.vec.Vec
+    Std.Usize) × Std.U32)
+  := do
+  let c ←
+    alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+      (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT cnf.Clause) v clause
+  let i2 ← alloc.vec.Vec.len c
+  let (v10, i3, v11, v12, v13, v14, v15, v16, v17, v18, v19, i4, lower2,
+    pending1, marked1) ←
+    sat_cdcl.Solver.analyze_loop0_loop0 { start := 0#usize, «end» := i2 } v i
+      v1 v2 v3 v4 v5 v6 v7 v8 v9 i1 conflict_level lower1 pending marked clause
+      resolved
+  let (index1, v20) ←
+    sat_cdcl.Solver.analyze_loop0_loop1 v12 v17 v18 conflict_level index
+  let pending2 ← pending1 - 1#i32
+  if pending2 = 0#i32
+  then
+    let i5 ← lift (UScalar.cast .Usize v20)
+    let o ←
+      alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+        (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT (core.option.Option
+        Bool)) v11 i5
+    let b ← core.option.Option.expect o (toStr "the UIP is assigned")
+    let lits ←
+      alloc.vec.Vec.push lower ({ var := v20, negated := b } : cnf.Literal)
+    let iter ←
+      alloc.vec.Vec.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter
+        lower2
+    let (lits1, backjump) ←
+      sat_cdcl.Solver.analyze_loop0_loop2 iter v12 lits 0#usize
+    let iter1 ←
+      alloc.vec.Vec.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter
+        marked1
+    let v21 ← sat_cdcl.Solver.analyze_loop0_loop3 iter1 v17
+    ok (lits1, backjump, v10, i3, v11, v12, v13, v14, v15, v16, v21, v18, v19,
+      i4)
+  else
+    let i5 ← lift (UScalar.cast .Usize v20)
+    let o ←
+      alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+        (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT (core.option.Option
+        Std.Usize)) v13 i5
+    let clause1 ←
+      core.option.Option.expect o (toStr "a propagated literal has a reason")
+    sat_cdcl.Solver.analyze_loop0 lower v10 i3 v11 v12 v13 v14 v15 v16 v17 v18
+      v19 i4 conflict_level lower2 pending2 marked1 index1 clause1
+      (core.option.Option.Some v20)
+partial_fixpoint
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::analyze]:
+    Source: 'src/sat_cdcl.rs', lines 292:4-378:5 -/
+def sat_cdcl.Solver.analyze
+  (self : sat_cdcl.Solver) (conflict : Std.Usize) :
+  RustM ((cnf.Clause × Std.Usize) × sat_cdcl.Solver)
+  := do
+  let conflict_level ← sat_cdcl.Solver.decision_level self
+  let lower ← alloc.vec.Vec.new cnf.Literal
+  let marked ← alloc.vec.Vec.new Std.U16
+  let index ← alloc.vec.Vec.len self.trail
+  let (v, i, v1, i1, v2, v3, v4, v5, v6, v7, v8, v9, v10, i2) ←
+    sat_cdcl.Solver.analyze_loop0 lower self.clauses self.problem_clauses
+      self.value self.level self.reason self.phase self.activity self.occurs
+      self.seen self.trail self.trail_lim self.conflicts conflict_level lower
+      0#i32 marked index conflict core.option.Option.None
+  ok ((v, i),
+    {
+      clauses := v1,
+      problem_clauses := i1,
+      value := v2,
+      level := v3,
+      reason := v4,
+      phase := v5,
+      activity := v6,
+      occurs := v7,
+      seen := v8,
+      trail := v9,
+      trail_lim := v10,
+      conflicts := i2
+    })
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::backtrack]: loop 0:
+    Source: 'src/sat_cdcl.rs', lines 388:8-392:9 -/
+@[rust_loop]
+def sat_cdcl.Solver.backtrack_loop
+  (v : alloc.vec.Vec (core.option.Option Bool))
+  (v1 : alloc.vec.Vec (core.option.Option Std.Usize))
+  (v2 : alloc.vec.Vec Std.U16) (target : Std.Usize) :
+  RustM ((alloc.vec.Vec (core.option.Option Bool)) × (alloc.vec.Vec
+    (core.option.Option Std.Usize)) × (alloc.vec.Vec Std.U16))
+  := do
+  let i ← alloc.vec.Vec.len v2
+  if i > target
+  then
+    let (o, v3) ← alloc.vec.Vec.pop v2
+    let i1 ← core.option.Option.unwrap o
+    let v4 ← lift (UScalar.cast .Usize i1)
+    let (_, index_mut_back) ←
+      alloc.vec.Vec.Insts.CoreOpsIndexIndexMut.index_mut
+        (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT (core.option.Option
+        Bool)) v v4
+    let (_, index_mut_back1) ←
+      alloc.vec.Vec.Insts.CoreOpsIndexIndexMut.index_mut
+        (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT (core.option.Option
+        Std.Usize)) v1 v4
+    let v5 := index_mut_back1 core.option.Option.None
+    let v6 := index_mut_back core.option.Option.None
+    sat_cdcl.Solver.backtrack_loop v6 v5 v3 target
+  else ok (v, v1, v2)
+partial_fixpoint
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::backtrack]:
+    Source: 'src/sat_cdcl.rs', lines 383:4-394:5 -/
+def sat_cdcl.Solver.backtrack
+  (self : sat_cdcl.Solver) (level : Std.Usize) : RustM sat_cdcl.Solver := do
+  let i ← sat_cdcl.Solver.decision_level self
+  if i <= level
+  then ok self
+  else
+    let target ←
+      alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+        (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT Std.Usize)
+        self.trail_lim level
+    let (v, v1, v2) ←
+      sat_cdcl.Solver.backtrack_loop self.value self.reason self.trail target
+    let v3 ← alloc.vec.Vec.truncate self.trail_lim level
+    ok { self with value := v, reason := v1, trail := v2, trail_lim := v3 }
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::pick_branch_var]: loop 0:
+    Source: 'src/sat_cdcl.rs', lines 403:8-411:9 -/
+@[rust_loop]
+def sat_cdcl.Solver.pick_branch_var_loop
+  (iter : core.ops.range.Range Std.Usize) (self : sat_cdcl.Solver)
+  (best : core.option.Option Std.U16) (best_activity : Std.U32) :
+  RustM (core.option.Option Std.U16)
+  := do
+  let (o, iter1) ←
+    core.ops.range.Range.Insts.CoreIterTraitsIteratorIterator.next
+      core.Usize.Insts.CoreIterRangeStep iter
+  match o with
+  | core.option.Option.None => ok best
+  | core.option.Option.Some v =>
+    let o1 ←
+      alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+        (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT (core.option.Option
+        Bool)) self.value v
+    let b ← core.option.Option.is_some o1
+    if b
+    then sat_cdcl.Solver.pick_branch_var_loop iter1 self best best_activity
+    else
+      let b1 ←
+        alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+          (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT Bool) self.occurs v
+      if b1
+      then
+        let b2 ← core.option.Option.is_none best
+        if b2
+        then
+          let i ← lift (UScalar.cast .U16 v)
+          let best_activity1 ←
+            alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+              (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT Std.U32)
+              self.activity v
+          sat_cdcl.Solver.pick_branch_var_loop iter1 self
+            (core.option.Option.Some i) best_activity1
+        else
+          let i ←
+            alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+              (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT Std.U32)
+              self.activity v
+          if i > best_activity
+          then
+            let i1 ← lift (UScalar.cast .U16 v)
+            sat_cdcl.Solver.pick_branch_var_loop iter1 self
+              (core.option.Option.Some i1) i
+          else
+            sat_cdcl.Solver.pick_branch_var_loop iter1 self best best_activity
+      else sat_cdcl.Solver.pick_branch_var_loop iter1 self best best_activity
+partial_fixpoint
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::pick_branch_var]:
+    Source: 'src/sat_cdcl.rs', lines 400:4-413:5 -/
+def sat_cdcl.Solver.pick_branch_var
+  (self : sat_cdcl.Solver) : RustM (core.option.Option Std.U16) := do
+  let i ← sat_cdcl.Solver.num_vars self
+  sat_cdcl.Solver.pick_branch_var_loop { start := 0#usize, «end» := i } self
+    core.option.Option.None 0#u32
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::search]: loop 0:
+    Source: 'src/sat_cdcl.rs', lines 428:8-483:5 -/
+@[rust_loop]
+def sat_cdcl.Solver.search_loop
+  (self : sat_cdcl.Solver) (budget : Std.U32) (since_restart : Std.U32) :
+  RustM (Bool × sat_cdcl.Solver)
+  := do
+  let (o, self1) ← sat_cdcl.Solver.propagate self
+  match o with
+  | core.option.Option.None =>
+    if since_restart >= budget
+    then
+      let self2 ← sat_cdcl.Solver.backtrack self1 0#usize
+      let i ← budget / 2#u32
+      let budget1 ← budget + i
+      sat_cdcl.Solver.search_loop self2 budget1 0#u32
+    else
+      let o1 ← sat_cdcl.Solver.pick_branch_var self1
+      match o1 with
+      | core.option.Option.None => ok (true, self1)
+      | core.option.Option.Some v =>
+        let i ← alloc.vec.Vec.len self1.trail
+        let v1 ← alloc.vec.Vec.push self1.trail_lim i
+        let i1 ← lift (UScalar.cast .Usize v)
+        let value ←
+          alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+            (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT Bool) self1.phase
+            i1
+        let self2 ←
+          sat_cdcl.Solver.assign { self1 with trail_lim := v1 } v value
+            core.option.Option.None
+        sat_cdcl.Solver.search_loop self2 budget since_restart
+  | core.option.Option.Some conflict =>
+    let i ← self1.conflicts + 1#u32
+    let since_restart1 ← since_restart + 1#u32
+    let i1 ← i % sat_cdcl.DECAY_INTERVAL
+    let self2 ←
+      if i1 = 0#u32
+      then sat_cdcl.Solver.decay { self1 with conflicts := i }
+      else ok { self1 with conflicts := i }
+    let i2 ← sat_cdcl.Solver.decision_level self2
+    if i2 = 0#usize
+    then ok (false, self2)
+    else
+      let ((learned, backjump), self3) ←
+        sat_cdcl.Solver.analyze self2 conflict
+      let self4 ← sat_cdcl.Solver.backtrack self3 backjump
+      let idx ← alloc.vec.Vec.len self4.clauses
+      let l ←
+        alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+          (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT cnf.Literal) learned
+          0#usize
+      let asserting ← cnf.Literal.Insts.CoreCloneClone.clone l
+      let v ← alloc.vec.Vec.push self4.clauses learned
+      let self5 ←
+        sat_cdcl.Solver.assign { self4 with clauses := v } asserting.var (¬
+          asserting.negated) (core.option.Option.Some idx)
+      sat_cdcl.Solver.search_loop self5 budget since_restart1
+partial_fixpoint
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::search]:
+    Source: 'src/sat_cdcl.rs', lines 424:4-483:5 -/
+@[reducible]
+def sat_cdcl.Solver.search
+  (self : sat_cdcl.Solver) (first_restart : Std.U32) :
+  RustM (Bool × sat_cdcl.Solver)
+  := do
+  sat_cdcl.Solver.search_loop self first_restart 0#u32
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::solve]:
+    Source: 'src/sat_cdcl.rs', lines 418:4-420:5 -/
+def sat_cdcl.Solver.solve
+  (self : sat_cdcl.Solver) : RustM (Bool × sat_cdcl.Solver) := do
+  sat_cdcl.Solver.search self sat_cdcl.FIRST_RESTART
+
+/-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::learned]:
+    Source: 'src/sat_cdcl.rs', lines 486:4-488:5 -/
+def sat_cdcl.Solver.learned (self : sat_cdcl.Solver) : RustM Std.Usize := do
+  let i ← alloc.vec.Vec.len self.clauses
+  i - self.problem_clauses
+
+/-- [sat_solver::sat_cdcl::solve_cnf]: loop 0:
+    Source: 'src/sat_cdcl.rs', lines 506:4-510:5
+    Visibility: public -/
+@[rust_loop]
+def sat_cdcl.solve_cnf_loop
+  (iter : core.ops.range.Range Std.Usize) (solver : sat_cdcl.Solver)
+  (model : alloc.vec.Vec (Std.U16 × Bool)) :
+  RustM (alloc.vec.Vec (Std.U16 × Bool))
+  := do
+  let (o, iter1) ←
+    core.ops.range.Range.Insts.CoreIterTraitsIteratorIterator.next
+      core.Usize.Insts.CoreIterRangeStep iter
+  match o with
+  | core.option.Option.None => ok model
+  | core.option.Option.Some v =>
+    let o1 ←
+      alloc.vec.Vec.Insts.CoreOpsIndexIndex.index
+        (core.Usize.Insts.CoreSliceIndexSliceIndexSliceT (core.option.Option
+        Bool)) solver.value v
+    match o1 with
+    | core.option.Option.None => sat_cdcl.solve_cnf_loop iter1 solver model
+    | core.option.Option.Some b =>
+      let i ← lift (UScalar.cast .U16 v)
+      let model1 ← alloc.vec.Vec.push model (i, b)
+      sat_cdcl.solve_cnf_loop iter1 solver model1
+partial_fixpoint
+
+/-- [sat_solver::sat_cdcl::solve_cnf]:
+    Source: 'src/sat_cdcl.rs', lines 497:0-512:1
+    Visibility: public -/
+def sat_cdcl.solve_cnf
+  (cnf1 : cnf.Cnf) :
+  RustM (core.option.Option (alloc.vec.Vec (Std.U16 × Bool)))
+  := do
+  let solver ← sat_cdcl.Solver.new cnf1
+  let (b, solver1) ← sat_cdcl.Solver.solve solver
+  if b
+  then
+    let model ← alloc.vec.Vec.new (Std.U16 × Bool)
+    let i ← sat_cdcl.Solver.num_vars solver1
+    let model1 ←
+      sat_cdcl.solve_cnf_loop { start := 0#usize, «end» := i } solver1 model
+    ok (core.option.Option.Some model1)
+  else ok core.option.Option.None
+
+/-- [sat_solver::sat_naive::initial_valuation]: loop 0:
+    Source: 'src/sat_naive.rs', lines 10:4-12:5
+    Visibility: public -/
+@[rust_loop]
+def sat_naive.initial_valuation_loop
+  (iter : core.slice.iter.Iter Std.U16) (map : expr.Map) : RustM expr.Map := do
+  let (o, iter1) ←
+    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
+  match o with
+  | core.option.Option.None => ok map
+  | core.option.Option.Some v =>
+    let (_, map1) ← expr.Map.insert map v false
+    sat_naive.initial_valuation_loop iter1 map1
+partial_fixpoint
+
+/-- [sat_solver::sat_naive::initial_valuation]:
+    Source: 'src/sat_naive.rs', lines 7:0-15:1
+    Visibility: public -/
+def sat_naive.initial_valuation (vars : Slice Std.U16) : RustM expr.Map := do
+  let map ← expr.Map.new
+  let iter ←
+    core.SharedASlice.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter.into_iter
+      vars
+  sat_naive.initial_valuation_loop iter map
+
+/-- [sat_solver::sat_dpll::encode]:
+    Source: 'src/sat_dpll.rs', lines 166:0-186:1
+    Visibility: public -/
+def sat_dpll.encode
+  (expr1 : expr.Expr) (transform : sat_dpll.Transform) : RustM cnf.Cnf := do
+  match transform with
+  | sat_dpll.Transform.Naive => cnf_transform_naive.to_cnf expr1
+  | sat_dpll.Transform.Tseitin =>
+    let r ← cnf_transform_tseitin.to_cnf expr1
+    match r with
+    | core.result.Result.Ok cnf1 => ok cnf1
+    | core.result.Result.Err _ => cnf_transform_naive.to_cnf expr1
+  | sat_dpll.Transform.Hybrid =>
+    let r ← cnf_transform_hybrid.to_cnf expr1
+    match r with
+    | core.result.Result.Ok cnf1 => ok cnf1
+    | core.result.Result.Err _ => cnf_transform_naive.to_cnf expr1
+
+/-- [sat_solver::sat_cdcl::solve_sat_with]: loop 0:
+    Source: 'src/sat_cdcl.rs', lines 528:12-530:13
+    Visibility: public -/
+@[rust_loop]
+def sat_cdcl.solve_sat_with_loop
+  (iter : alloc.vec.into_iter.IntoIter (Std.U16 × Bool)) (val : expr.Map) :
+  RustM expr.Map
+  := do
+  let (o, iter1) ←
+    alloc.vec.into_iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.next iter
+  match o with
+  | core.option.Option.None => ok val
+  | core.option.Option.Some p =>
+    let (var, value) := p
+    let (_, val1) ← expr.Map.insert val var value
+    sat_cdcl.solve_sat_with_loop iter1 val1
+partial_fixpoint
+
+/-- [sat_solver::sat_cdcl::solve_sat_with]:
+    Source: 'src/sat_cdcl.rs', lines 520:0-534:1
+    Visibility: public -/
+def sat_cdcl.solve_sat_with
+  (expr1 : expr.Expr) (transform : sat_dpll.Transform) :
+  RustM (core.option.Option expr.Map)
+  := do
+  let vars ← expr.collect_vars expr1
+  let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref vars
+  let val ← sat_naive.initial_valuation s
+  let cnf1 ← sat_dpll.encode expr1 transform
+  let o ← sat_cdcl.solve_cnf cnf1
+  match o with
+  | core.option.Option.None => ok core.option.Option.None
+  | core.option.Option.Some model =>
+    let iter ←
+      alloc.vec.Vec.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter
+        model
+    let val1 ← sat_cdcl.solve_sat_with_loop iter val
+    ok (core.option.Option.Some val1)
+
+/-- [sat_solver::sat_cdcl::solve_sat]:
+    Source: 'src/sat_cdcl.rs', lines 538:0-540:1
+    Visibility: public -/
+def sat_cdcl.solve_sat
+  (expr1 : expr.Expr) : RustM (core.option.Option expr.Map) := do
+  sat_cdcl.solve_sat_with expr1 sat_dpll.Transform.Hybrid
+
 /-- [sat_solver::sat_dpll::is_satisfied]:
     Source: 'src/sat_dpll.rs', lines 12:0-14:1 -/
 def sat_dpll.is_satisfied (cnf1 : cnf.Cnf) : RustM Bool := do
@@ -1599,24 +2595,6 @@ def sat_dpll.Transform.Insts.CoreCmpEq : core.cmp.Eq sat_dpll.Transform := {
   PartialEqInst := sat_dpll.Transform.Insts.CoreCmpPartialEqTransform
 }
 
-/-- [sat_solver::sat_dpll::encode]:
-    Source: 'src/sat_dpll.rs', lines 166:0-186:1
-    Visibility: public -/
-def sat_dpll.encode
-  (expr1 : expr.Expr) (transform : sat_dpll.Transform) : RustM cnf.Cnf := do
-  match transform with
-  | sat_dpll.Transform.Naive => cnf_transform_naive.to_cnf expr1
-  | sat_dpll.Transform.Tseitin =>
-    let r ← cnf_transform_tseitin.to_cnf expr1
-    match r with
-    | core.result.Result.Ok cnf1 => ok cnf1
-    | core.result.Result.Err _ => cnf_transform_naive.to_cnf expr1
-  | sat_dpll.Transform.Hybrid =>
-    let r ← cnf_transform_hybrid.to_cnf expr1
-    match r with
-    | core.result.Result.Ok cnf1 => ok cnf1
-    | core.result.Result.Err _ => cnf_transform_naive.to_cnf expr1
-
 /-- [sat_solver::sat_dpll::seed_cnf_vars]: loop 1:
     Source: 'src/sat_dpll.rs', lines 205:8-207:9 -/
 @[rust_loop]
@@ -1658,31 +2636,6 @@ def sat_dpll.seed_cnf_vars
   let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref cnf1
   let iter ← core.slice.Slice.iter s
   sat_dpll.seed_cnf_vars_loop0 iter val
-
-/-- [sat_solver::sat_naive::initial_valuation]: loop 0:
-    Source: 'src/sat_naive.rs', lines 10:4-12:5
-    Visibility: public -/
-@[rust_loop]
-def sat_naive.initial_valuation_loop
-  (iter : core.slice.iter.Iter Std.U16) (map : expr.Map) : RustM expr.Map := do
-  let (o, iter1) ←
-    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next iter
-  match o with
-  | core.option.Option.None => ok map
-  | core.option.Option.Some v =>
-    let (_, map1) ← expr.Map.insert map v false
-    sat_naive.initial_valuation_loop iter1 map1
-partial_fixpoint
-
-/-- [sat_solver::sat_naive::initial_valuation]:
-    Source: 'src/sat_naive.rs', lines 7:0-15:1
-    Visibility: public -/
-def sat_naive.initial_valuation (vars : Slice Std.U16) : RustM expr.Map := do
-  let map ← expr.Map.new
-  let iter ←
-    core.SharedASlice.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter.into_iter
-      vars
-  sat_naive.initial_valuation_loop iter map
 
 /-- [sat_solver::sat_dpll::solve_sat_with]:
     Source: 'src/sat_dpll.rs', lines 211:0-225:1
