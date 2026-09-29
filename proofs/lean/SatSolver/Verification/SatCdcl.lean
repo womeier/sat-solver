@@ -3254,7 +3254,7 @@ theorem rust_primitives.sequence.seq_remove.spec {T : Type}
 theorem rust_primitives.sequence.seq_drain.spec {T : Type}
     (s : rust_primitives.sequence.Seq T) (a b : Std.Usize)
     (h1 : a.val ≤ b.val) (h2 : b.val ≤ s.val.length) :
-    rust_primitives.sequence.seq_drain s a b ⦃ (drained : rust_primitives.sequence.Seq T)
+    rust_primitives.sequence.seq_drain s a b ⦃ (_drained : rust_primitives.sequence.Seq T)
       (rest : rust_primitives.sequence.Seq T) =>
       rest.val = s.val.take a.val ++ s.val.drop b.val ⦄ := by
   unfold rust_primitives.sequence.seq_drain
@@ -3686,7 +3686,7 @@ theorem Solver.wf_backtrack {s s' : sat_cdcl.Solver} {level tgt : Std.Usize}
     -- have to sit at a level both `≤ j` and above `level`
     have hle : (s.trail_lim.val[j]'hjlt).val ≤ tgt.val := by
       by_contra hc
-      push_neg at hc
+      push Not at hc
       have htlt : tgt.val < s.trail.val.length := by omega
       obtain ⟨-, hiff'⟩ := hwf.trail_lim_spec level.val hlt
       rw [htgt] at hiff'
@@ -3840,7 +3840,7 @@ theorem sat_cdcl.Solver.lit_value.spec (s : sat_cdcl.Solver) (lit : cnf.Literal)
      | (have hval : Solver.valueOf s lit.var = some b := by
           simp [Solver.valueOf, o_post, ‹o = core.option.Option.Some b›]
         simp only [Solver.litFalse, Solver.litTrue, hval]
-        cases b <;> cases hn : lit.negated <;> simp [hn]))
+        cases b <;> cases lit.negated <;> simp))
 
 /-- `Option::is_some`, which the scan uses to tell a first unassigned literal from a
     second. -/
@@ -4197,7 +4197,7 @@ theorem sat_cdcl.Solver.propagate_loop.spec (sv : sat_cdcl.Solver) (i : Std.Usiz
           subst hri
           refine ⟨cl, hcl, ?_, ?_⟩
           · have hneg : (!(decide (¬ lit.negated = true))) = lit.negated := by
-              cases hn : lit.negated <;> simp [hn]
+              cases lit.negated <;> simp
             have hlit : cnf.Literal.mk lit.var (!(decide (¬ lit.negated = true))) = lit := by
               rw [hneg]
             rw [hlit]
@@ -4207,7 +4207,7 @@ theorem sat_cdcl.Solver.propagate_loop.spec (sv : sat_cdcl.Solver) (i : Std.Usiz
             intro hc
             refine hne ?_
             have hneg : (!(decide (¬ lit.negated = true))) = lit.negated := by
-              cases hn : lit.negated <;> simp [hn]
+              cases lit.negated <;> simp
             rw [hc, hneg]))
       step*
       -- the cursor is still inside the database
@@ -4220,7 +4220,7 @@ theorem sat_cdcl.Solver.propagate_loop.spec (sv : sat_cdcl.Solver) (i : Std.Usiz
         by_cases hmem : ∃ l ∈ cl', l.var = lit.var
         · obtain ⟨l, hl, hlv⟩ := hmem
           exact ⟨l, hl, by rw [hlv, self1_post6, self1_post3]⟩
-        · push_neg at hmem
+        · push Not at hmem
           have hall : ∀ l ∈ cl', Solver.litFalse sv l := by
             intro l hl
             have hv := (self1_post8 l.var (hmem l hl)).1
@@ -5892,7 +5892,7 @@ theorem sat_cdcl.Solver.search_loop.spec (s : sat_cdcl.Solver)
         have hlitassert :
             cnf.Literal.mk asserting.var (!(decide (¬ asserting.negated = true))) = uip := by
           have h : (!(decide (¬ asserting.negated = true))) = asserting.negated := by
-            cases hn : asserting.negated <;> simp
+            cases asserting.negated <;> simp
           rw [h, hasserting]
         have hunit4 : ∀ lit ∈ learned.val, lit ≠ uip → Solver.litFalse self4 lit := by
           intro lit hlit hne
