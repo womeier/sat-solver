@@ -26,30 +26,57 @@ termination), and the `solve_cnf` pair the roots factor through.
 
 ## Benchmarks
 
-`just satlib` downloads the [SATLIB](https://www.cs.ubc.ca/~hoos/SATLIB/benchm.html)
-uniform-random-3-SAT sets into `benchmarks/`; `just satlib-test` runs the solvers over them.
+`just satlib` downloads the three 50-variable [SATLIB](https://www.cs.ubc.ca/~hoos/SATLIB/benchm.html)
+uniform-random-3-SAT sets into `benchmarks/` and `just satlib-test` runs the solvers over them;
+`just satlib-fetch uf100-430 …` adds the larger ones, up to 250 variables.
 
 Every `SAT` answer is model-checked with `expr::evaluate`, the way SAT
 competitions check solver output — all 3000 verdicts are correct for each solver
 that can attempt the set.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/benchmarks-dark.svg">
-  <img src="docs/benchmarks.svg" width="780"
-       alt="Mean solve time per instance, log scale, 100 instances per set. On uf20-91 (20 variables, satisfiable) cdcl averages 0.060 ms (worst 0.106 ms), dpll 0.152 ms (worst 0.476 ms) and naive 141 ms (worst 507 ms). On uf50-218 cdcl averages 0.345 ms (worst 1.27 ms) and dpll 4.95 ms (worst 16.6 ms); on the unsatisfiable uuf50-218 cdcl averages 0.634 ms (worst 1.59 ms) and dpll 12.7 ms (worst 44.1 ms). Naive is out of reach on the 50-variable sets because it enumerates all 2^50 valuations.">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/scaling-dark.svg">
+  <img src="docs/scaling.svg" width="780"
+       alt="Median solve time per instance against the number of variables, on a logarithmic time axis, over SATLIB uniform random 3-SAT at the phase transition (clause to variable ratio 4.26). Satisfiable sets are drawn solid, unsatisfiable dashed. Each instance had a ten-second budget; a curve stops where fewer than half the set fits in it. cdcl on sat sets runs from 57 µs at 20 variables to 1.69 s at 200, about 4.2 times per 25 variables, and at 225 variables solves only 7/25 in the budget. cdcl on unsat sets runs from 604 µs at 50 variables to 1.09 s at 175, about 4.5 times per 25 variables, and at 200 variables solves only 10/25 in the budget. dpll on sat sets runs from 210 µs at 20 variables to 2.89 s at 125, about 9.7 times per 25 variables, and at 150 variables solves only 7/25 in the budget. dpll on unsat sets runs from 12.2 ms at 50 variables to 1.44 s at 100, about 10.8 times per 25 variables, and at 125 variables solves only 7/25 in the budget. naive manages only the 20-variable sat set, at 94.0 ms, and at 50 variables solves only 0/25 in the budget.">
 </picture>
 
-`just satlib-figure` re-measures and prints the dataset as CSV;
-[`docs/make_benchmarks_svg.py`](docs/make_benchmarks_svg.py) (stdlib only)
-redraws the two SVGs from it.
+`just satlib-scaling` re-measures the ladder, writes
+[`docs/scaling.csv`](docs/scaling.csv) and redraws both SVGs from it with
+[`docs/make_scaling_svg.py`](docs/make_scaling_svg.py) (stdlib only).
 
-DPLL and CDCL search the *same* CNF (`sat_dpll::encode` under
-`Transform::Hybrid`), so the gap between them is the value of clause learning and
-nothing else: 2.5x on the 20-variable set, 14x on uf50-218, and 20x on the
-unsatisfiable uuf50-218 — most where refuting the formula means exhausting the
-search space, which is exactly what learned clauses prune. CDCL manages that
-while *rescanning every clause* to propagate; with watched literals the gap would
-be wider still.
+**Each solver buys roughly fifty more variables.** Inside a 10-second budget per
+instance, `naive` handles 20 and nothing above it, `dpll` reaches 125 satisfiable
+and 100 unsatisfiable, `cdcl` reaches 200 and 175. Random 3-SAT at the phase
+transition is exponential for all three, so that is the shape to expect — the
+question a scaling curve answers is what the *base* is, and the three lines have
+visibly different slopes rather than different intercepts.
+
+Per 25 variables, CDCL costs about **4.2x** more (4.5x unsatisfiable); DPLL about
+**9.7x** (10.8x). So the gap between them is not a constant factor, which is what
+measuring only at 50 variables had suggested: it is 3.7x at 20 variables, 14x at
+50, 22x at 75 and **139x at 100**. DPLL and CDCL search the *same* CNF
+(`sat_dpll::encode` under `Transform::Hybrid`), so all of that is the value of
+clause learning and nothing else. CDCL manages it while *rescanning every clause*
+to propagate and never deleting a learned clause; with watched literals the
+spread would be wider still.
+
+Two things the figure is careful about, because both would otherwise flatter the
+solvers:
+
+- **It plots the median, not the mean.** A per-instance cap censors the slow tail,
+  so a mean is wrong by exactly the instances it could not see. The median is
+  exact while more than half a set finishes, and that is also where each curve
+  stops.
+- **Each instance runs in its own process, killed when its budget runs out.** A
+  worker thread could not be killed — a solver call has no interruption point —
+  so it would keep a core busy and inflate everything measured after it. The
+  child times its own solve, so the parent's spawn overhead never enters a
+  number, and below 5 ms it repeats the solve and divides, because a cold process
+  costs a few hundred microseconds and `uf20-91` takes 57.
+
+Why the censoring rule matters: `dpll` at 150 variables *looks* faster than at 125
+(1.46 s against 2.89 s) purely because only the 7 easiest of 25 instances
+finished. Those points are in `docs/scaling.csv`, marked, and not drawn.
 
 ## Todo
 
@@ -60,9 +87,12 @@ be wider still.
       (proved-correct) naive solver, plus `proptest`/`cargo fuzz` over the
       parser and `to_cnf`. `sat_dpll.rs` has a small hand-written version of
       this; it should be generative and run on many more instances.
-- [ ] **Scaling curve** — `criterion` benchmark sweeping the clause/variable
-      ratio through the 4.26 phase transition, naive vs DPLL vs CDCL. This is the
-      plot that shows why each of them exists.
+- [x] **Scaling curve** — ~~naive vs DPLL vs CDCL, the plot that shows why each of
+      them exists.~~ Done as a sweep of *problem size* at the fixed 4.26 ratio, which
+      is the figure above: 20 to 250 variables, 25 instances per set, 10 s each.
+      Still open is the other axis — sweeping the clause/variable **ratio** through
+      the phase transition at fixed size, which is the plot that shows why 4.26 is
+      the hard place to be rather than how the solvers compare there.
 - [ ] **Resolution-hard families** — pigeonhole (`hole-n`) and friends, with a
       timeout. These are exponential for any DPLL-style solver, so they document
       the limit that motivates CDCL. [CNFgen](https://massimolauria.net/cnfgen/)
@@ -74,15 +104,6 @@ be wider still.
 
 Known limits worth fixing (or at least documenting) alongside the above:
 
-- [x] **`Map` is a linear-scan assoc list.** ~~Every lookup is O(vars).~~ Now a
-      slot array indexed by the variable itself (`Vec<Option<bool>>`, grown on
-      demand), so `get` and `insert` are both O(1). This is *not* measurable at
-      SATLIB sizes — 20–50 slots fit in a cache line either way, and `evaluate`
-      short-circuits before doing many lookups — so it was worth doing for the
-      asymptotics and for the proofs, not for the benchmark. It removed
-      `Map.insert`'s `&mut`-iterator encoding (three nested backward
-      continuations) and every `Usize.max` headroom hypothesis in `SatNaive.lean`
-      and `SatDpll.lean`: indexing by the key bounds the array by the key type.
 - [ ] **DPLL allocates a fresh residual CNF per node.** That is what makes the
       correctness proof clean (each recursive call is self-contained), and it is
       also the performance ceiling. Watched literals would fix it at a
