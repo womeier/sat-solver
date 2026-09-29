@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 476" width="780" height="476" role="img" aria-labelledby="figTitle figDesc" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
 <title id="figTitle">How the three solvers scale with problem size</title>
-<desc id="figDesc">Median solve time per instance against the number of variables, on a logarithmic time axis, over SATLIB uniform random 3-SAT at the phase transition (clause to variable ratio 4.26). Satisfiable sets are drawn solid, unsatisfiable dashed. Each instance had a ten-second budget; a curve stops where fewer than half the set fits in it. cdcl on sat sets runs from 57 µs at 20 variables to 1.69 s at 200, about 4.2 times per 25 variables, and at 225 variables solves only 7/25 in the budget. cdcl on unsat sets runs from 604 µs at 50 variables to 1.09 s at 175, about 4.5 times per 25 variables, and at 200 variables solves only 10/25 in the budget. dpll on sat sets runs from 210 µs at 20 variables to 2.89 s at 125, about 9.7 times per 25 variables, and at 150 variables solves only 7/25 in the budget. dpll on unsat sets runs from 12.2 ms at 50 variables to 1.44 s at 100, about 10.8 times per 25 variables, and at 125 variables solves only 7/25 in the budget. naive manages only the 20-variable sat set, at 94.0 ms, and at 50 variables solves only 0/25 in the budget.</desc>
+<desc id="figDesc">Median solve time per instance against the number of variables, on a logarithmic time axis, over SATLIB uniform random 3-SAT at the phase transition (clause to variable ratio 4.26). Satisfiable sets are drawn solid, unsatisfiable dashed. Each instance had a ten-second budget; a curve stops where fewer than half the set fits in it. cdcl on sat sets runs from 63 µs at 20 variables to 2.34 s at 200, about 4.3 times per 25 variables, and at 225 variables solves only 7/25 in the budget. cdcl on unsat sets runs from 690 µs at 50 variables to 1.06 s at 175, about 4.3 times per 25 variables, and at 200 variables solves only 11/25 in the budget. dpll on sat sets runs from 221 µs at 20 variables to 4.22 s at 125, about 10.5 times per 25 variables, and at 150 variables solves only 7/25 in the budget. dpll on unsat sets runs from 12.7 ms at 50 variables to 1.47 s at 100, about 10.8 times per 25 variables, and at 125 variables solves only 7/25 in the budget. naive manages only the 20-variable sat set, at 114.1 ms, and at 50 variables solves only 0/25 in the budget.</desc>
 <rect x="0" y="0" width="780" height="476" fill="#fcfcfb"/>
-<text x="24.0" y="34.0" fill="#0b0b0b" font-size="15" font-weight="600">How the three solvers scale</text>
+<text x="24.0" y="34.0" fill="#0b0b0b" font-size="15" font-weight="600">Evaluation</text>
 <text x="24.0" y="53.0" fill="#52514e" font-size="11.5">Median solve time per instance · SATLIB uniform random 3-SAT at the phase transition (ratio 4.26)</text>
 <text x="24.0" y="71.0" fill="#898781" font-size="10.5">Solid: satisfiable.  Dashed: unsatisfiable.  10 s per instance; a curve ends where under half the set fits in that,</text>
 <text x="24.0" y="86.0" fill="#898781" font-size="10.5">and its last point says how much of that set it did solve.</text>
@@ -51,48 +51,48 @@
 <text x="571.1" y="422.0" fill="#898781" font-size="10.5" text-anchor="middle">250</text>
 <line x1="74.0" y1="404.0" x2="596.0" y2="404.0" stroke="#c3c2b7" stroke-width="1"/>
 <text x="335.0" y="442.0" fill="#52514e" font-size="11" text-anchor="middle">variables</text>
-<path d="M94.7 369.8 L156.9 340.3 L208.6 299.7 L260.4 280.8 L312.2 250.2 L364.0 233.9 L415.8 195.9 L467.6 167.0" fill="none" stroke="#2a78d6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="94.7" cy="369.8" r="3.6" fill="none" stroke="#fcfcfb" stroke-width="2"/><circle cx="94.7" cy="369.8" r="3.6" fill="#2a78d6"/>
-<circle cx="156.9" cy="340.3" r="3.6" fill="none" stroke="#fcfcfb" stroke-width="2"/><circle cx="156.9" cy="340.3" r="3.6" fill="#2a78d6"/>
-<circle cx="208.6" cy="299.7" r="3.6" fill="none" stroke="#fcfcfb" stroke-width="2"/><circle cx="208.6" cy="299.7" r="3.6" fill="#2a78d6"/>
-<circle cx="260.4" cy="280.8" r="3.6" fill="none" stroke="#fcfcfb" stroke-width="2"/><circle cx="260.4" cy="280.8" r="3.6" fill="#2a78d6"/>
-<circle cx="312.2" cy="250.2" r="3.6" fill="none" stroke="#fcfcfb" stroke-width="2"/><circle cx="312.2" cy="250.2" r="3.6" fill="#2a78d6"/>
-<circle cx="364.0" cy="233.9" r="3.6" fill="none" stroke="#fcfcfb" stroke-width="2"/><circle cx="364.0" cy="233.9" r="3.6" fill="#2a78d6"/>
-<circle cx="415.8" cy="195.9" r="3.6" fill="none" stroke="#fcfcfb" stroke-width="2"/><circle cx="415.8" cy="195.9" r="3.6" fill="#2a78d6"/>
-<circle cx="467.6" cy="167.0" r="3.6" fill="none" stroke="#fcfcfb" stroke-width="2"/><circle cx="467.6" cy="167.0" r="3.6" fill="#2a78d6"/>
-<line x1="467.6" y1="167.0" x2="467.6" y2="135.4" stroke="#2a78d6" stroke-width="1.5" opacity="0.45"/>
-<line x1="464.6" y1="135.4" x2="470.6" y2="135.4" stroke="#2a78d6" stroke-width="1.5" opacity="0.45"/>
-<path d="M156.9 323.3 L208.6 291.1 L260.4 259.9 L312.2 236.9 L364.0 203.2 L415.8 175.6" fill="none" stroke="#2a78d6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5 3"/>
-<circle cx="156.9" cy="323.3" r="3.6" fill="none" stroke="#fcfcfb" stroke-width="2"/><circle cx="156.9" cy="323.3" r="3.6" fill="#2a78d6"/>
-<circle cx="208.6" cy="291.1" r="3.6" fill="none" stroke="#fcfcfb" stroke-width="2"/><circle cx="208.6" cy="291.1" r="3.6" fill="#2a78d6"/>
+<path d="M94.7 367.7 L156.9 336.3 L208.6 304.8 L260.4 281.4 L312.2 249.1 L364.0 234.5 L415.8 197.4 L467.6 160.6" fill="none" stroke="#2a78d6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="94.7" cy="367.7" r="3.6" fill="none" stroke="#fcfcfb" stroke-width="2"/><circle cx="94.7" cy="367.7" r="3.6" fill="#2a78d6"/>
+<circle cx="156.9" cy="336.3" r="3.6" fill="none" stroke="#fcfcfb" stroke-width="2"/><circle cx="156.9" cy="336.3" r="3.6" fill="#2a78d6"/>
+<circle cx="208.6" cy="304.8" r="3.6" fill="none" stroke="#fcfcfb" stroke-width="2"/><circle cx="208.6" cy="304.8" r="3.6" fill="#2a78d6"/>
+<circle cx="260.4" cy="281.4" r="3.6" fill="none" stroke="#fcfcfb" stroke-width="2"/><circle cx="260.4" cy="281.4" r="3.6" fill="#2a78d6"/>
+<circle cx="312.2" cy="249.1" r="3.6" fill="none" stroke="#fcfcfb" stroke-width="2"/><circle cx="312.2" cy="249.1" r="3.6" fill="#2a78d6"/>
+<circle cx="364.0" cy="234.5" r="3.6" fill="none" stroke="#fcfcfb" stroke-width="2"/><circle cx="364.0" cy="234.5" r="3.6" fill="#2a78d6"/>
+<circle cx="415.8" cy="197.4" r="3.6" fill="none" stroke="#fcfcfb" stroke-width="2"/><circle cx="415.8" cy="197.4" r="3.6" fill="#2a78d6"/>
+<circle cx="467.6" cy="160.6" r="3.6" fill="none" stroke="#fcfcfb" stroke-width="2"/><circle cx="467.6" cy="160.6" r="3.6" fill="#2a78d6"/>
+<line x1="467.6" y1="160.6" x2="467.6" y2="135.8" stroke="#2a78d6" stroke-width="1.5" opacity="0.45"/>
+<line x1="464.6" y1="135.8" x2="470.6" y2="135.8" stroke="#2a78d6" stroke-width="1.5" opacity="0.45"/>
+<path d="M156.9 320.7 L208.6 290.0 L260.4 259.9 L312.2 238.7 L364.0 204.7 L415.8 176.2" fill="none" stroke="#2a78d6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5 3"/>
+<circle cx="156.9" cy="320.7" r="3.6" fill="none" stroke="#fcfcfb" stroke-width="2"/><circle cx="156.9" cy="320.7" r="3.6" fill="#2a78d6"/>
+<circle cx="208.6" cy="290.0" r="3.6" fill="none" stroke="#fcfcfb" stroke-width="2"/><circle cx="208.6" cy="290.0" r="3.6" fill="#2a78d6"/>
 <circle cx="260.4" cy="259.9" r="3.6" fill="none" stroke="#fcfcfb" stroke-width="2"/><circle cx="260.4" cy="259.9" r="3.6" fill="#2a78d6"/>
-<circle cx="312.2" cy="236.9" r="3.6" fill="none" stroke="#fcfcfb" stroke-width="2"/><circle cx="312.2" cy="236.9" r="3.6" fill="#2a78d6"/>
-<circle cx="364.0" cy="203.2" r="3.6" fill="none" stroke="#fcfcfb" stroke-width="2"/><circle cx="364.0" cy="203.2" r="3.6" fill="#2a78d6"/>
-<circle cx="415.8" cy="175.6" r="3.6" fill="none" stroke="#fcfcfb" stroke-width="2"/><circle cx="415.8" cy="175.6" r="3.6" fill="#2a78d6"/>
-<line x1="415.8" y1="175.6" x2="415.8" y2="137.7" stroke="#2a78d6" stroke-width="1.5" opacity="0.45"/>
-<line x1="412.8" y1="137.7" x2="418.8" y2="137.7" stroke="#2a78d6" stroke-width="1.5" opacity="0.45"/>
-<path d="M94.7 344.1 L156.9 288.8 L208.6 239.1 L260.4 183.7 L312.2 156.5" fill="none" stroke="#eb6834" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-<rect x="91.5" y="340.9" width="6.4" height="6.4" rx="1" fill="none" stroke="#fcfcfb" stroke-width="2"/><rect x="91.5" y="340.9" width="6.4" height="6.4" rx="1" fill="#eb6834"/>
-<rect x="153.7" y="285.6" width="6.4" height="6.4" rx="1" fill="none" stroke="#fcfcfb" stroke-width="2"/><rect x="153.7" y="285.6" width="6.4" height="6.4" rx="1" fill="#eb6834"/>
-<rect x="205.4" y="235.9" width="6.4" height="6.4" rx="1" fill="none" stroke="#fcfcfb" stroke-width="2"/><rect x="205.4" y="235.9" width="6.4" height="6.4" rx="1" fill="#eb6834"/>
-<rect x="257.2" y="180.5" width="6.4" height="6.4" rx="1" fill="none" stroke="#fcfcfb" stroke-width="2"/><rect x="257.2" y="180.5" width="6.4" height="6.4" rx="1" fill="#eb6834"/>
-<rect x="309.0" y="153.3" width="6.4" height="6.4" rx="1" fill="none" stroke="#fcfcfb" stroke-width="2"/><rect x="309.0" y="153.3" width="6.4" height="6.4" rx="1" fill="#eb6834"/>
-<line x1="312.2" y1="156.5" x2="312.2" y2="137.8" stroke="#eb6834" stroke-width="1.5" opacity="0.45"/>
-<line x1="309.2" y1="137.8" x2="315.2" y2="137.8" stroke="#eb6834" stroke-width="1.5" opacity="0.45"/>
-<path d="M156.9 264.1 L208.6 220.8 L260.4 170.2" fill="none" stroke="#eb6834" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5 3"/>
-<rect x="153.7" y="260.9" width="6.4" height="6.4" rx="1" fill="none" stroke="#fcfcfb" stroke-width="2"/><rect x="153.7" y="260.9" width="6.4" height="6.4" rx="1" fill="#eb6834"/>
-<rect x="205.4" y="217.6" width="6.4" height="6.4" rx="1" fill="none" stroke="#fcfcfb" stroke-width="2"/><rect x="205.4" y="217.6" width="6.4" height="6.4" rx="1" fill="#eb6834"/>
-<rect x="257.2" y="167.0" width="6.4" height="6.4" rx="1" fill="none" stroke="#fcfcfb" stroke-width="2"/><rect x="257.2" y="167.0" width="6.4" height="6.4" rx="1" fill="#eb6834"/>
-<line x1="260.4" y1="170.2" x2="260.4" y2="146.8" stroke="#eb6834" stroke-width="1.5" opacity="0.45"/>
-<line x1="257.4" y1="146.8" x2="263.4" y2="146.8" stroke="#eb6834" stroke-width="1.5" opacity="0.45"/>
-<path d="M94.7 223.9" fill="none" stroke="#1baf7a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-<polygon points="94.7,219.5 98.9,227.1 90.5,227.1" fill="none" stroke="#fcfcfb" stroke-width="2"/><polygon points="94.7,219.5 98.9,227.1 90.5,227.1" fill="#1baf7a"/>
-<line x1="94.7" y1="223.9" x2="94.7" y2="202.1" stroke="#1baf7a" stroke-width="1.5" opacity="0.45"/>
-<line x1="91.7" y1="202.1" x2="97.7" y2="202.1" stroke="#1baf7a" stroke-width="1.5" opacity="0.45"/>
-<text x="321.2" y="160.5" fill="#eb6834" font-size="11.5">dpll sat (16/25)</text>
-<text x="476.6" y="171.0" fill="#2a78d6" font-size="11.5">cdcl sat (21/25)</text>
-<text x="269.4" y="174.2" fill="#eb6834" font-size="11.5">dpll unsat</text>
-<text x="424.8" y="184.0" fill="#2a78d6" font-size="11.5">cdcl unsat</text>
-<text x="103.7" y="227.9" fill="#1baf7a" font-size="11.5">naive sat</text>
-<text x="24.0" y="456.0" fill="#898781" font-size="10.5">Logarithmic time axis, so a straight line is exponential growth. Release build, one instance at a time, in a fresh process each. Dataset: docs/scaling.csv.</text>
+<circle cx="312.2" cy="238.7" r="3.6" fill="none" stroke="#fcfcfb" stroke-width="2"/><circle cx="312.2" cy="238.7" r="3.6" fill="#2a78d6"/>
+<circle cx="364.0" cy="204.7" r="3.6" fill="none" stroke="#fcfcfb" stroke-width="2"/><circle cx="364.0" cy="204.7" r="3.6" fill="#2a78d6"/>
+<circle cx="415.8" cy="176.2" r="3.6" fill="none" stroke="#fcfcfb" stroke-width="2"/><circle cx="415.8" cy="176.2" r="3.6" fill="#2a78d6"/>
+<line x1="415.8" y1="176.2" x2="415.8" y2="137.8" stroke="#2a78d6" stroke-width="1.5" opacity="0.45"/>
+<line x1="412.8" y1="137.8" x2="418.8" y2="137.8" stroke="#2a78d6" stroke-width="1.5" opacity="0.45"/>
+<path d="M94.7 343.0 L156.9 290.5 L208.6 238.7 L260.4 183.9 L312.2 149.0" fill="none" stroke="#eb6834" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="91.5" y="339.8" width="6.4" height="6.4" rx="1" fill="none" stroke="#fcfcfb" stroke-width="2"/><rect x="91.5" y="339.8" width="6.4" height="6.4" rx="1" fill="#eb6834"/>
+<rect x="153.7" y="287.3" width="6.4" height="6.4" rx="1" fill="none" stroke="#fcfcfb" stroke-width="2"/><rect x="153.7" y="287.3" width="6.4" height="6.4" rx="1" fill="#eb6834"/>
+<rect x="205.4" y="235.5" width="6.4" height="6.4" rx="1" fill="none" stroke="#fcfcfb" stroke-width="2"/><rect x="205.4" y="235.5" width="6.4" height="6.4" rx="1" fill="#eb6834"/>
+<rect x="257.2" y="180.7" width="6.4" height="6.4" rx="1" fill="none" stroke="#fcfcfb" stroke-width="2"/><rect x="257.2" y="180.7" width="6.4" height="6.4" rx="1" fill="#eb6834"/>
+<rect x="309.0" y="145.8" width="6.4" height="6.4" rx="1" fill="none" stroke="#fcfcfb" stroke-width="2"/><rect x="309.0" y="145.8" width="6.4" height="6.4" rx="1" fill="#eb6834"/>
+<line x1="312.2" y1="149.0" x2="312.2" y2="137.5" stroke="#eb6834" stroke-width="1.5" opacity="0.45"/>
+<line x1="309.2" y1="137.5" x2="315.2" y2="137.5" stroke="#eb6834" stroke-width="1.5" opacity="0.45"/>
+<path d="M156.9 263.2 L208.6 219.9 L260.4 169.7" fill="none" stroke="#eb6834" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5 3"/>
+<rect x="153.7" y="260.0" width="6.4" height="6.4" rx="1" fill="none" stroke="#fcfcfb" stroke-width="2"/><rect x="153.7" y="260.0" width="6.4" height="6.4" rx="1" fill="#eb6834"/>
+<rect x="205.4" y="216.7" width="6.4" height="6.4" rx="1" fill="none" stroke="#fcfcfb" stroke-width="2"/><rect x="205.4" y="216.7" width="6.4" height="6.4" rx="1" fill="#eb6834"/>
+<rect x="257.2" y="166.5" width="6.4" height="6.4" rx="1" fill="none" stroke="#fcfcfb" stroke-width="2"/><rect x="257.2" y="166.5" width="6.4" height="6.4" rx="1" fill="#eb6834"/>
+<line x1="260.4" y1="169.7" x2="260.4" y2="146.6" stroke="#eb6834" stroke-width="1.5" opacity="0.45"/>
+<line x1="257.4" y1="146.6" x2="263.4" y2="146.6" stroke="#eb6834" stroke-width="1.5" opacity="0.45"/>
+<path d="M94.7 220.1" fill="none" stroke="#1baf7a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<polygon points="94.7,215.7 98.9,223.2 90.5,223.2" fill="none" stroke="#fcfcfb" stroke-width="2"/><polygon points="94.7,215.7 98.9,223.2 90.5,223.2" fill="#1baf7a"/>
+<line x1="94.7" y1="220.1" x2="94.7" y2="198.1" stroke="#1baf7a" stroke-width="1.5" opacity="0.45"/>
+<line x1="91.7" y1="198.1" x2="97.7" y2="198.1" stroke="#1baf7a" stroke-width="1.5" opacity="0.45"/>
+<text x="321.2" y="153.0" fill="#eb6834" font-size="11.5">dpll sat (16/25)</text>
+<text x="476.6" y="164.6" fill="#2a78d6" font-size="11.5">cdcl sat (21/25)</text>
+<text x="269.4" y="173.7" fill="#eb6834" font-size="11.5">dpll unsat</text>
+<text x="424.8" y="180.2" fill="#2a78d6" font-size="11.5">cdcl unsat</text>
+<text x="103.7" y="224.1" fill="#1baf7a" font-size="11.5">naive sat</text>
+<text x="24.0" y="456.0" fill="#898781" font-size="10.5">One instance at a time, in a fresh process each. Median of the benchmarks within time limit. Dataset: docs/scaling.csv.</text>
 </svg>

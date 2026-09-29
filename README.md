@@ -30,10 +30,6 @@ uniform-random-3-SAT sets into `benchmarks/` and `just satlib-test` runs the sol
 [`docs/scaling.csv`](docs/scaling.csv) and redraws both SVGs from it with
 [`docs/make_scaling_svg.py`](docs/make_scaling_svg.py) (stdlib only).
 
-Why the censoring rule matters: `dpll` at 150 variables *looks* faster than at 125
-(1.46 s against 2.89 s) purely because only the 7 easiest of 25 instances
-finished. Those points are in `docs/scaling.csv`, marked, and not drawn.
-
 ## Todo
 
 - [ ] **Resolution-hard families** — pigeonhole (`hole-n`) and friends, with a

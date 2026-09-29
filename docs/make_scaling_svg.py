@@ -68,9 +68,12 @@ class Row:
         self.verdict = d["verdict"].strip()
         self.solved = int(d["solved"])
         self.attempted = int(d["attempted"])
+        # Blank when the set is censored: below half solved there is no observed
+        # middle instance, so the harness reports no median rather than the
+        # median of the survivors, which would be a different quantity.
         self.median = self._s(d["median_ms"])
-        self.mean = self._s(d["mean_ms"])
-        self.worst = self._s(d["worst_ms"])
+        self.mean_solved = self._s(d["mean_solved_ms"])
+        self.worst_solved = self._s(d["worst_solved_ms"])
 
     @staticmethod
     def _s(cell):
@@ -79,8 +82,13 @@ class Row:
 
     @property
     def usable(self):
-        """True when the median is exact: more than half the set came in."""
-        return self.solved * 2 > self.attempted
+        """True when the median is an observed value, not a lower bound.
+
+        The sorted set is the solved times followed by the censored ones, so its
+        middle element is observed exactly when `attempted // 2` indexes into the
+        solved ones -- the same test the harness applies before reporting one.
+        """
+        return self.attempted // 2 < self.solved
 
     @property
     def fraction(self):
@@ -210,7 +218,7 @@ def build(theme_name, rows):
     a(f'<desc id="figDesc">{describe(rows)}</desc>')
     a(f'<rect x="0" y="0" width="{W}" height="{H}" fill="{surface}"/>')
 
-    a(text(24, 34, "How the three solvers scale", ink, 15, weight=600))
+    a(text(24, 34, "Evaluation", ink, 15, weight=600))
     a(text(24, 53, "Median solve time per instance · SATLIB uniform random 3-SAT at the phase "
                    "transition (ratio 4.26)", ink2, 11.5))
     a(text(24, 71, "Solid: satisfiable.  Dashed: unsatisfiable.  10 s per instance; a curve ends "
@@ -255,12 +263,13 @@ def build(theme_name, rows):
             for x, y in pts:
                 a(marker(shape, x, y, colors[ci], surface))
 
-            # Whisker to the slowest instance that did finish: the tail grows
-            # faster than the median does, and the median alone hides that.
+            # Whisker to the slowest instance that did finish. It is a floor on
+            # the tail, not the tail: on a censored set the genuinely slowest
+            # instances are the ones that never came back.
             last = ok[-1]
-            if last.worst is not None and last.worst > last.median:
+            if last.worst_solved is not None and last.worst_solved > last.median:
                 xw = pts[-1][0]
-                yw = max(y_of(last.worst), PLOT_T)
+                yw = max(y_of(last.worst_solved), PLOT_T)
                 a(f'<line x1="{xw:.1f}" y1="{pts[-1][1]:.1f}" x2="{xw:.1f}" y2="{yw:.1f}" '
                   f'stroke="{colors[ci]}" stroke-width="1.5" opacity="0.45"/>')
                 a(f'<line x1="{xw - 3:.1f}" y1="{yw:.1f}" x2="{xw + 3:.1f}" y2="{yw:.1f}" '
@@ -293,9 +302,8 @@ def build(theme_name, rows):
     for x, y, s, c in labels:
         a(text(x + 9, y + 4, s, c, 11.5))
 
-    a(text(24, H - 20, "Logarithmic time axis, so a straight line is exponential growth. Release "
-                       "build, one instance at a time, in a fresh process each. Dataset: "
-                       "docs/scaling.csv.", muted, 10.5))
+    a(text(24, H - 20, "One instance at a time, in a fresh process each. Median of the benchmarks within time limit. "
+                       "Dataset: docs/scaling.csv.", muted, 10.5))
     a('</svg>')
     return "\n".join(out)
 
@@ -303,11 +311,11 @@ def build(theme_name, rows):
 def check(rows):
     """ASCII preview and layout assertions, in place of a renderer."""
     print(f"{'solver':6} {'verdict':7} {'vars':>4} {'solved':>7} {'median':>10} "
-          f"{'mean':>10} {'worst':>10}")
+          f"{'mean(s)':>10} {'worst(s)':>10}")
     for r in sorted(rows, key=lambda r: (r.solver, r.verdict, r.vars)):
         flag = "" if r.usable else "  (censored)"
         print(f"{r.solver:6} {r.verdict:7} {r.vars:>4} {r.fraction:>7} {fmt(r.median):>10} "
-              f"{fmt(r.mean):>10} {fmt(r.worst):>10}{flag}")
+              f"{fmt(r.mean_solved):>10} {fmt(r.worst_solved):>10}{flag}")
 
     print()
     for name, _, _ in SOLVERS:
@@ -319,7 +327,7 @@ def check(rows):
     drawn = [r for r in rows if r.usable]
     assert drawn, "nothing is usable: every set is censored"
     lo = min(r.median for r in drawn)
-    hi = max(r.worst or r.median for r in drawn)
+    hi = max(r.worst_solved or r.median for r in drawn)
     assert 10 ** Y_LO <= lo, f"y axis starts above the fastest point ({fmt(lo)})"
     if hi > 10 ** Y_HI:
         print(f"note: worst instance {fmt(hi)} is above the axis; its whisker is clipped")

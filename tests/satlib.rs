@@ -22,7 +22,7 @@
 //! builds in release mode -- a debug build is ~20x slower and makes even the
 //! 20-variable set tedious.
 
-use std::io::Read;
+use std::io::{IsTerminal, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
@@ -117,6 +117,130 @@ fn check(solver: &SatSolver, expr: &Expr, path: &Path, expect_sat: bool) -> Dura
     elapsed
 }
 
+/* A tqdm-style progress bar, on stderr.
+
+`just satlib-scaling` walks three solvers up a ten-rung ladder under a
+per-instance cap, which is tens of minutes during which the only output used to
+be one line per finished set. The bar reports inside a set: how many of its
+instances are done, how long that has taken and how long the rest should.
+
+stderr because stdout is data -- `satlib-scaling` builds `docs/scaling.csv` out
+of it -- and because that is where tqdm puts it. It draws only onto a terminal:
+redirected or piped, `\r` redraws are noise rather than animation, so a non-tty
+run stays silent and the per-set lines read exactly as they did before. */
+
+const BAR_WIDTH: usize = 24;
+
+/// How often the bar may redraw. The 20-variable sets solve an instance in well
+/// under a millisecond, and a terminal cannot show a thousand updates a second
+/// any more usefully than twenty.
+const REDRAW_EVERY: Duration = Duration::from_millis(50);
+
+struct Progress {
+    label: String,
+    total: usize,
+    done: usize,
+    start: Instant,
+    last_draw: Instant,
+    tty: bool,
+}
+
+impl Progress {
+    fn new(label: String, total: usize) -> Self {
+        let now = Instant::now();
+        let mut bar = Progress {
+            label,
+            total,
+            done: 0,
+            start: now,
+            last_draw: now,
+            tty: std::io::stderr().is_terminal(),
+        };
+        // Draw at zero, so a slow first instance still says what is running.
+        bar.draw("");
+        bar
+    }
+
+    /// One more instance finished. `note` is appended to the bracket, which is
+    /// where the capped runs report how many instances have outrun the cap.
+    fn tick(&mut self, note: &str) {
+        self.done += 1;
+        if self.last_draw.elapsed() >= REDRAW_EVERY || self.done == self.total {
+            self.draw(note);
+        }
+    }
+
+    /// Leaves the finished bar on screen and ends the line, so the set that
+    /// follows starts its own and the run leaves a legible trail behind it.
+    fn finish(&mut self, note: &str) {
+        self.draw(note);
+        if self.tty {
+            eprintln!();
+        }
+    }
+
+    fn draw(&mut self, note: &str) {
+        if !self.tty {
+            return;
+        }
+        self.last_draw = Instant::now();
+        let frac = if self.total == 0 {
+            1.0
+        } else {
+            self.done as f64 / self.total as f64
+        };
+        // Eighth-width blocks, so a 25-instance set still moves the bar on every
+        // instance instead of every other one.
+        let eighths = (frac * (BAR_WIDTH * 8) as f64).round() as usize;
+        let full = eighths / 8;
+        let mut bar = "█".repeat(full);
+        if full < BAR_WIDTH {
+            let partial = [' ', '▏', '▎', '▍', '▌', '▋', '▊', '▉'];
+            bar.push(partial[eighths % 8]);
+            bar.push_str(&" ".repeat(BAR_WIDTH - full - 1));
+        }
+        let elapsed = self.start.elapsed().as_secs_f64();
+        let left = (self.total - self.done) as f64;
+        let per = elapsed / self.done.max(1) as f64;
+        let (eta, rate) = if self.done == 0 {
+            (f64::INFINITY, "?".to_string())
+        } else if per >= 1.0 {
+            (per * left, format!("{per:.2}s/it"))
+        } else {
+            (per * left, format!("{:.1}it/s", 1.0 / per))
+        };
+        // `\r` back to column one, then erase to the end of the line: a shorter
+        // draw must not leave the tail of a longer one behind it.
+        eprint!(
+            "\r\x1b[2K{:<20} {:>3.0}%|{}| {}/{} [{}<{}, {}{}]",
+            self.label,
+            frac * 100.0,
+            bar,
+            self.done,
+            self.total,
+            clock(elapsed),
+            clock(eta),
+            rate,
+            note
+        );
+        let _ = std::io::stderr().flush();
+    }
+}
+
+/// `MM:SS`, widening to `H:MM:SS` past an hour. Not-yet-known times (the ETA
+/// before the first instance lands) print as `??:??`.
+fn clock(secs: f64) -> String {
+    if !secs.is_finite() {
+        return "??:??".into();
+    }
+    let s = secs as u64;
+    if s >= 3600 {
+        format!("{}:{:02}:{:02}", s / 3600, (s / 60) % 60, s % 60)
+    } else {
+        format!("{:02}:{:02}", s / 60, s % 60)
+    }
+}
+
 /// Runs `solver` over (a prefix of) a set and reports timings.
 fn run_set(solver: &SatSolver, set: &str, expect_sat: bool, limit: Option<usize>) {
     let Some((n, mean, worst)) = measure(solver, set, expect_sat, limit) else {
@@ -143,12 +267,15 @@ fn measure(
 
     let mut total = Duration::ZERO;
     let mut worst = Duration::ZERO;
+    let mut bar = Progress::new(format!("{} {set}", solver.description), paths.len());
     for path in &paths {
         let expr = read_instance(path);
         let elapsed = check(solver, &expr, path, expect_sat);
         total += elapsed;
         worst = worst.max(elapsed);
+        bar.tick("");
     }
+    bar.finish("");
     Some((paths.len(), total / paths.len() as u32, worst))
 }
 
@@ -373,20 +500,46 @@ struct Capped {
 }
 
 impl Capped {
-    /// The median over the solved instances, which is the statistic the figure
-    /// plots: a cap censors the slow tail, so a mean is biased by exactly the
-    /// instances it cannot see, while the median stays exact as long as more than
-    /// half the set came in under the cap.
+    /// The median of the whole set, which is the statistic the figure plots.
+    ///
+    /// Indexing by `attempted / 2`, not by `solved.len() / 2`: every censored
+    /// instance is slower than every solved one, so the sorted set is the solved
+    /// times followed by the censored ones, and the middle of *that* is what a
+    /// median means here. `solved.len() / 2` would be the median of the
+    /// survivors, which is a different and much smaller number on a set that
+    /// timed out a lot -- exactly the survivorship the cap introduces and this is
+    /// meant to be immune to.
+    ///
+    /// Valid only when `usable()`: below half solved, the middle instance is one
+    /// that timed out, and all that is known of it is "more than the cap".
     fn median(&self) -> Duration {
-        self.solved[self.solved.len() / 2]
+        assert!(self.usable(), "the median of this set is censored");
+        self.solved[self.attempted / 2]
     }
 
-    fn mean(&self) -> Duration {
+    /// Whether the median above is an observed value rather than a lower bound.
+    fn usable(&self) -> bool {
+        self.attempted / 2 < self.solved.len()
+    }
+
+    /// Mean and worst are over the *solved* instances and cannot be anything
+    /// else -- a censored instance has no time to average in. The CSV names them
+    /// so.
+    fn mean_solved(&self) -> Duration {
         self.solved.iter().sum::<Duration>() / self.solved.len() as u32
     }
 
-    fn worst(&self) -> Duration {
+    fn worst_solved(&self) -> Duration {
         *self.solved.last().expect("no solved instances")
+    }
+}
+
+/// The bar's suffix: silent until something has actually outrun the cap.
+fn note_over_cap(over: usize) -> String {
+    if over == 0 {
+        String::new()
+    } else {
+        format!(", {over} over cap")
     }
 }
 
@@ -401,10 +554,20 @@ fn measure_capped(solver: &str, set: &str, expect_sat: bool, limit: Option<usize
         paths.truncate(n);
     }
     let attempted = paths.len();
-    let mut solved: Vec<Duration> = paths
-        .iter()
-        .filter_map(|p| solve_capped(solver, p, expect_sat, cap))
-        .collect();
+    let mut solved: Vec<Duration> = Vec::new();
+    let mut over = 0usize;
+    let mut bar = Progress::new(format!("{solver} {set}"), attempted);
+    for path in &paths {
+        match solve_capped(solver, path, expect_sat, cap) {
+            Some(elapsed) => solved.push(elapsed),
+            None => over += 1,
+        }
+        // The count of instances that outran the cap is what makes a slow-looking
+        // run legible while it is still going: it says whether the set is merely
+        // hard or already out of reach.
+        bar.tick(&note_over_cap(over));
+    }
+    bar.finish(&note_over_cap(over));
     solved.sort();
     Some(Capped { attempted, solved })
 }
@@ -473,21 +636,28 @@ fn from_env() {
         println!("{name},{set},{vars},{verdict},0,{},,,", r.attempted);
         return;
     }
-    println!(
-        "[{name}] {set}: solved {}/{} within {cap_s}s, median {:.2?}, mean {:.2?}, worst {:.2?}",
-        r.solved.len(),
-        r.attempted,
-        r.median(),
-        r.mean(),
-        r.worst()
-    );
     let ms = |d: Duration| d.as_secs_f64() * 1e3;
+    // A censored set still reports what it did solve; only the median is withheld,
+    // because below half solved there is no observed value to report.
+    let median = if r.usable() {
+        format!("{:.2?}", r.median())
+    } else {
+        format!("over {cap_s}s")
+    };
     println!(
-        "{name},{set},{vars},{verdict},{},{},{:.4},{:.4},{:.4}",
+        "[{name}] {set}: solved {}/{} within {cap_s}s, median {median}, \
+         mean(solved) {:.2?}, worst(solved) {:.2?}",
         r.solved.len(),
         r.attempted,
-        ms(r.median()),
-        ms(r.mean()),
-        ms(r.worst())
+        r.mean_solved(),
+        r.worst_solved()
+    );
+    println!(
+        "{name},{set},{vars},{verdict},{},{},{},{:.4},{:.4}",
+        r.solved.len(),
+        r.attempted,
+        if r.usable() { format!("{:.4}", ms(r.median())) } else { String::new() },
+        ms(r.mean_solved()),
+        ms(r.worst_solved())
     );
 }

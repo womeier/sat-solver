@@ -29,7 +29,7 @@ satlib:
 # slower, which matters for the naive solver (~0.2 s per 20-variable instance
 # optimized, so ~4 s unoptimized).
 satlib-test *args:
-    cargo test --release --test satlib -- --ignored --nocapture --test-threads=1 {{args}}
+    cargo test -q --release --test satlib -- --ignored --nocapture --test-threads=1 {{args}}
 
 # Extract sat_naive/sat_dpll/sat_cdcl (and their dependencies) to proofs/lean.
 # Every function in those modules is translated: aeneas rejects a `return` out of an
@@ -161,9 +161,13 @@ satlib-ladder solver="cdcl" limit="25" cap="10":
         # The unsatisfiable twin of `ufN-M` is `uufN-M`: one more leading `u`.
         for s in "$set" "u$set"; do
             [ -d "benchmarks/satlib/$s" ] || continue
+            # `-q` rather than `2>/dev/null`: it silences cargo's own
+            # Compiling/Finished/Running chatter per set without closing stderr,
+            # which is where the test draws its progress bar -- and where a real
+            # failure would otherwise go unseen.
             line=$(SATLIB_SOLVER={{solver}} SATLIB_SET="$s" SATLIB_LIMIT={{limit}} \
-                   SATLIB_CAP={{cap}} cargo test --release --test satlib from_env \
-                   -- --ignored --nocapture 2>/dev/null | grep -E '^\[|^{{solver}},')
+                   SATLIB_CAP={{cap}} cargo test -q --release --test satlib from_env \
+                   -- --ignored --nocapture | grep -E '^\[|^{{solver}},')
             [ -n "$line" ] || continue
             echo "$line"
             case "$line" in *"solved 0/"*)
@@ -194,11 +198,14 @@ satlib-fetch *sets:
 # Regenerate docs/scaling.csv and redraw the two scaling SVGs from it. `naive`
 # enumerates 2^n valuations, so its ladder ends early; it is in the figure so the
 # figure can say where.
+# This is a long run -- three solvers up the ladder, `cap` seconds per instance in
+# the worst case. Stdout is the CSV, so the progress bar is on stderr and still
+# reaches the terminal: one bar per set, left on screen when the set finishes.
 satlib-scaling cap="10" limit="25":
     #!/usr/bin/env bash
     set -eu
     {
-      echo "solver,set,vars,verdict,solved,attempted,median_ms,mean_ms,worst_ms"
+      echo "solver,set,vars,verdict,solved,attempted,median_ms,mean_solved_ms,worst_solved_ms"
       for solver in cdcl dpll naive; do
         just satlib-ladder "$solver" {{limit}} {{cap}} | grep -E "^$solver," || true
       done
