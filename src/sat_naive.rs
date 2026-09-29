@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 use crate::expr::*;
 use crate::sat::SatSolver;
+use crate::sat_result::SatResult;
 
 // Public because `sat_dpll` reuses it: it needs the same "all variables present,
 // all false" starting map, and this one already has a Lean spec proved against it.
@@ -35,14 +36,16 @@ fn check_possible_valuations(expr: &Expr, vars: &[u16], val: &mut Map) -> bool {
     false
 }
 
-pub fn solve_sat(expr: &Expr) -> Option<Map> {
+/// Never [`SatResult::Unknown`]: the search enumerates a finite set of
+/// valuations with no counter to exhaust, so it always decides.
+pub fn solve_sat(expr: &Expr) -> SatResult<Map> {
     let vars = collect_vars(expr);
     let mut val = initial_valuation(&vars);
 
     if check_possible_valuations(expr, &vars, &mut val) {
-        Some(val)
+        SatResult::Sat(val)
     } else {
-        None
+        SatResult::Unsat
     }
 }
 

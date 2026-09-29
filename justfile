@@ -72,7 +72,8 @@ extract:
         --opaque 'crate::cnf::{impl core::fmt::Debug for crate::cnf::Literal}' \
         --opaque 'crate::cnf::{impl core::fmt::Debug for crate::cnf::Clause}' \
         --opaque 'crate::cnf::{impl core::fmt::Debug for crate::cnf::Cnf}' \
-        --opaque 'crate::sat_dpll::{impl core::fmt::Debug for crate::sat_dpll::Transform}'" \
+        --opaque 'crate::sat_dpll::{impl core::fmt::Debug for crate::sat_dpll::Transform}' \
+        --opaque 'crate::sat_result::{impl core::fmt::Debug for crate::sat_result::SatResult}'" \
         --aeneas-args="-loops-to-rec"
     # The --opaque flags above stop charon from attempting to translate the
     # derived Debug impls / the handwritten Display impl for Entry/Map/Expr

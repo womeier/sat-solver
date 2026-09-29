@@ -57,6 +57,7 @@ use crate::expr::{Expr, Map, collect_vars};
 use crate::sat::SatSolver;
 use crate::sat_dpll::{Transform, encode};
 use crate::sat_naive::initial_valuation;
+use crate::sat_result::SatResult;
 
 // Conflicts between activity halvings. Small enough that the heuristic forgets
 // the early search, large enough that a single conflict cannot dominate it.
@@ -488,16 +489,21 @@ impl Solver {
     }
 }
 
-/// CDCL on a CNF: `None` if it is unsatisfiable, otherwise a value for every
-/// variable it mentions.
+/// CDCL on a CNF: [`SatResult::Unsat`] if it has no model, otherwise a value
+/// for every variable it mentions.
 ///
 /// Separate from [`solve_sat_with`] because the CNF is where CDCL's contract
 /// actually lives -- the `Expr` layer above it is just the encoding -- and
 /// because it is what a DIMACS front end wants.
-pub fn solve_cnf(cnf: &Cnf) -> Option<Vec<(u16, bool)>> {
+///
+/// [`SatResult::Unknown`] is not returned yet: `search` still decides every
+/// formula it is given. The answer exists ahead of the counter that will
+/// produce it, so that adding the counter is a change to one function rather
+/// than to every signature above it.
+pub fn solve_cnf(cnf: &Cnf) -> SatResult<Vec<(u16, bool)>> {
     let mut solver = Solver::new(cnf);
     if !solver.solve() {
-        return None;
+        return SatResult::Unsat;
     }
 
     // Only variables the CNF mentions are ever assigned, so the assigned slots
@@ -508,7 +514,7 @@ pub fn solve_cnf(cnf: &Cnf) -> Option<Vec<(u16, bool)>> {
             model.push((v as u16, b));
         }
     }
-    Some(model)
+    SatResult::Sat(model)
 }
 
 /// CDCL on the CNF `transform` produces, returning a model of `expr`.
@@ -517,25 +523,26 @@ pub fn solve_cnf(cnf: &Cnf) -> Option<Vec<(u16, bool)>> {
 /// reason `sat_dpll`'s does: callers get a map `evaluate` can run on, even for a
 /// variable the encoding dropped. Gate variables the transformation introduced
 /// are in the returned map too, and `evaluate` never looks at them.
-pub fn solve_sat_with(expr: &Expr, transform: Transform) -> Option<Map> {
+pub fn solve_sat_with(expr: &Expr, transform: Transform) -> SatResult<Map> {
     let vars = collect_vars(expr);
     let mut val = initial_valuation(&vars);
     let cnf = encode(expr, transform);
 
     match solve_cnf(&cnf) {
-        None => None,
-        Some(model) => {
+        SatResult::Unsat => SatResult::Unsat,
+        SatResult::Unknown => SatResult::Unknown,
+        SatResult::Sat(model) => {
             for (var, value) in model {
                 val.insert(var, value);
             }
-            Some(val)
+            SatResult::Sat(val)
         }
     }
 }
 
 /// CDCL on the default ([`Transform::Hybrid`]) encoding -- the same CNF
 /// `sat_dpll::solve_sat` searches, so the two are directly comparable.
-pub fn solve_sat(expr: &Expr) -> Option<Map> {
+pub fn solve_sat(expr: &Expr) -> SatResult<Map> {
     solve_sat_with(expr, Transform::Hybrid)
 }
 
@@ -742,13 +749,15 @@ fn solve_cnf_refutes_an_unsatisfiable_cnf() {
         &[(true, 0), (false, 1)],
         &[(true, 0), (true, 1)],
     ]);
-    assert_eq!(solve_cnf(&unsat), None);
+    assert_eq!(solve_cnf(&unsat), SatResult::Unsat);
 }
 
 #[test]
 fn solve_cnf_assigns_every_variable_on_success() {
     let sat = cnf(&[&[(false, 0), (false, 1)], &[(true, 0), (false, 2)]]);
-    let model = solve_cnf(&sat).expect("satisfiable");
+    let SatResult::Sat(model) = solve_cnf(&sat) else {
+        panic!("satisfiable")
+    };
     assert_eq!(model.len(), 3);
 }
 
@@ -758,7 +767,9 @@ fn solve_cnf_ignores_variables_no_clause_mentions() {
     // those variables exist, and deciding the other 120 would be 120 decision
     // levels spent on nothing.
     let sat = cnf(&[&[(false, letter('x')), (true, letter('y'))]]);
-    let model = solve_cnf(&sat).expect("satisfiable");
+    let SatResult::Sat(model) = solve_cnf(&sat) else {
+        panic!("satisfiable")
+    };
     assert_eq!(model.len(), 2);
     assert_eq!(model[0].0, letter('x'));
     assert_eq!(model[1].0, letter('y'));
@@ -770,12 +781,14 @@ fn solve_sat_agrees_with_the_naive_solver_on_the_examples() {
 
     for transform in [Transform::Naive, Transform::Tseitin, Transform::Hybrid] {
         let sat = example_expr_sat();
-        let val = solve_sat_with(&sat, transform).expect("example_expr_sat is satisfiable");
+        let SatResult::Sat(val) = solve_sat_with(&sat, transform) else {
+            panic!("example_expr_sat is satisfiable under {transform:?}")
+        };
         assert_eq!(evaluate(&sat, &val), Ok(true), "{transform:?}");
 
         assert_eq!(
             solve_sat_with(&example_expr_unsat(), transform),
-            None,
+            SatResult::Unsat,
             "{transform:?}"
         );
     }
@@ -805,11 +818,11 @@ fn solve_sat_matches_the_naive_solver() {
         for transform in [Transform::Naive, Transform::Tseitin, Transform::Hybrid] {
             let cdcl_res = solve_sat_with(&expr, transform);
             assert_eq!(
-                cdcl_res.is_some(),
-                naive_res.is_some(),
+                matches!(cdcl_res, SatResult::Sat(_)),
+                matches!(naive_res, SatResult::Sat(_)),
                 "disagreement on {src} under {transform:?}"
             );
-            if let Some(val) = cdcl_res {
+            if let SatResult::Sat(val) = cdcl_res {
                 assert_eq!(
                     crate::expr::evaluate(&expr, &val),
                     Ok(true),
@@ -877,12 +890,12 @@ fn solve_sat_matches_the_naive_solver_on_random_3_sat() {
         let naive_res = crate::sat_naive::solve_sat(&expr);
         let cdcl_res = solve_sat(&expr);
         assert_eq!(
-            cdcl_res.is_some(),
-            naive_res.is_some(),
+            matches!(cdcl_res, SatResult::Sat(_)),
+            matches!(naive_res, SatResult::Sat(_)),
             "disagreement on random instance {instance}: {expr}"
         );
         match cdcl_res {
-            Some(val) => {
+            SatResult::Sat(val) => {
                 sat_seen += 1;
                 assert_eq!(
                     evaluate(&expr, &val),
@@ -890,7 +903,8 @@ fn solve_sat_matches_the_naive_solver_on_random_3_sat() {
                     "bad witness for random instance {instance}: {expr}"
                 );
             }
-            None => unsat_seen += 1,
+            SatResult::Unsat => unsat_seen += 1,
+            SatResult::Unknown => panic!("gave up on random instance {instance}: {expr}"),
         }
     }
 
@@ -921,11 +935,11 @@ fn solve_sat_matches_dpll_on_the_shared_encoding() {
         let dpll_res = crate::sat_dpll::solve_sat(&expr);
         let cdcl_res = solve_sat(&expr);
         assert_eq!(
-            cdcl_res.is_some(),
-            dpll_res.is_some(),
+            matches!(cdcl_res, SatResult::Sat(_)),
+            matches!(dpll_res, SatResult::Sat(_)),
             "disagreement on {src}"
         );
-        if let Some(val) = cdcl_res {
+        if let SatResult::Sat(val) = cdcl_res {
             assert_eq!(evaluate(&expr, &val), Ok(true), "bad witness for {src}");
         }
     }
@@ -961,7 +975,7 @@ fn refutes_the_pigeonhole_principle() {
         }
     }
 
-    assert_eq!(solve_cnf(&Cnf(clauses)), None);
+    assert_eq!(solve_cnf(&Cnf(clauses)), SatResult::Unsat);
 }
 
 #[test]

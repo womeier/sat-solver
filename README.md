@@ -79,13 +79,16 @@ Known limits worth fixing (or at least documenting) alongside the above:
 
       Checking the size at *runtime* and bailing out would not help — the bound is a
       predicate on the input alone, so a check relocates it rather than removing it,
-      and `None` already means UNSAT, so aborting into it would have the solver call
-      a satisfiable formula unsatisfiable. What would help is checking the *counter*:
-      `checked_add` at the three increment sites plus a third outcome (`Unknown`).
-      Then soundness and "never answers UNSAT for a satisfiable formula" become
+      and it would refuse instances the solver in fact closes in a few thousand
+      conflicts. What would help is checking the *counter*: `checked_add` at the
+      increment site, answering `SatResult::Unknown` when it is exhausted. Then
+      soundness and "never answers UNSAT for a satisfiable formula" become
       unconditional and cover the benchmarks, "satisfiable ⟹ returns a model" weakens
       to "⟹ a model or `Unknown`", and — the reason it is a genuine trade — the
-      base-3 termination argument collapses into counting a `u32` down. Not done.
+      base-3 termination argument is replaced by counting the counter down.
+
+      The third outcome is in place (`sat_result::SatResult`); the `checked_add` that
+      produces it is not, so every bound above still stands as written.
 
       So: the code runs fine on a 218-clause instance; the theorems say nothing about
       it. Benchmarking is complementary to the proofs, not redundant with them.

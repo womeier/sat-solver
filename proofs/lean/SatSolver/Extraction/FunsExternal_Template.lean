@@ -80,11 +80,20 @@ axiom expr.Expr.Insts.CoreFmtDisplay.fmt
     core.fmt.Formatter))
 
 /-- [sat_solver::sat_dpll::{impl core::fmt::Debug for sat_solver::sat_dpll::Transform}::fmt]:
-    Source: 'src/sat_dpll.rs', lines 136:9-136:14
+    Source: 'src/sat_dpll.rs', lines 137:9-137:14
     Visibility: public -/
 axiom sat_dpll.Transform.Insts.CoreFmtDebug.fmt
   :
   sat_dpll.Transform → core.fmt.Formatter → RustM ((core.result.Result Unit
     core.fmt.Error) × core.fmt.Formatter × (core.fmt.Formatter →
+    core.fmt.Formatter))
+
+/-- [sat_solver::sat_result::{impl core::fmt::Debug for sat_solver::sat_result::SatResult<T>}::fmt]:
+    Source: 'src/sat_result.rs', lines 18:9-18:14
+    Visibility: public -/
+axiom sat_result.SatResult.Insts.CoreFmtDebug.fmt
+  {T : Type} (corefmtDebugInst : core.fmt.Debug T) :
+  sat_result.SatResult T → core.fmt.Formatter → RustM ((core.result.Result
+    Unit core.fmt.Error) × core.fmt.Formatter × (core.fmt.Formatter →
     core.fmt.Formatter))
 

@@ -78,7 +78,7 @@ structure cnf_transform_tseitin.Encoder where
 def expr.evaluate.closure := Unit
 
 /-- [sat_solver::sat_cdcl::Status]
-    Source: 'src/sat_cdcl.rs', lines 71:0-80:1 -/
+    Source: 'src/sat_cdcl.rs', lines 72:0-81:1 -/
 @[discriminant isize]
 inductive sat_cdcl.Status where
 | Conflict : sat_cdcl.Status
@@ -86,7 +86,7 @@ inductive sat_cdcl.Status where
 | Silent : sat_cdcl.Status
 
 /-- [sat_solver::sat_cdcl::Solver]
-    Source: 'src/sat_cdcl.rs', lines 88:0-122:1 -/
+    Source: 'src/sat_cdcl.rs', lines 89:0-123:1 -/
 structure sat_cdcl.Solver where
   clauses : alloc.vec.Vec cnf.Clause
   problem_clauses : Std.Usize
@@ -101,8 +101,17 @@ structure sat_cdcl.Solver where
   trail_lim : alloc.vec.Vec Std.Usize
   conflicts : Std.U32
 
+/-- [sat_solver::sat_result::SatResult]
+    Source: 'src/sat_result.rs', lines 19:0-26:1
+    Visibility: public -/
+@[discriminant isize]
+inductive sat_result.SatResult (T : Type) where
+| Sat : T → sat_result.SatResult T
+| Unsat : sat_result.SatResult T
+| Unknown : sat_result.SatResult T
+
 /-- [sat_solver::sat_dpll::Transform]
-    Source: 'src/sat_dpll.rs', lines 137:0-159:1
+    Source: 'src/sat_dpll.rs', lines 138:0-160:1
     Visibility: public -/
 @[discriminant isize]
 inductive sat_dpll.Transform where

@@ -33,6 +33,7 @@ use sat_solver::sat::SatSolver;
 use sat_solver::sat_cdcl::SAT_SOLVER_CDCL;
 use sat_solver::sat_dpll::{SAT_SOLVER_DPLL, SAT_SOLVER_DPLL_NAIVE};
 use sat_solver::sat_naive::SAT_SOLVER_NAIVE;
+use sat_solver::sat_result::SatResult;
 
 const SATLIB: &str = "benchmarks/satlib";
 
@@ -91,25 +92,33 @@ fn read_instance(path: &Path) -> Expr {
 /// exercises the claim the Lean soundness theorem makes about `solve_sat`.
 fn check(solver: &SatSolver, expr: &Expr, path: &Path, expect_sat: bool) -> Duration {
     let start = Instant::now();
-    let result: Option<Map> = (solver.solve)(expr);
+    let result: SatResult<Map> = (solver.solve)(expr);
     let elapsed = start.elapsed();
 
     match (&result, expect_sat) {
-        (Some(model), true) => assert_eq!(
+        (SatResult::Sat(model), true) => assert_eq!(
             evaluate(expr, model),
             Ok(true),
             "[{}] {} reported SAT with a model that does not satisfy the formula",
             solver.description,
             path.display()
         ),
-        (None, false) => {}
-        (Some(_), false) => panic!(
+        (SatResult::Unsat, false) => {}
+        (SatResult::Sat(_), false) => panic!(
             "[{}] {} is unsatisfiable but a model was returned",
             solver.description,
             path.display()
         ),
-        (None, true) => panic!(
+        (SatResult::Unsat, true) => panic!(
             "[{}] {} is satisfiable but no model was found",
+            solver.description,
+            path.display()
+        ),
+        // Not reachable today -- no solver here gives up -- but it is an answer
+        // the type admits, and silently counting it as a decided verdict is
+        // exactly the confusion the third variant exists to prevent.
+        (SatResult::Unknown, _) => panic!(
+            "[{}] {} gave up without deciding",
             solver.description,
             path.display()
         ),

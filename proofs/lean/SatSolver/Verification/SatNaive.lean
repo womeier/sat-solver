@@ -304,8 +304,8 @@ theorem sat_naive.initial_valuation.spec (vars : Slice Std.U16) :
 
 /-- **Soundness**: if `sat_naive::solve_sat` returns a valuation, it satisfies `e`. -/
 theorem sat_naive.solve_sat_sound (e : expr.Expr) (hbound : exprSize e < Usize.max) :
-    sat_naive.solve_sat e ⦃ (result : core.option.Option expr.Map) =>
-      ∀ v, result = some v →
+    sat_naive.solve_sat e ⦃ (result : sat_result.SatResult expr.Map) =>
+      ∀ v, result = sat_result.SatResult.Sat v →
         expr.evaluate e v ⦃ (r : core.result.Result Bool Unit) =>
           r = core.result.Result.Ok true ⦄ ⦄ := by
   unfold sat_naive.solve_sat
@@ -335,7 +335,8 @@ theorem sat_naive.solve_sat_sound (e : expr.Expr) (hbound : exprSize e < Usize.m
     finds a satisfying valuation. -/
 theorem sat_naive.solve_sat_complete (e : expr.Expr) (w : Std.U16 → Bool)
     (hbound : exprSize e < Usize.max) (hsat : evalPure w e = true) :
-    sat_naive.solve_sat e ⦃ (result : core.option.Option expr.Map) => result ≠ none ⦄ := by
+    sat_naive.solve_sat e ⦃ (result : sat_result.SatResult expr.Map) =>
+      ∃ v, result = sat_result.SatResult.Sat v ⦄ := by
   unfold sat_naive.solve_sat
   step*
   · -- witness for check_possible_valuations' own w0 parameter: the given

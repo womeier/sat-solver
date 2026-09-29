@@ -1112,8 +1112,8 @@ theorem sat_dpll.sound_tail (e : expr.Expr) (cc : cnf.Cnf) (val val1 val2 : expr
     `exprSize e < 2 ^ exprSize e`. -/
 theorem sat_dpll.solve_sat_sound (e : expr.Expr) (hbound : 2 ^ exprSize e ≤ Usize.max)
     (hquad : exprSize e * exprSize e + exprSize e + 1 ≤ Usize.max) :
-    sat_dpll.solve_sat e ⦃ (result : core.option.Option expr.Map) =>
-      ∀ v, result = some v →
+    sat_dpll.solve_sat e ⦃ (result : sat_result.SatResult expr.Map) =>
+      ∀ v, result = sat_result.SatResult.Sat v →
         expr.evaluate e v ⦃ (r : core.result.Result Bool Unit) =>
           r = core.result.Result.Ok true ⦄ ⦄ := by
   have hsize : exprSize e ≤ Usize.max := le_trans Nat.lt_two_pow_self.le hbound
@@ -1169,7 +1169,8 @@ theorem sat_dpll.solve_sat_complete (e : expr.Expr) (w : Std.U16 → Bool)
     (hbound : 2 ^ exprSize e ≤ Usize.max)
     (hquad : exprSize e * exprSize e + exprSize e + 1 ≤ Usize.max)
     (hsat : evalPure w e = true) :
-    sat_dpll.solve_sat e ⦃ (result : core.option.Option expr.Map) => result ≠ none ⦄ := by
+    sat_dpll.solve_sat e ⦃ (result : sat_result.SatResult expr.Map) =>
+      ∃ v, result = sat_result.SatResult.Sat v ⦄ := by
   have hsize : exprSize e ≤ Usize.max := le_trans Nat.lt_two_pow_self.le hbound
   have hsize' : exprSize e < Usize.max := lt_of_lt_of_le Nat.lt_two_pow_self hbound
   /- `solve_sat` is a thin wrapper: `solve_sat_with e Transform.Hybrid`, whose

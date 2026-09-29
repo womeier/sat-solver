@@ -1342,15 +1342,15 @@ def expr.evaluate
 partial_fixpoint
 
 /-- [sat_solver::sat_cdcl::DECAY_INTERVAL]
-    Source: 'src/sat_cdcl.rs', lines 63:0-63:32 -/
+    Source: 'src/sat_cdcl.rs', lines 64:0-64:32 -/
 @[global_simps, irreducible] def sat_cdcl.DECAY_INTERVAL : Std.U32 := 128#u32
 
 /-- [sat_solver::sat_cdcl::FIRST_RESTART]
-    Source: 'src/sat_cdcl.rs', lines 68:0-68:31 -/
+    Source: 'src/sat_cdcl.rs', lines 69:0-69:31 -/
 @[global_simps, irreducible] def sat_cdcl.FIRST_RESTART : Std.U32 := 100#u32
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::new]: loop 1:
-    Source: 'src/sat_cdcl.rs', lines 131:12-135:13 -/
+    Source: 'src/sat_cdcl.rs', lines 132:12-136:13 -/
 @[rust_loop]
 def sat_cdcl.Solver.new_loop0_loop0
   (iter : core.slice.iter.Iter cnf.Literal) (num_vars : Std.Usize) :
@@ -1372,7 +1372,7 @@ def sat_cdcl.Solver.new_loop0_loop0
 partial_fixpoint
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::new]: loop 0:
-    Source: 'src/sat_cdcl.rs', lines 130:8-136:9 -/
+    Source: 'src/sat_cdcl.rs', lines 131:8-137:9 -/
 @[rust_loop]
 def sat_cdcl.Solver.new_loop0
   (iter : core.slice.iter.Iter cnf.Clause) (num_vars : Std.Usize) :
@@ -1390,7 +1390,7 @@ def sat_cdcl.Solver.new_loop0
 partial_fixpoint
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::new]: loop 2:
-    Source: 'src/sat_cdcl.rs', lines 145:8-153:9 -/
+    Source: 'src/sat_cdcl.rs', lines 146:8-154:9 -/
 @[rust_loop]
 def sat_cdcl.Solver.new_loop1
   (iter : core.ops.range.Range Std.Usize)
@@ -1422,7 +1422,7 @@ def sat_cdcl.Solver.new_loop1
 partial_fixpoint
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::new]: loop 4:
-    Source: 'src/sat_cdcl.rs', lines 155:12-157:13 -/
+    Source: 'src/sat_cdcl.rs', lines 156:12-158:13 -/
 @[rust_loop]
 def sat_cdcl.Solver.new_loop2_loop0
   (iter : core.slice.iter.Iter cnf.Literal) (occurs : alloc.vec.Vec Bool) :
@@ -1442,7 +1442,7 @@ def sat_cdcl.Solver.new_loop2_loop0
 partial_fixpoint
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::new]: loop 3:
-    Source: 'src/sat_cdcl.rs', lines 154:8-158:9 -/
+    Source: 'src/sat_cdcl.rs', lines 155:8-159:9 -/
 @[rust_loop]
 def sat_cdcl.Solver.new_loop2
   (iter : core.slice.iter.Iter cnf.Clause) (occurs : alloc.vec.Vec Bool) :
@@ -1460,7 +1460,7 @@ def sat_cdcl.Solver.new_loop2
 partial_fixpoint
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::new]:
-    Source: 'src/sat_cdcl.rs', lines 125:4-174:5 -/
+    Source: 'src/sat_cdcl.rs', lines 126:4-175:5 -/
 def sat_cdcl.Solver.new (cnf1 : cnf.Cnf) : RustM sat_cdcl.Solver := do
   let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref cnf1
   let iter ← core.slice.Slice.iter s
@@ -1498,18 +1498,18 @@ def sat_cdcl.Solver.new (cnf1 : cnf.Cnf) : RustM sat_cdcl.Solver := do
     }
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::num_vars]:
-    Source: 'src/sat_cdcl.rs', lines 176:4-178:5 -/
+    Source: 'src/sat_cdcl.rs', lines 177:4-179:5 -/
 def sat_cdcl.Solver.num_vars (self : sat_cdcl.Solver) : RustM Std.Usize := do
   alloc.vec.Vec.len self.value
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::decision_level]:
-    Source: 'src/sat_cdcl.rs', lines 180:4-182:5 -/
+    Source: 'src/sat_cdcl.rs', lines 181:4-183:5 -/
 def sat_cdcl.Solver.decision_level
   (self : sat_cdcl.Solver) : RustM Std.Usize := do
   alloc.vec.Vec.len self.trail_lim
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::lit_value]:
-    Source: 'src/sat_cdcl.rs', lines 187:4-192:5 -/
+    Source: 'src/sat_cdcl.rs', lines 188:4-193:5 -/
 def sat_cdcl.Solver.lit_value
   (self : sat_cdcl.Solver) (lit : cnf.Literal) :
   RustM (core.option.Option Bool)
@@ -1525,7 +1525,7 @@ def sat_cdcl.Solver.lit_value
     ok (core.option.Option.Some (b != lit.negated))
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::status]: loop 0:
-    Source: 'src/sat_cdcl.rs', lines 200:8-219:5 -/
+    Source: 'src/sat_cdcl.rs', lines 201:8-220:5 -/
 @[rust_loop]
 def sat_cdcl.Solver.status_loop
   (iter : core.ops.range.Range Std.Usize) (v : alloc.vec.Vec cnf.Clause)
@@ -1587,7 +1587,7 @@ def sat_cdcl.Solver.status_loop
 partial_fixpoint
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::status]:
-    Source: 'src/sat_cdcl.rs', lines 194:4-219:5 -/
+    Source: 'src/sat_cdcl.rs', lines 195:4-220:5 -/
 def sat_cdcl.Solver.status
   (self : sat_cdcl.Solver) (clause : Std.Usize) : RustM sat_cdcl.Status := do
   let c ←
@@ -1601,7 +1601,7 @@ def sat_cdcl.Solver.status
     self.conflicts clause core.option.Option.None
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::assign]:
-    Source: 'src/sat_cdcl.rs', lines 224:4-231:5 -/
+    Source: 'src/sat_cdcl.rs', lines 225:4-232:5 -/
 def sat_cdcl.Solver.assign
   (self : sat_cdcl.Solver) (var : Std.U16) (value : Bool)
   (reason : core.option.Option Std.Usize) :
@@ -1633,7 +1633,7 @@ def sat_cdcl.Solver.assign
     }
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::propagate]: loop 0:
-    Source: 'src/sat_cdcl.rs', lines 247:8-266:5 -/
+    Source: 'src/sat_cdcl.rs', lines 248:8-267:5 -/
 @[rust_loop]
 def sat_cdcl.Solver.propagate_loop
   (self : sat_cdcl.Solver) (i : Std.Usize) (progress : Bool) :
@@ -1672,7 +1672,7 @@ def sat_cdcl.Solver.propagate_loop
 partial_fixpoint
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::propagate]:
-    Source: 'src/sat_cdcl.rs', lines 239:4-266:5 -/
+    Source: 'src/sat_cdcl.rs', lines 240:4-267:5 -/
 def sat_cdcl.Solver.propagate
   (self : sat_cdcl.Solver) :
   RustM ((core.option.Option Std.Usize) × sat_cdcl.Solver)
@@ -1696,7 +1696,7 @@ def sat_cdcl.Solver.propagate
     })
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::bump]:
-    Source: 'src/sat_cdcl.rs', lines 268:4-271:5 -/
+    Source: 'src/sat_cdcl.rs', lines 269:4-272:5 -/
 def sat_cdcl.Solver.bump
   (self : sat_cdcl.Solver) (var : Std.U16) : RustM sat_cdcl.Solver := do
   let i ← lift (UScalar.cast .Usize var)
@@ -1711,7 +1711,7 @@ def sat_cdcl.Solver.bump
   ok { self with activity := v }
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::decay]: loop 0:
-    Source: 'src/sat_cdcl.rs', lines 274:8-276:9 -/
+    Source: 'src/sat_cdcl.rs', lines 275:8-277:9 -/
 @[rust_loop]
 def sat_cdcl.Solver.decay_loop
   (iter : core.ops.range.Range Std.Usize) (v : alloc.vec.Vec Std.U32) :
@@ -1732,7 +1732,7 @@ def sat_cdcl.Solver.decay_loop
 partial_fixpoint
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::decay]:
-    Source: 'src/sat_cdcl.rs', lines 273:4-277:5 -/
+    Source: 'src/sat_cdcl.rs', lines 274:4-278:5 -/
 def sat_cdcl.Solver.decay
   (self : sat_cdcl.Solver) : RustM sat_cdcl.Solver := do
   let i ← alloc.vec.Vec.len self.activity
@@ -1741,7 +1741,7 @@ def sat_cdcl.Solver.decay
   ok { self with activity := v }
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::analyze]: loop 1:
-    Source: 'src/sat_cdcl.rs', lines 309:12-329:13 -/
+    Source: 'src/sat_cdcl.rs', lines 310:12-330:13 -/
 @[rust_loop]
 def sat_cdcl.Solver.analyze_loop0_loop0
   (iter : core.ops.range.Range Std.Usize) (v : alloc.vec.Vec cnf.Clause)
@@ -1844,7 +1844,7 @@ def sat_cdcl.Solver.analyze_loop0_loop0
 partial_fixpoint
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::analyze]: loop 2:
-    Source: 'src/sat_cdcl.rs', lines 335:20-341:13 -/
+    Source: 'src/sat_cdcl.rs', lines 336:20-342:13 -/
 @[rust_loop]
 def sat_cdcl.Solver.analyze_loop0_loop1
   (v : alloc.vec.Vec Std.Usize) (v1 : alloc.vec.Vec Bool)
@@ -1873,7 +1873,7 @@ def sat_cdcl.Solver.analyze_loop0_loop1
 partial_fixpoint
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::analyze]: loop 3:
-    Source: 'src/sat_cdcl.rs', lines 365:8-371:9 -/
+    Source: 'src/sat_cdcl.rs', lines 366:8-372:9 -/
 @[rust_loop]
 def sat_cdcl.Solver.analyze_loop0_loop2
   (iter : alloc.vec.into_iter.IntoIter cnf.Literal)
@@ -1898,7 +1898,7 @@ def sat_cdcl.Solver.analyze_loop0_loop2
 partial_fixpoint
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::analyze]: loop 4:
-    Source: 'src/sat_cdcl.rs', lines 373:8-375:9 -/
+    Source: 'src/sat_cdcl.rs', lines 374:8-376:9 -/
 @[rust_loop]
 def sat_cdcl.Solver.analyze_loop0_loop3
   (iter : alloc.vec.into_iter.IntoIter Std.U16) (v : alloc.vec.Vec Bool) :
@@ -1918,7 +1918,7 @@ def sat_cdcl.Solver.analyze_loop0_loop3
 partial_fixpoint
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::analyze]: loop 0:
-    Source: 'src/sat_cdcl.rs', lines 308:12-378:5 -/
+    Source: 'src/sat_cdcl.rs', lines 309:12-379:5 -/
 @[rust_loop]
 def sat_cdcl.Solver.analyze_loop0
   (lower : alloc.vec.Vec cnf.Literal) (v : alloc.vec.Vec cnf.Clause)
@@ -1985,7 +1985,7 @@ def sat_cdcl.Solver.analyze_loop0
 partial_fixpoint
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::analyze]:
-    Source: 'src/sat_cdcl.rs', lines 292:4-378:5 -/
+    Source: 'src/sat_cdcl.rs', lines 293:4-379:5 -/
 def sat_cdcl.Solver.analyze
   (self : sat_cdcl.Solver) (conflict : Std.Usize) :
   RustM ((cnf.Clause × Std.Usize) × sat_cdcl.Solver)
@@ -2016,7 +2016,7 @@ def sat_cdcl.Solver.analyze
     })
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::backtrack]: loop 0:
-    Source: 'src/sat_cdcl.rs', lines 388:8-392:9 -/
+    Source: 'src/sat_cdcl.rs', lines 389:8-393:9 -/
 @[rust_loop]
 def sat_cdcl.Solver.backtrack_loop
   (v : alloc.vec.Vec (core.option.Option Bool))
@@ -2046,7 +2046,7 @@ def sat_cdcl.Solver.backtrack_loop
 partial_fixpoint
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::backtrack]:
-    Source: 'src/sat_cdcl.rs', lines 383:4-394:5 -/
+    Source: 'src/sat_cdcl.rs', lines 384:4-395:5 -/
 def sat_cdcl.Solver.backtrack
   (self : sat_cdcl.Solver) (level : Std.Usize) : RustM sat_cdcl.Solver := do
   let i ← sat_cdcl.Solver.decision_level self
@@ -2063,7 +2063,7 @@ def sat_cdcl.Solver.backtrack
     ok { self with value := v, reason := v1, trail := v2, trail_lim := v3 }
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::pick_branch_var]: loop 0:
-    Source: 'src/sat_cdcl.rs', lines 403:8-411:9 -/
+    Source: 'src/sat_cdcl.rs', lines 404:8-412:9 -/
 @[rust_loop]
 def sat_cdcl.Solver.pick_branch_var_loop
   (iter : core.ops.range.Range Std.Usize) (self : sat_cdcl.Solver)
@@ -2115,7 +2115,7 @@ def sat_cdcl.Solver.pick_branch_var_loop
 partial_fixpoint
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::pick_branch_var]:
-    Source: 'src/sat_cdcl.rs', lines 400:4-413:5 -/
+    Source: 'src/sat_cdcl.rs', lines 401:4-414:5 -/
 def sat_cdcl.Solver.pick_branch_var
   (self : sat_cdcl.Solver) : RustM (core.option.Option Std.U16) := do
   let i ← sat_cdcl.Solver.num_vars self
@@ -2123,7 +2123,7 @@ def sat_cdcl.Solver.pick_branch_var
     core.option.Option.None 0#u32
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::search]: loop 0:
-    Source: 'src/sat_cdcl.rs', lines 428:8-483:5 -/
+    Source: 'src/sat_cdcl.rs', lines 429:8-484:5 -/
 @[rust_loop]
 def sat_cdcl.Solver.search_loop
   (self : sat_cdcl.Solver) (budget : Std.U32) (since_restart : Std.U32) :
@@ -2183,7 +2183,7 @@ def sat_cdcl.Solver.search_loop
 partial_fixpoint
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::search]:
-    Source: 'src/sat_cdcl.rs', lines 424:4-483:5 -/
+    Source: 'src/sat_cdcl.rs', lines 425:4-484:5 -/
 @[reducible]
 def sat_cdcl.Solver.search
   (self : sat_cdcl.Solver) (first_restart : Std.U32) :
@@ -2192,19 +2192,19 @@ def sat_cdcl.Solver.search
   sat_cdcl.Solver.search_loop self first_restart 0#u32
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::solve]:
-    Source: 'src/sat_cdcl.rs', lines 418:4-420:5 -/
+    Source: 'src/sat_cdcl.rs', lines 419:4-421:5 -/
 def sat_cdcl.Solver.solve
   (self : sat_cdcl.Solver) : RustM (Bool × sat_cdcl.Solver) := do
   sat_cdcl.Solver.search self sat_cdcl.FIRST_RESTART
 
 /-- [sat_solver::sat_cdcl::{sat_solver::sat_cdcl::Solver}::learned]:
-    Source: 'src/sat_cdcl.rs', lines 486:4-488:5 -/
+    Source: 'src/sat_cdcl.rs', lines 487:4-489:5 -/
 def sat_cdcl.Solver.learned (self : sat_cdcl.Solver) : RustM Std.Usize := do
   let i ← alloc.vec.Vec.len self.clauses
   i - self.problem_clauses
 
 /-- [sat_solver::sat_cdcl::solve_cnf]: loop 0:
-    Source: 'src/sat_cdcl.rs', lines 506:4-510:5
+    Source: 'src/sat_cdcl.rs', lines 512:4-516:5
     Visibility: public -/
 @[rust_loop]
 def sat_cdcl.solve_cnf_loop
@@ -2231,11 +2231,11 @@ def sat_cdcl.solve_cnf_loop
 partial_fixpoint
 
 /-- [sat_solver::sat_cdcl::solve_cnf]:
-    Source: 'src/sat_cdcl.rs', lines 497:0-512:1
+    Source: 'src/sat_cdcl.rs', lines 503:0-518:1
     Visibility: public -/
 def sat_cdcl.solve_cnf
   (cnf1 : cnf.Cnf) :
-  RustM (core.option.Option (alloc.vec.Vec (Std.U16 × Bool)))
+  RustM (sat_result.SatResult (alloc.vec.Vec (Std.U16 × Bool)))
   := do
   let solver ← sat_cdcl.Solver.new cnf1
   let (b, solver1) ← sat_cdcl.Solver.solve solver
@@ -2245,11 +2245,11 @@ def sat_cdcl.solve_cnf
     let i ← sat_cdcl.Solver.num_vars solver1
     let model1 ←
       sat_cdcl.solve_cnf_loop { start := 0#usize, «end» := i } solver1 model
-    ok (core.option.Option.Some model1)
-  else ok core.option.Option.None
+    ok (sat_result.SatResult.Sat model1)
+  else ok sat_result.SatResult.Unsat
 
 /-- [sat_solver::sat_naive::initial_valuation]: loop 0:
-    Source: 'src/sat_naive.rs', lines 10:4-12:5
+    Source: 'src/sat_naive.rs', lines 11:4-13:5
     Visibility: public -/
 @[rust_loop]
 def sat_naive.initial_valuation_loop
@@ -2264,7 +2264,7 @@ def sat_naive.initial_valuation_loop
 partial_fixpoint
 
 /-- [sat_solver::sat_naive::initial_valuation]:
-    Source: 'src/sat_naive.rs', lines 7:0-15:1
+    Source: 'src/sat_naive.rs', lines 8:0-16:1
     Visibility: public -/
 def sat_naive.initial_valuation (vars : Slice Std.U16) : RustM expr.Map := do
   let map ← expr.Map.new
@@ -2274,7 +2274,7 @@ def sat_naive.initial_valuation (vars : Slice Std.U16) : RustM expr.Map := do
   sat_naive.initial_valuation_loop iter map
 
 /-- [sat_solver::sat_dpll::encode]:
-    Source: 'src/sat_dpll.rs', lines 166:0-186:1
+    Source: 'src/sat_dpll.rs', lines 167:0-187:1
     Visibility: public -/
 def sat_dpll.encode
   (expr1 : expr.Expr) (transform : sat_dpll.Transform) : RustM cnf.Cnf := do
@@ -2292,7 +2292,7 @@ def sat_dpll.encode
     | core.result.Result.Err _ => cnf_transform_naive.to_cnf expr1
 
 /-- [sat_solver::sat_cdcl::solve_sat_with]: loop 0:
-    Source: 'src/sat_cdcl.rs', lines 528:12-530:13
+    Source: 'src/sat_cdcl.rs', lines 535:12-537:13
     Visibility: public -/
 @[rust_loop]
 def sat_cdcl.solve_sat_with_loop
@@ -2310,40 +2310,41 @@ def sat_cdcl.solve_sat_with_loop
 partial_fixpoint
 
 /-- [sat_solver::sat_cdcl::solve_sat_with]:
-    Source: 'src/sat_cdcl.rs', lines 520:0-534:1
+    Source: 'src/sat_cdcl.rs', lines 526:0-541:1
     Visibility: public -/
 def sat_cdcl.solve_sat_with
   (expr1 : expr.Expr) (transform : sat_dpll.Transform) :
-  RustM (core.option.Option expr.Map)
+  RustM (sat_result.SatResult expr.Map)
   := do
   let vars ← expr.collect_vars expr1
   let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref vars
   let val ← sat_naive.initial_valuation s
   let cnf1 ← sat_dpll.encode expr1 transform
-  let o ← sat_cdcl.solve_cnf cnf1
-  match o with
-  | core.option.Option.None => ok core.option.Option.None
-  | core.option.Option.Some model =>
+  let sr ← sat_cdcl.solve_cnf cnf1
+  match sr with
+  | sat_result.SatResult.Sat model =>
     let iter ←
       alloc.vec.Vec.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter
         model
     let val1 ← sat_cdcl.solve_sat_with_loop iter val
-    ok (core.option.Option.Some val1)
+    ok (sat_result.SatResult.Sat val1)
+  | sat_result.SatResult.Unsat => ok sat_result.SatResult.Unsat
+  | sat_result.SatResult.Unknown => ok sat_result.SatResult.Unknown
 
 /-- [sat_solver::sat_cdcl::solve_sat]:
-    Source: 'src/sat_cdcl.rs', lines 538:0-540:1
+    Source: 'src/sat_cdcl.rs', lines 545:0-547:1
     Visibility: public -/
 def sat_cdcl.solve_sat
-  (expr1 : expr.Expr) : RustM (core.option.Option expr.Map) := do
+  (expr1 : expr.Expr) : RustM (sat_result.SatResult expr.Map) := do
   sat_cdcl.solve_sat_with expr1 sat_dpll.Transform.Hybrid
 
 /-- [sat_solver::sat_dpll::is_satisfied]:
-    Source: 'src/sat_dpll.rs', lines 12:0-14:1 -/
+    Source: 'src/sat_dpll.rs', lines 13:0-15:1 -/
 def sat_dpll.is_satisfied (cnf1 : cnf.Cnf) : RustM Bool := do
   alloc.vec.Vec.is_empty cnf1
 
 /-- [sat_solver::sat_dpll::has_empty_clause]: loop 0:
-    Source: 'src/sat_dpll.rs', lines 20:4-26:1 -/
+    Source: 'src/sat_dpll.rs', lines 21:4-27:1 -/
 @[rust_loop]
 def sat_dpll.has_empty_clause_loop
   (iter : core.slice.iter.Iter cnf.Clause) : RustM Bool := do
@@ -2359,14 +2360,14 @@ def sat_dpll.has_empty_clause_loop
 partial_fixpoint
 
 /-- [sat_solver::sat_dpll::has_empty_clause]:
-    Source: 'src/sat_dpll.rs', lines 19:0-26:1 -/
+    Source: 'src/sat_dpll.rs', lines 20:0-27:1 -/
 def sat_dpll.has_empty_clause (cnf1 : cnf.Cnf) : RustM Bool := do
   let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref cnf1
   let iter ← core.slice.Slice.iter s
   sat_dpll.has_empty_clause_loop iter
 
 /-- [sat_solver::sat_dpll::find_unit_literal]: loop 0:
-    Source: 'src/sat_dpll.rs', lines 33:4-39:1 -/
+    Source: 'src/sat_dpll.rs', lines 34:4-40:1 -/
 @[rust_loop]
 def sat_dpll.find_unit_literal_loop
   (iter : core.slice.iter.Iter cnf.Clause) :
@@ -2390,7 +2391,7 @@ def sat_dpll.find_unit_literal_loop
 partial_fixpoint
 
 /-- [sat_solver::sat_dpll::find_unit_literal]:
-    Source: 'src/sat_dpll.rs', lines 32:0-39:1 -/
+    Source: 'src/sat_dpll.rs', lines 33:0-40:1 -/
 def sat_dpll.find_unit_literal
   (cnf1 : cnf.Cnf) : RustM (core.option.Option cnf.Literal) := do
   let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref cnf1
@@ -2398,7 +2399,7 @@ def sat_dpll.find_unit_literal
   sat_dpll.find_unit_literal_loop iter
 
 /-- [sat_solver::sat_dpll::find_branch_var]: loop 0:
-    Source: 'src/sat_dpll.rs', lines 47:4-53:1 -/
+    Source: 'src/sat_dpll.rs', lines 48:4-54:1 -/
 @[rust_loop]
 def sat_dpll.find_branch_var_loop
   (iter : core.slice.iter.Iter cnf.Clause) :
@@ -2421,7 +2422,7 @@ def sat_dpll.find_branch_var_loop
 partial_fixpoint
 
 /-- [sat_solver::sat_dpll::find_branch_var]:
-    Source: 'src/sat_dpll.rs', lines 46:0-53:1 -/
+    Source: 'src/sat_dpll.rs', lines 47:0-54:1 -/
 def sat_dpll.find_branch_var
   (cnf1 : cnf.Cnf) : RustM (core.option.Option Std.U16) := do
   let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref cnf1
@@ -2429,7 +2430,7 @@ def sat_dpll.find_branch_var
   sat_dpll.find_branch_var_loop iter
 
 /-- [sat_solver::sat_dpll::assign_clause]: loop 0:
-    Source: 'src/sat_dpll.rs', lines 61:4-73:1 -/
+    Source: 'src/sat_dpll.rs', lines 62:4-74:1 -/
 @[rust_loop]
 def sat_dpll.assign_clause_loop
   (iter : core.slice.iter.Iter cnf.Literal) (var : Std.U16) (value : Bool)
@@ -2453,7 +2454,7 @@ def sat_dpll.assign_clause_loop
 partial_fixpoint
 
 /-- [sat_solver::sat_dpll::assign_clause]:
-    Source: 'src/sat_dpll.rs', lines 59:0-73:1 -/
+    Source: 'src/sat_dpll.rs', lines 60:0-74:1 -/
 def sat_dpll.assign_clause
   (clause : cnf.Clause) (var : Std.U16) (value : Bool) :
   RustM (core.option.Option cnf.Clause)
@@ -2464,7 +2465,7 @@ def sat_dpll.assign_clause
   sat_dpll.assign_clause_loop iter var value lits
 
 /-- [sat_solver::sat_dpll::assign_cnf]: loop 0:
-    Source: 'src/sat_dpll.rs', lines 81:4-85:5 -/
+    Source: 'src/sat_dpll.rs', lines 82:4-86:5 -/
 @[rust_loop]
 def sat_dpll.assign_cnf_loop
   (iter : core.slice.iter.Iter cnf.Clause) (var : Std.U16) (value : Bool)
@@ -2486,7 +2487,7 @@ def sat_dpll.assign_cnf_loop
 partial_fixpoint
 
 /-- [sat_solver::sat_dpll::assign_cnf]:
-    Source: 'src/sat_dpll.rs', lines 79:0-87:1 -/
+    Source: 'src/sat_dpll.rs', lines 80:0-88:1 -/
 def sat_dpll.assign_cnf
   (cnf1 : cnf.Cnf) (var : Std.U16) (value : Bool) : RustM cnf.Cnf := do
   let clauses ← alloc.vec.Vec.new cnf.Clause
@@ -2496,7 +2497,7 @@ def sat_dpll.assign_cnf
   ok clauses1
 
 /-- [sat_solver::sat_dpll::dpll]:
-    Source: 'src/sat_dpll.rs', lines 100:0-128:1 -/
+    Source: 'src/sat_dpll.rs', lines 101:0-129:1 -/
 def sat_dpll.dpll
   (cnf1 : cnf.Cnf) (val : expr.Map) : RustM (Bool × expr.Map) := do
   let b ← sat_dpll.is_satisfied cnf1
@@ -2530,7 +2531,7 @@ def sat_dpll.dpll
 partial_fixpoint
 
 /-- Trait implementation: [sat_solver::sat_dpll::{impl core::fmt::Debug for sat_solver::sat_dpll::Transform}]
-    Source: 'src/sat_dpll.rs', lines 136:9-136:14 -/
+    Source: 'src/sat_dpll.rs', lines 137:9-137:14 -/
 @[reducible]
 def sat_dpll.Transform.Insts.CoreFmtDebug : core.fmt.Debug sat_dpll.Transform
   := {
@@ -2538,14 +2539,14 @@ def sat_dpll.Transform.Insts.CoreFmtDebug : core.fmt.Debug sat_dpll.Transform
 }
 
 /-- [sat_solver::sat_dpll::{impl core::clone::Clone for sat_solver::sat_dpll::Transform}::clone]:
-    Source: 'src/sat_dpll.rs', lines 136:16-136:21
+    Source: 'src/sat_dpll.rs', lines 137:16-137:21
     Visibility: public -/
 def sat_dpll.Transform.Insts.CoreCloneClone.clone
   (self : sat_dpll.Transform) : RustM sat_dpll.Transform := do
   ok self
 
 /-- Trait implementation: [sat_solver::sat_dpll::{impl core::clone::Clone for sat_solver::sat_dpll::Transform}]
-    Source: 'src/sat_dpll.rs', lines 136:16-136:21 -/
+    Source: 'src/sat_dpll.rs', lines 137:16-137:21 -/
 @[reducible]
 impl_def sat_dpll.Transform.Insts.CoreCloneClone : core.clone.Clone
   sat_dpll.Transform := {
@@ -2555,7 +2556,7 @@ impl_def sat_dpll.Transform.Insts.CoreCloneClone : core.clone.Clone
 }
 
 /-- Trait implementation: [sat_solver::sat_dpll::{impl core::marker::Copy for sat_solver::sat_dpll::Transform}]
-    Source: 'src/sat_dpll.rs', lines 136:23-136:27 -/
+    Source: 'src/sat_dpll.rs', lines 137:23-137:27 -/
 @[reducible]
 def sat_dpll.Transform.Insts.CoreMarkerCopy : core.marker.Copy
   sat_dpll.Transform := {
@@ -2563,14 +2564,14 @@ def sat_dpll.Transform.Insts.CoreMarkerCopy : core.marker.Copy
 }
 
 /-- Trait implementation: [sat_solver::sat_dpll::{impl core::marker::StructuralPartialEq for sat_solver::sat_dpll::Transform}]
-    Source: 'src/sat_dpll.rs', lines 136:29-136:38 -/
+    Source: 'src/sat_dpll.rs', lines 137:29-137:38 -/
 @[reducible]
 def sat_dpll.Transform.Insts.CoreMarkerStructuralPartialEq :
   core.marker.StructuralPartialEq sat_dpll.Transform := {
 }
 
 /-- [sat_solver::sat_dpll::{impl core::cmp::PartialEq<sat_solver::sat_dpll::Transform> for sat_solver::sat_dpll::Transform}::eq]:
-    Source: 'src/sat_dpll.rs', lines 136:29-136:38
+    Source: 'src/sat_dpll.rs', lines 137:29-137:38
     Visibility: public -/
 def sat_dpll.Transform.Insts.CoreCmpPartialEqTransform.eq
   (self : sat_dpll.Transform) (other : sat_dpll.Transform) : RustM Bool := do
@@ -2579,7 +2580,7 @@ def sat_dpll.Transform.Insts.CoreCmpPartialEqTransform.eq
   ok (self1 = other1)
 
 /-- Trait implementation: [sat_solver::sat_dpll::{impl core::cmp::PartialEq<sat_solver::sat_dpll::Transform> for sat_solver::sat_dpll::Transform}]
-    Source: 'src/sat_dpll.rs', lines 136:29-136:38 -/
+    Source: 'src/sat_dpll.rs', lines 137:29-137:38 -/
 @[reducible]
 impl_def sat_dpll.Transform.Insts.CoreCmpPartialEqTransform :
   core.cmp.PartialEq sat_dpll.Transform sat_dpll.Transform := {
@@ -2589,14 +2590,14 @@ impl_def sat_dpll.Transform.Insts.CoreCmpPartialEqTransform :
 }
 
 /-- Trait implementation: [sat_solver::sat_dpll::{impl core::cmp::Eq for sat_solver::sat_dpll::Transform}]
-    Source: 'src/sat_dpll.rs', lines 136:40-136:42 -/
+    Source: 'src/sat_dpll.rs', lines 137:40-137:42 -/
 @[reducible]
 def sat_dpll.Transform.Insts.CoreCmpEq : core.cmp.Eq sat_dpll.Transform := {
   PartialEqInst := sat_dpll.Transform.Insts.CoreCmpPartialEqTransform
 }
 
 /-- [sat_solver::sat_dpll::seed_cnf_vars]: loop 1:
-    Source: 'src/sat_dpll.rs', lines 205:8-207:9 -/
+    Source: 'src/sat_dpll.rs', lines 206:8-208:9 -/
 @[rust_loop]
 def sat_dpll.seed_cnf_vars_loop0_loop0
   (iter : core.slice.iter.Iter cnf.Literal) (val : expr.Map) :
@@ -2612,7 +2613,7 @@ def sat_dpll.seed_cnf_vars_loop0_loop0
 partial_fixpoint
 
 /-- [sat_solver::sat_dpll::seed_cnf_vars]: loop 0:
-    Source: 'src/sat_dpll.rs', lines 204:4-208:5 -/
+    Source: 'src/sat_dpll.rs', lines 205:4-209:5 -/
 @[rust_loop]
 def sat_dpll.seed_cnf_vars_loop0
   (iter : core.slice.iter.Iter cnf.Clause) (val : expr.Map) :
@@ -2630,7 +2631,7 @@ def sat_dpll.seed_cnf_vars_loop0
 partial_fixpoint
 
 /-- [sat_solver::sat_dpll::seed_cnf_vars]:
-    Source: 'src/sat_dpll.rs', lines 203:0-209:1 -/
+    Source: 'src/sat_dpll.rs', lines 204:0-210:1 -/
 def sat_dpll.seed_cnf_vars
   (cnf1 : cnf.Cnf) (val : expr.Map) : RustM expr.Map := do
   let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref cnf1
@@ -2638,11 +2639,11 @@ def sat_dpll.seed_cnf_vars
   sat_dpll.seed_cnf_vars_loop0 iter val
 
 /-- [sat_solver::sat_dpll::solve_sat_with]:
-    Source: 'src/sat_dpll.rs', lines 211:0-225:1
+    Source: 'src/sat_dpll.rs', lines 214:0-228:1
     Visibility: public -/
 def sat_dpll.solve_sat_with
   (expr1 : expr.Expr) (transform : sat_dpll.Transform) :
-  RustM (core.option.Option expr.Map)
+  RustM (sat_result.SatResult expr.Map)
   := do
   let vars ← expr.collect_vars expr1
   let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref vars
@@ -2651,39 +2652,39 @@ def sat_dpll.solve_sat_with
   let val1 ← sat_dpll.seed_cnf_vars cnf1 val
   let (b, val2) ← sat_dpll.dpll cnf1 val1
   if b
-  then ok (core.option.Option.Some val2)
-  else ok core.option.Option.None
+  then ok (sat_result.SatResult.Sat val2)
+  else ok sat_result.SatResult.Unsat
 
 /-- [sat_solver::sat_dpll::solve_sat]:
-    Source: 'src/sat_dpll.rs', lines 229:0-231:1
+    Source: 'src/sat_dpll.rs', lines 232:0-234:1
     Visibility: public -/
 def sat_dpll.solve_sat
-  (expr1 : expr.Expr) : RustM (core.option.Option expr.Map) := do
+  (expr1 : expr.Expr) : RustM (sat_result.SatResult expr.Map) := do
   sat_dpll.solve_sat_with expr1 sat_dpll.Transform.Hybrid
 
 /-- [sat_solver::sat_dpll::solve_sat_naive]:
-    Source: 'src/sat_dpll.rs', lines 235:0-237:1
+    Source: 'src/sat_dpll.rs', lines 238:0-240:1
     Visibility: public -/
 def sat_dpll.solve_sat_naive
-  (expr1 : expr.Expr) : RustM (core.option.Option expr.Map) := do
+  (expr1 : expr.Expr) : RustM (sat_result.SatResult expr.Map) := do
   sat_dpll.solve_sat_with expr1 sat_dpll.Transform.Naive
 
 /-- [sat_solver::sat_dpll::solve_sat_tseitin]:
-    Source: 'src/sat_dpll.rs', lines 240:0-242:1
+    Source: 'src/sat_dpll.rs', lines 243:0-245:1
     Visibility: public -/
 def sat_dpll.solve_sat_tseitin
-  (expr1 : expr.Expr) : RustM (core.option.Option expr.Map) := do
+  (expr1 : expr.Expr) : RustM (sat_result.SatResult expr.Map) := do
   sat_dpll.solve_sat_with expr1 sat_dpll.Transform.Tseitin
 
 /-- [sat_solver::sat_dpll::solve_sat_hybrid]:
-    Source: 'src/sat_dpll.rs', lines 246:0-248:1
+    Source: 'src/sat_dpll.rs', lines 249:0-251:1
     Visibility: public -/
 def sat_dpll.solve_sat_hybrid
-  (expr1 : expr.Expr) : RustM (core.option.Option expr.Map) := do
+  (expr1 : expr.Expr) : RustM (sat_result.SatResult expr.Map) := do
   sat_dpll.solve_sat_with expr1 sat_dpll.Transform.Hybrid
 
 /-- [sat_solver::sat_naive::check_possible_valuations]:
-    Source: 'src/sat_naive.rs', lines 17:0-36:1 -/
+    Source: 'src/sat_naive.rs', lines 18:0-37:1 -/
 def sat_naive.check_possible_valuations
   (expr1 : expr.Expr) (vars : Slice Std.U16) (val : expr.Map) :
   RustM (Bool × expr.Map)
@@ -2713,16 +2714,103 @@ def sat_naive.check_possible_valuations
 partial_fixpoint
 
 /-- [sat_solver::sat_naive::solve_sat]:
-    Source: 'src/sat_naive.rs', lines 38:0-47:1
+    Source: 'src/sat_naive.rs', lines 41:0-50:1
     Visibility: public -/
 def sat_naive.solve_sat
-  (expr1 : expr.Expr) : RustM (core.option.Option expr.Map) := do
+  (expr1 : expr.Expr) : RustM (sat_result.SatResult expr.Map) := do
   let vars ← expr.collect_vars expr1
   let s ← alloc.vec.Vec.Insts.CoreOpsDerefDerefSlice.deref vars
   let val ← sat_naive.initial_valuation s
   let (b, val1) ← sat_naive.check_possible_valuations expr1 s val
   if b
-  then ok (core.option.Option.Some val1)
-  else ok core.option.Option.None
+  then ok (sat_result.SatResult.Sat val1)
+  else ok sat_result.SatResult.Unsat
+
+/-- Trait implementation: [sat_solver::sat_result::{impl core::fmt::Debug for sat_solver::sat_result::SatResult<T>}]
+    Source: 'src/sat_result.rs', lines 18:9-18:14 -/
+@[reducible]
+def sat_result.SatResult.Insts.CoreFmtDebug {T : Type} (corefmtDebugInst :
+  core.fmt.Debug T) : core.fmt.Debug (sat_result.SatResult T) := {
+  fmt := sat_result.SatResult.Insts.CoreFmtDebug.fmt corefmtDebugInst
+}
+
+/-- [sat_solver::sat_result::{impl core::clone::Clone for sat_solver::sat_result::SatResult<T>}::clone]:
+    Source: 'src/sat_result.rs', lines 18:16-18:21
+    Visibility: public -/
+def sat_result.SatResult.Insts.CoreCloneClone.clone
+  {T : Type} (corecloneCloneInst : core.clone.Clone T)
+  (self : sat_result.SatResult T) :
+  RustM (sat_result.SatResult T)
+  := do
+  match self with
+  | sat_result.SatResult.Sat __self_0 =>
+    let t ← corecloneCloneInst.clone __self_0
+    ok (sat_result.SatResult.Sat t)
+  | sat_result.SatResult.Unsat => ok sat_result.SatResult.Unsat
+  | sat_result.SatResult.Unknown => ok sat_result.SatResult.Unknown
+
+/-- Trait implementation: [sat_solver::sat_result::{impl core::clone::Clone for sat_solver::sat_result::SatResult<T>}]
+    Source: 'src/sat_result.rs', lines 18:16-18:21 -/
+@[reducible]
+impl_def sat_result.SatResult.Insts.CoreCloneClone {T : Type}
+  (corecloneCloneInst : core.clone.Clone T) : core.clone.Clone
+  (sat_result.SatResult T) := {
+  clone := sat_result.SatResult.Insts.CoreCloneClone.clone corecloneCloneInst
+  clone_from := core.clone.Clone.clone_from.default
+    (sat_result.SatResult.Insts.CoreCloneClone corecloneCloneInst)
+}
+
+/-- Trait implementation: [sat_solver::sat_result::{impl core::marker::StructuralPartialEq for sat_solver::sat_result::SatResult<T>}]
+    Source: 'src/sat_result.rs', lines 18:23-18:32 -/
+@[reducible]
+def sat_result.SatResult.Insts.CoreMarkerStructuralPartialEq {T : Type}
+  (corecmpPartialEqInst : core.cmp.PartialEq T T) :
+  core.marker.StructuralPartialEq (sat_result.SatResult T) := {
+}
+
+/-- [sat_solver::sat_result::{impl core::cmp::PartialEq<sat_solver::sat_result::SatResult<T>> for sat_solver::sat_result::SatResult<T>}::eq]:
+    Source: 'src/sat_result.rs', lines 18:23-18:32
+    Visibility: public -/
+def sat_result.SatResult.Insts.CoreCmpPartialEqSatResult.eq
+  {T : Type} (corecmpPartialEqInst : core.cmp.PartialEq T T)
+  (self : sat_result.SatResult T) (other : sat_result.SatResult T) :
+  RustM Bool
+  := do
+  let self1 := read_discriminant self
+  let other1 := read_discriminant other
+  if self1 = other1
+  then
+    match self with
+    | sat_result.SatResult.Sat __self_0 =>
+      match other with
+      | sat_result.SatResult.Sat __arg1_0 =>
+        core.Shared1A.Insts.CoreCmpPartialEqShared0B.eq corecmpPartialEqInst
+          __self_0 __arg1_0
+      | sat_result.SatResult.Unsat => ok true
+      | sat_result.SatResult.Unknown => ok true
+    | sat_result.SatResult.Unsat => ok true
+    | sat_result.SatResult.Unknown => ok true
+  else ok false
+
+/-- Trait implementation: [sat_solver::sat_result::{impl core::cmp::PartialEq<sat_solver::sat_result::SatResult<T>> for sat_solver::sat_result::SatResult<T>}]
+    Source: 'src/sat_result.rs', lines 18:23-18:32 -/
+@[reducible]
+impl_def sat_result.SatResult.Insts.CoreCmpPartialEqSatResult {T : Type}
+  (corecmpPartialEqInst : core.cmp.PartialEq T T) : core.cmp.PartialEq
+  (sat_result.SatResult T) (sat_result.SatResult T) := {
+  eq := sat_result.SatResult.Insts.CoreCmpPartialEqSatResult.eq
+    corecmpPartialEqInst
+  ne := core.cmp.PartialEq.ne.default
+    (sat_result.SatResult.Insts.CoreCmpPartialEqSatResult corecmpPartialEqInst)
+}
+
+/-- Trait implementation: [sat_solver::sat_result::{impl core::cmp::Eq for sat_solver::sat_result::SatResult<T>}]
+    Source: 'src/sat_result.rs', lines 18:34-18:36 -/
+@[reducible]
+def sat_result.SatResult.Insts.CoreCmpEq {T : Type} (corecmpEqInst :
+  core.cmp.Eq T) : core.cmp.Eq (sat_result.SatResult T) := {
+  PartialEqInst := sat_result.SatResult.Insts.CoreCmpPartialEqSatResult
+    corecmpEqInst.PartialEqInst
+}
 
 end sat_solver

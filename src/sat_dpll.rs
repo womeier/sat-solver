@@ -5,6 +5,7 @@ use crate::expr::letter;
 use crate::expr::{Expr, Map, collect_vars};
 use crate::sat::SatSolver;
 use crate::sat_naive::initial_valuation;
+use crate::sat_result::SatResult;
 use crate::{cnf_transform_hybrid, cnf_transform_naive, cnf_transform_tseitin};
 
 // A CNF with no clauses left is trivially satisfied: every original clause has
@@ -208,7 +209,9 @@ fn seed_cnf_vars(cnf: &Cnf, val: &mut Map) {
     }
 }
 
-pub fn solve_sat_with(expr: &Expr, transform: Transform) -> Option<Map> {
+/// Never [`SatResult::Unknown`]: DPLL recurses on a shrinking residual CNF
+/// with no counter to exhaust, so it always decides.
+pub fn solve_sat_with(expr: &Expr, transform: Transform) -> SatResult<Map> {
     let vars = collect_vars(expr);
     // Start from a *total* valuation (all false), not an empty map: callers get
     // a map `evaluate` can actually run on (it errors on an incomplete one), and
@@ -218,32 +221,32 @@ pub fn solve_sat_with(expr: &Expr, transform: Transform) -> Option<Map> {
     seed_cnf_vars(&cnf, &mut val);
 
     if dpll(&cnf, &mut val) {
-        Some(val)
+        SatResult::Sat(val)
     } else {
-        None
+        SatResult::Unsat
     }
 }
 
 /// DPLL on the default ([`Transform::Hybrid`]) encoding. This is the signature
 /// `SatSolver` wants, and the one the Lean proofs are stated about.
-pub fn solve_sat(expr: &Expr) -> Option<Map> {
+pub fn solve_sat(expr: &Expr) -> SatResult<Map> {
     solve_sat_with(expr, Transform::Hybrid)
 }
 
-/// DPLL on the naive encoding, as a plain `fn(&Expr) -> Option<Map>` so it can
+/// DPLL on the naive encoding, as a plain `fn(&Expr) -> SatResult<Map>` so it can
 /// sit in a [`SatSolver`] next to the default one and be benchmarked against it.
-pub fn solve_sat_naive(expr: &Expr) -> Option<Map> {
+pub fn solve_sat_naive(expr: &Expr) -> SatResult<Map> {
     solve_sat_with(expr, Transform::Naive)
 }
 
 /// DPLL on the Tseitin encoding, likewise shaped for a [`SatSolver`].
-pub fn solve_sat_tseitin(expr: &Expr) -> Option<Map> {
+pub fn solve_sat_tseitin(expr: &Expr) -> SatResult<Map> {
     solve_sat_with(expr, Transform::Tseitin)
 }
 
 /// DPLL on the hybrid encoding -- the same search `solve_sat` runs, exported
 /// under its own name so the benchmark harness can label it.
-pub fn solve_sat_hybrid(expr: &Expr) -> Option<Map> {
+pub fn solve_sat_hybrid(expr: &Expr) -> SatResult<Map> {
     solve_sat_with(expr, Transform::Hybrid)
 }
 
@@ -423,7 +426,9 @@ fn solve_sat_agrees_with_the_naive_solver_on_the_examples() {
 
     for transform in [Transform::Naive, Transform::Tseitin, Transform::Hybrid] {
         let sat = example_expr_sat();
-        let val = solve_sat_with(&sat, transform).expect("example_expr_sat is satisfiable");
+        let SatResult::Sat(val) = solve_sat_with(&sat, transform) else {
+            panic!("example_expr_sat is satisfiable under {transform:?}")
+        };
         // The returned valuation must cover every variable (so `evaluate` can
         // run at all) and actually satisfy the formula. Under `Tseitin` it also
         // carries gate variables, which `evaluate` simply never reads.
@@ -431,7 +436,7 @@ fn solve_sat_agrees_with_the_naive_solver_on_the_examples() {
 
         assert_eq!(
             solve_sat_with(&example_expr_unsat(), transform),
-            None,
+            SatResult::Unsat,
             "{transform:?}"
         );
     }
@@ -463,11 +468,11 @@ fn solve_sat_matches_the_naive_solver_exhaustively() {
         for transform in [Transform::Naive, Transform::Tseitin, Transform::Hybrid] {
             let dpll_res = solve_sat_with(&expr, transform);
             assert_eq!(
-                dpll_res.is_some(),
-                naive_res.is_some(),
+                matches!(dpll_res, SatResult::Sat(_)),
+                matches!(naive_res, SatResult::Sat(_)),
                 "disagreement on {src} under {transform:?}"
             );
-            if let Some(val) = dpll_res {
+            if let SatResult::Sat(val) = dpll_res {
                 assert_eq!(
                     crate::expr::evaluate(&expr, &val),
                     Ok(true),

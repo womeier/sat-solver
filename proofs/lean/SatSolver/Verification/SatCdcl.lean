@@ -6192,9 +6192,9 @@ theorem sat_cdcl.solve_cnf_sound (cc : cnf.Cnf) (n : Nat)
     (hvars : ∀ v ∈ cnfVars (Cnf.contents cc), v.val < n)
     (hroom : searchRoom n ≤ Std.U32.max)
     (hdbroom : (Cnf.contents cc).length + searchRoom n ≤ Std.Usize.max) :
-    sat_cdcl.solve_cnf cc ⦃ (result : core.option.Option (alloc.vec.Vec
+    sat_cdcl.solve_cnf cc ⦃ (result : sat_result.SatResult (alloc.vec.Vec
       (Std.U16 × Bool))) =>
-        ∀ model, result = some model →
+        ∀ model, result = sat_result.SatResult.Sat model →
           (∀ w : Std.U16 → Bool, (∀ p ∈ model.val, w p.1 = p.2) →
               Cnf.eval w (Cnf.contents cc) = true)
           ∧ (∀ v ∈ cnfVars (Cnf.contents cc), ∃ b, (v, b) ∈ model.val)
@@ -6259,8 +6259,8 @@ theorem sat_cdcl.solve_cnf_complete (cc : cnf.Cnf) (w : Std.U16 → Bool) (n : N
     (hroom : searchRoom n ≤ Std.U32.max)
     (hdbroom : (Cnf.contents cc).length + searchRoom n ≤ Std.Usize.max)
     (hsat : Cnf.eval w (Cnf.contents cc) = true) :
-    sat_cdcl.solve_cnf cc ⦃ (result : core.option.Option (alloc.vec.Vec
-      (Std.U16 × Bool))) => result ≠ none ⦄ := by
+    sat_cdcl.solve_cnf cc ⦃ (result : sat_result.SatResult (alloc.vec.Vec
+      (Std.U16 × Bool))) => ∃ model, result = sat_result.SatResult.Sat model ⦄ := by
   unfold sat_cdcl.solve_cnf sat_cdcl.Solver.solve sat_cdcl.Solver.num_vars
   step with (sat_cdcl.Solver.new.spec cc hshort)
   have hNn : solver.value.val.length ≤ n := solver_post8 n hvars
@@ -6443,8 +6443,8 @@ theorem sat_cdcl.solve_sat_sound (e : expr.Expr) (hbound : 2 ^ exprSize e ≤ Us
     (hroom : searchRoom (varBound e) ≤ Std.U32.max)
     (hdbroom : exprSize e * exprSize e + exprSize e + 2 ^ exprSize e
       + searchRoom (varBound e) ≤ Std.Usize.max) :
-    sat_cdcl.solve_sat e ⦃ (result : core.option.Option expr.Map) =>
-      ∀ v, result = some v →
+    sat_cdcl.solve_sat e ⦃ (result : sat_result.SatResult expr.Map) =>
+      ∀ v, result = sat_result.SatResult.Sat v →
         expr.evaluate e v ⦃ (r : core.result.Result Bool Unit) =>
           r = core.result.Result.Ok true ⦄ ⦄ := by
   have hsize : exprSize e ≤ Usize.max := le_trans Nat.lt_two_pow_self.le hbound
@@ -6464,7 +6464,7 @@ theorem sat_cdcl.solve_sat_sound (e : expr.Expr) (hbound : 2 ^ exprSize e ≤ Us
       cnf_transform_hybrid.Encodes.length_le hEnc
     step with (sat_cdcl.solve_cnf_sound c (varBound e) hshortC hvarsC hroom (by omega))
     step*
-    obtain ⟨hsearch, hcov, hfunm⟩ := cnf1_post model ‹cnf1 = some model›
+    obtain ⟨hsearch, hcov, hfunm⟩ := cnf1_post model ‹cnf1 = sat_result.SatResult.Sat model›
     unfold alloc.vec.Vec.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter
     step*
     intro v hv
@@ -6492,7 +6492,7 @@ theorem sat_cdcl.solve_sat_sound (e : expr.Expr) (hbound : 2 ^ exprSize e ≤ Us
       rw [cnf1_post]; exact cnfPure_length_le e false
     step with (sat_cdcl.solve_cnf_sound cnf1 (varBound e) hshortC hvarsC hroom (by omega))
     step*
-    obtain ⟨hsearch, hcov, hfunm⟩ := o_post model ‹o = some model›
+    obtain ⟨hsearch, hcov, hfunm⟩ := sr_post model ‹sr = sat_result.SatResult.Sat model›
     unfold alloc.vec.Vec.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter
     step*
     intro v hv
@@ -6522,7 +6522,8 @@ theorem sat_cdcl.solve_sat_complete (e : expr.Expr) (w : Std.U16 → Bool)
     (hdbroom : exprSize e * exprSize e + exprSize e + 2 ^ exprSize e
       + searchRoom (varBound e) ≤ Std.Usize.max)
     (hsat : evalPure w e = true) :
-    sat_cdcl.solve_sat e ⦃ (result : core.option.Option expr.Map) => result ≠ none ⦄ := by
+    sat_cdcl.solve_sat e ⦃ (result : sat_result.SatResult expr.Map) =>
+      ∃ v, result = sat_result.SatResult.Sat v ⦄ := by
   have hsize : exprSize e ≤ Usize.max := le_trans Nat.lt_two_pow_self.le hbound
   have h2 : 0 < 2 ^ exprSize e := Nat.pow_pos (by norm_num)
   simp only [sat_cdcl.solve_sat, sat_cdcl.solve_sat_with, sat_dpll.encode]
