@@ -147,7 +147,61 @@ extract:
             > SatSolver.lean
     fi
 
-# Regenerate the dataset behind docs/benchmarks.svg (CSV on stdout).
-satlib-figure:
-    cargo test --release --test satlib figure_data -- --ignored --nocapture --test-threads=1 \
-        | grep -E '^(solver|naive|dpll|cdcl)'
+# Walk the SATLIB scaling ladder with one solver, one process per set. Each
+# instance gets a `cap`-second budget of its own (a worker process, killed when it
+# runs out), so a single pathological instance costs its cap rather than the set,
+# and a set reports "solved k of n". The ladder stops for a solver once a set
+# solves none of its instances, since every set above it is strictly harder.
+# The larger sets are not downloaded by `just satlib` -- see `just satlib-fetch`.
+satlib-ladder solver="cdcl" limit="25" cap="10":
+    #!/usr/bin/env bash
+    set -u
+    for set in uf20-91 uf50-218 uf75-325 uf100-430 uf125-538 uf150-645 \
+               uf175-753 uf200-860 uf225-960 uf250-1065; do
+        # The unsatisfiable twin of `ufN-M` is `uufN-M`: one more leading `u`.
+        for s in "$set" "u$set"; do
+            [ -d "benchmarks/satlib/$s" ] || continue
+            line=$(SATLIB_SOLVER={{solver}} SATLIB_SET="$s" SATLIB_LIMIT={{limit}} \
+                   SATLIB_CAP={{cap}} cargo test --release --test satlib from_env \
+                   -- --ignored --nocapture 2>/dev/null | grep -E '^\[|^{{solver}},')
+            [ -n "$line" ] || continue
+            echo "$line"
+            case "$line" in *"solved 0/"*)
+                echo "# {{solver}} solves nothing at $s within {{cap}}s -- stopping"
+                exit 0 ;;
+            esac
+        done
+    done
+
+# Download extra SATLIB RND3SAT sets by name, e.g. `just satlib-fetch uf100-430 uuf100-430`.
+# The full ladder: uf{75-325,100-430,125-538,150-645,175-753,200-860,225-960,250-1065}
+# and the uuf* counterpart of each.
+satlib-fetch *sets:
+    #!/usr/bin/env bash
+    set -eu
+    base=https://www.cs.ubc.ca/~hoos/SATLIB/Benchmarks/SAT/RND3SAT
+    mkdir -p benchmarks/satlib
+    cd benchmarks/satlib
+    for set in {{sets}}; do
+        if [ -d "$set" ]; then echo "$set: already present"; continue; fi
+        curl -sS -o "$set.tar.gz" "$base/$set.tar.gz"
+        mkdir -p "$set"
+        tar xzf "$set.tar.gz" -C "$set"
+        rm "$set.tar.gz"
+        echo "$set: $(find "$set" -name '*.cnf' | wc -l) instances"
+    done
+
+# Regenerate docs/scaling.csv and redraw the two scaling SVGs from it. `naive`
+# enumerates 2^n valuations, so its ladder ends early; it is in the figure so the
+# figure can say where.
+satlib-scaling cap="10" limit="25":
+    #!/usr/bin/env bash
+    set -eu
+    {
+      echo "solver,set,vars,verdict,solved,attempted,median_ms,mean_ms,worst_ms"
+      for solver in cdcl dpll naive; do
+        just satlib-ladder "$solver" {{limit}} {{cap}} | grep -E "^$solver," || true
+      done
+    } > docs/scaling.csv
+    python3 docs/make_scaling_svg.py
+    python3 docs/make_scaling_svg.py --check
