@@ -6,8 +6,7 @@ extracted to and verified in Lean 4 with [hax](https://github.com/hacspec/hax).
 Three solvers: `sat_naive` (backtracking search over `Expr`), `sat_dpll` (DPLL
 on the CNF: unit propagation plus splitting) and `sat_cdcl` (DPLL plus
 conflict-driven clause learning). All three are verified end to end — soundness and
-completeness, machine-checked, `sorry`-free. CDCL's proof includes termination of the
-search, which is the part that does not follow DPLL's argument.
+completeness, machine-checked, `sorry`-free.
 
 The specification — soundness and completeness for all three solvers — lives in
 [`proofs/lean/SatSolver/Verification/ProofObligations.lean`](proofs/lean/SatSolver/Verification/ProofObligations.lean),
@@ -16,16 +15,11 @@ which collects the theorems proved in
 [`SatDpll.lean`](proofs/lean/SatSolver/Verification/SatDpll.lean), the latter of which
 rests on the CNF transformations proved correct in
 [`Cnf.lean`](proofs/lean/SatSolver/Verification/Cnf.lean) (naive distribution) and
-[`Hybrid.lean`](proofs/lean/SatSolver/Verification/Hybrid.lean) (the Boy de la Tour
-hybrid, which is what `solve_sat` encodes with by default — `Cnf.lean`'s transformation
-is its fallback when gate variables run out).
+[`Hybrid.lean`](proofs/lean/SatSolver/Verification/Hybrid.lean).
 [`SatCdcl.lean`](proofs/lean/SatSolver/Verification/SatCdcl.lean) does the same for
-`sat_cdcl`, through nine theorems: 1-UIP conflict analysis, the four obligations that
-establish and preserve the solver's state invariant, the CDCL loop (including its
-termination), and the `solve_cnf` pair the roots factor through.
+`sat_cdcl`.
 
 ## Benchmarks
-
 `just satlib` downloads the three 50-variable [SATLIB](https://www.cs.ubc.ca/~hoos/SATLIB/benchm.html)
 uniform-random-3-SAT sets into `benchmarks/` and `just satlib-test` runs the solvers over them;
 `just satlib-fetch uf100-430 …` adds the larger ones, up to 250 variables.
@@ -44,63 +38,17 @@ that can attempt the set.
 [`docs/scaling.csv`](docs/scaling.csv) and redraws both SVGs from it with
 [`docs/make_scaling_svg.py`](docs/make_scaling_svg.py) (stdlib only).
 
-**Each solver buys roughly fifty more variables.** Inside a 10-second budget per
-instance, `naive` handles 20 and nothing above it, `dpll` reaches 125 satisfiable
-and 100 unsatisfiable, `cdcl` reaches 200 and 175. Random 3-SAT at the phase
-transition is exponential for all three, so that is the shape to expect — the
-question a scaling curve answers is what the *base* is, and the three lines have
-visibly different slopes rather than different intercepts.
-
-Per 25 variables, CDCL costs about **4.2x** more (4.5x unsatisfiable); DPLL about
-**9.7x** (10.8x). So the gap between them is not a constant factor, which is what
-measuring only at 50 variables had suggested: it is 3.7x at 20 variables, 14x at
-50, 22x at 75 and **139x at 100**. DPLL and CDCL search the *same* CNF
-(`sat_dpll::encode` under `Transform::Hybrid`), so all of that is the value of
-clause learning and nothing else. CDCL manages it while *rescanning every clause*
-to propagate and never deleting a learned clause; with watched literals the
-spread would be wider still.
-
-Two things the figure is careful about, because both would otherwise flatter the
-solvers:
-
-- **It plots the median, not the mean.** A per-instance cap censors the slow tail,
-  so a mean is wrong by exactly the instances it could not see. The median is
-  exact while more than half a set finishes, and that is also where each curve
-  stops.
-- **Each instance runs in its own process, killed when its budget runs out.** A
-  worker thread could not be killed — a solver call has no interruption point —
-  so it would keep a core busy and inflate everything measured after it. The
-  child times its own solve, so the parent's spawn overhead never enters a
-  number, and below 5 ms it repeats the solve and divides, because a cold process
-  costs a few hundred microseconds and `uf20-91` takes 57.
-
 Why the censoring rule matters: `dpll` at 150 variables *looks* faster than at 125
 (1.46 s against 2.89 s) purely because only the 7 easiest of 25 instances
 finished. Those points are in `docs/scaling.csv`, marked, and not drawn.
 
 ## Todo
 
-- [ ] **CLI front end** — read a `.cnf` from a path or stdin, print the standard
-      `s SATISFIABLE` / `v <model>` lines, exit 10/20/0. Unlocks `hyperfine` and
-      any third-party harness.
-- [ ] **Differential + property testing** — random formulas checked against the
-      (proved-correct) naive solver, plus `proptest`/`cargo fuzz` over the
-      parser and `to_cnf`. `sat_dpll.rs` has a small hand-written version of
-      this; it should be generative and run on many more instances.
-- [x] **Scaling curve** — ~~naive vs DPLL vs CDCL, the plot that shows why each of
-      them exists.~~ Done as a sweep of *problem size* at the fixed 4.26 ratio, which
-      is the figure above: 20 to 250 variables, 25 instances per set, 10 s each.
-      Still open is the other axis — sweeping the clause/variable **ratio** through
-      the phase transition at fixed size, which is the plot that shows why 4.26 is
-      the hard place to be rather than how the solvers compare there.
 - [ ] **Resolution-hard families** — pigeonhole (`hole-n`) and friends, with a
       timeout. These are exponential for any DPLL-style solver, so they document
       the limit that motivates CDCL. [CNFgen](https://massimolauria.net/cnfgen/)
       generates them (also Tseitin, ordering principle, k-colourability) without
       downloading anything.
-- [ ] **DIMACS 1993 challenge suite** — `aim`, `dubois`, `pret`, `ssa`, `bf`,
-      `jnh`: small, structured, still cited. A useful second tier beyond random
-      3-SAT.
 
 Known limits worth fixing (or at least documenting) alongside the above:
 
@@ -115,45 +63,6 @@ Known limits worth fixing (or at least documenting) alongside the above:
       `reason` handles) and does not minimize learned clauses. All three are
       engineering, not algorithm — the numbers above are what the algorithm alone
       buys.
-- [x] **CDCL is verified.** ~~`sat_cdcl` has one theorem and otherwise tests.~~
-      All three solvers now have machine-checked soundness and completeness for the
-      whole solver. `sat_cdcl`'s proof is
-      [`SatCdcl.lean`](proofs/lean/SatSolver/Verification/SatCdcl.lean): nine
-      theorems, `sorry`-free, with `SatSolver/PrintAxioms.lean` asserting that per
-      theorem. The tests stay — a 300-instance random 3-SAT differential check
-      against the naive solver, and all 3000 SATLIB verdicts — because they cover
-      input sizes the theorems do not (see below).
-
-      The hard half of what learning adds is `analyze.spec`: 1-UIP conflict analysis
-      returns a clause entailed by the database (resolution soundness — the invariant
-      the whole module rests on), false under the current assignment, asserting at the
-      backjump level it also returns, and leaves the solver's scratch state exactly as
-      it found it. It assumes a well-formed state (`Solver.WF`: the trail is a
-      topological order of the implication graph, every propagated literal has a reason
-      clause that was unit on it, a level's decision comes first, and so on), and
-      `new`, `assign`, `propagate` and `backtrack` are what establish and preserve it.
-
-      The harder half is **`Solver.search.spec`, the CDCL loop itself**: it carries
-      `Solver.WF` and "every clause the database holds is entailed by the problem"
-      across a loop that *grows* the database, returns a model when it answers `true`,
-      refutes the formula when it answers `false`, and **terminates**. DPLL's "one
-      variable fewer per level" does not apply. The measure is the trail read as a
-      base-3 numeral — one digit per variable slot, `1` for a decision, `2` for a
-      propagation — which every step makes larger, a backjump included, since it turns
-      the decision it jumps over into a propagation of the clause just learned. Restarts
-      abandon the trail; the geometrically growing restart budget is what pays for them.
-
-      **Writing the statements down before proving them is what made this work**, and
-      the evidence is what it caught: `Solver.WF` was missing five fields;
-      `search.spec` was not a true statement as first written (`self.conflicts += 1` is
-      checked `u32` arithmetic, and a first restart interval of `1` never terminates);
-      `propagate`'s "nothing is falsified" hypothesis was not inductive; `analyze` never
-      said it keeps the activity array's length, without which a *second* call is not
-      well-formed. None of that is visible in the finished proofs, and none of it was
-      found by reading the code.
-
-      The price is a hypothesis exponential in the number of variables, spelled out in
-      the next item rather than hidden.
 - [ ] **The verified guarantee doesn't cover benchmark-sized inputs.** Every
       soundness/completeness theorem here carries a size hypothesis, and they are
       the honest limit of what is proved. `sat_naive`/`sat_dpll` carry
