@@ -11,11 +11,15 @@ and preserve that state (`new`, `assign`, `propagate`, `backtrack`),
 the two roots. `conflictState.hypotheses` exhibits a state satisfying every hypothesis
 `analyze.spec` takes, so that theorem is not vacuous either.
 
-The roots carry two bounds `sat_dpll`'s do not, and they are exponential in the number of
-variables: `Solver.searchMeasure` is what makes the search terminate, and the same measure
-bounds the conflicts still to come -- which the Rust counts in a `u32`. So the theorems
-here speak about expressions of a handful of variables. That is a statement about the
-counter, not about the solver; see "The termination measure" and `searchRoom`.
+The roots carry the same size bound `sat_dpll`'s do -- `2 ^ exprSize e ≤ usize::MAX`, from
+the worst-case CNF blowup -- and nothing beyond it about the *search*. That is what
+`self.conflicts.checked_add(1)` in the Rust buys: the conflict counter's headroom is checked
+at run time instead of proved from a bound on the input, so the search's own arithmetic
+costs no hypothesis and the theorems reach benchmark-sized CNFs. The price is a third
+answer. `solve_cnf` can return `SatResult::Unknown` -- only with `conflicts = u32::MAX`,
+which `search.spec` records -- so completeness reads "a satisfiable CNF is never called
+unsatisfiable" rather than "a satisfiable CNF gets a model". See "The termination measure"
+and `Solver.searchMeasure`.
 
 `SatSolver/PrintAxioms.lean` checks `sorry`-freedom per theorem. The two
 `native_decide` axioms the roots report come in with the extraction, not with any proof:
@@ -2334,10 +2338,11 @@ because `search.spec` has to thread all of them through the loop. -/
 
     The last conjunct is the other half of "above every variable index": `num_vars` is
     the *least* such bound, so a caller who knows the variables fit below `m` knows the
-    slot arrays are no longer than `m`. That is what `solve_cnf` needs, since the search
-    measure -- and so the room the `u32` counters want -- is exponential in the number of
-    slots: without it the only bound available is `2 ^ 16`, and `3 ^ (2 ^ 16)` makes the
-    hypotheses unsatisfiable rather than merely demanding. -/
+    slot arrays are no longer than `m`. The `solve_cnf` pair used to need it -- the room
+    the `u32` conflict counter wanted was exponential in the number of slots, so `2 ^ 16`
+    was not a usable bound on them -- and since `checked_add` that room is checked rather
+    than assumed. What it still buys is a caller who has to size an array by the CNF, which
+    is why it is reported. -/
 @[step]
 theorem sat_cdcl.Solver.new_loop0_loop0.spec (iter : core.slice.iter.Iter cnf.Literal)
     (num_vars : Std.Usize) (hle : num_vars.val ≤ 2 ^ 16) :
@@ -4547,18 +4552,23 @@ they are the lower-order digits. This is the standard argument (Nieuwenhuis, Oli
 Tinelli's ordering on DPLL states) in the form a `termination_by` can consume: `3 ^ n` minus
 the numeral, which is a natural that strictly drops.
 
-**Restarts break it, and the budget pays for them.** `backtrack 0` throws the trail away, so
-the numeral goes back down. What decreases there is the restart budget's remaining growth:
-`search` takes a restart only after `budget` conflicts since the last one, and grows the
-budget by half of itself each time, so `restartsLeft` -- how many times the budget can still
-grow before it passes the bound on the number of steps a restart window can have -- drops by
-one. The measure is lexicographic: `restartsLeft` outside, the trail numeral inside.
+**Restarts break it, and the conflict counter pays for them.** `backtrack 0` throws the
+trail away, so the numeral goes back down, and no restart can be paid for out of the trail.
+What pays is the room left in `self.conflicts`: a restart happens only after `budget` -- at
+least one -- conflicts since the last one, and the increment is `checked_add`, so the
+counter cannot wrap and `u32::MAX - conflicts` is a natural that every conflict spends one
+of. Weighted by a full trail's worth of steps it dominates the numeral, and the measure is
+the single sum `Solver.searchMeasure`.
 
-This is also what bounds the solver's `u32` counters, which is not a side issue: the
-extraction's arithmetic is *checked*, so `self.conflicts + 1` overflowing is a failure, and
-`⦃ ⦄` rules failure out. Every conflict drops the measure by at least one, so the measure
-bounds the number of conflicts still to come -- which is what `search.spec`'s `hroom`
-hypothesis says the counter has room for. -/
+That is a real trade, and worth naming. The base-3 numeral still carries the conflict-driven
+part of the argument -- a decision, a propagation and a backjump are what make it decrease,
+and the backjump case is still the interesting one. What it no longer carries is the
+*outer* argument. That used to be "the budget grows geometrically, so restarts run out",
+which bounds the conflicts by the measure -- exponential in the variable count -- and so
+held only of formulas small enough for a `u32` to count their conflicts: about ten
+variables. It is now "there are at most `2 ^ 32` conflicts, because after that the code
+stops and answers `Unknown`". Nothing in it is a hypothesis about the input, which is what
+lets `search.spec` speak about a 250-variable instance. -/
 
 /-- A trail read as a base-3 numeral of `n` digits, most significant first. -/
 def trailNumeral (n : Nat) (ds : List Nat) : Nat :=
@@ -4773,121 +4783,130 @@ theorem Solver.trailNum_lt_of_backjump {s s' : sat_cdcl.Solver} (hwf : Solver.WF
     List.length_map, hplen, hpsub, trailNumeral_cons, trailNumeral_cons, trailNumeral_nil]
   omega
 
-/-- How many more times the restart budget can grow before it passes `bound`. `search`
-    grows it by half of itself on every restart, so this is a logarithm -- and it is `0`
-    once the budget is past the bound, which is the point: a restart needs `budget`
-    conflicts since the last one, and there cannot be more than `bound` of those. -/
-def restartsLeft (bound budget : Nat) : Nat :=
-  if 2 ≤ budget ∧ budget ≤ bound then restartsLeft bound (budget + budget / 2) + 1 else 0
-termination_by bound + 1 - budget
-decreasing_by omega
+/-- **The measure `search` descends.** The room left in the conflict counter plus the
+    conflicts since the last restart, weighted by a full trail's worth of steps, and then
+    the trail numeral's complement. Every step of the loop is one of three, and each leaves
+    the sum strictly smaller:
 
-/-- One restart spends one of them. -/
-theorem restartsLeft_lt (bound budget : Nat) (h2 : 2 ≤ budget) (hle : budget ≤ bound) :
-    restartsLeft bound (budget + budget / 2) < restartsLeft bound budget := by
-  have h : restartsLeft bound budget = restartsLeft bound (budget + budget / 2) + 1 := by
-    rw [restartsLeft, if_pos (And.intro h2 hle)]
-  omega
+    * a **decision** climbs the trail and touches neither counter;
+    * a **conflict** spends one unit of counter room and adds one to the window count, so
+      the weighted component is *unchanged* -- and the backjump it ends in climbs the
+      trail, which is what makes the step strict;
+    * a **restart** zeroes a window count the guard says is at least `1`, releasing
+      `3 ^ n + 1`, where the trail it abandons is worth at most `3 ^ n`.
 
-/-- `restartsLeft` is a count of steps that each grow the budget by at least one, so it
-    cannot exceed the distance left to the bound. -/
-theorem restartsLeft_le_sub (bound budget : Nat) :
-    restartsLeft bound budget ≤ bound + 1 - budget := by
-  rw [restartsLeft]
-  split
-  · rename_i h
-    have ih := restartsLeft_le_sub bound (budget + budget / 2)
-    omega
-  · omega
-termination_by bound + 1 - budget
-decreasing_by omega
-
-/-- The crude form of the same, which is the one a caller can state without knowing the
-    budget: at most `bound` restarts, whatever the budget started at. -/
-theorem restartsLeft_le (bound budget : Nat) : restartsLeft bound budget ≤ bound := by
-  by_cases h : 2 ≤ budget ∧ budget ≤ bound
-  · have := restartsLeft_le_sub bound budget
-    omega
-  · rw [restartsLeft, if_neg h]
-    omega
-
-/-- The measure `search` descends: the restart budget's remaining growth is the outer
-    component, the trail numeral the inner one. A conflict or a decision climbs the trail
-    (`trailLeft` drops); a restart abandons the trail but grows the budget. -/
-def Solver.searchMeasure (s : sat_cdcl.Solver) (budget : Std.U32) : Nat :=
-  restartsLeft (3 ^ s.value.val.length) budget.val * (3 ^ s.value.val.length + 1)
+    The restart budget does not appear. It used to be the outer component, and the price of
+    that was two hypotheses on the input: the budget had to stay below `3 ^ n`, and the
+    whole measure had to fit in the `u32` the conflicts are counted in. Counting the
+    counter down instead is what makes this unconditional. -/
+def Solver.searchMeasure (s : sat_cdcl.Solver) (since_restart : Std.U32) : Nat :=
+  (Std.U32.max - s.conflicts.val + since_restart.val) * (3 ^ s.value.val.length + 1)
     + Solver.trailLeft s
-
-/-- There is always at least one step left in the measure -- which is what gives the
-    counters their headroom for the step about to be taken. -/
-theorem Solver.searchMeasure_pos (s : sat_cdcl.Solver) (budget : Std.U32) :
-    0 < Solver.searchMeasure s budget := by
-  have := Solver.trailNum_lt s
-  simp only [Solver.searchMeasure, Solver.trailLeft]
-  omega
 
 theorem Solver.trailLeft_le (s : sat_cdcl.Solver) :
     Solver.trailLeft s ≤ 3 ^ s.value.val.length := by
   simp only [Solver.trailLeft]
   exact Nat.sub_le _ _
 
-/-- A step that climbs the trail and leaves the budget alone. -/
-theorem Solver.searchMeasure_lt_of_trailLeft {s s' : sat_cdcl.Solver} {budget : Std.U32}
+/-- A step that climbs the trail and touches neither counter: a decision, or a propagation
+    riding along with one. -/
+theorem Solver.searchMeasure_lt_of_trailLeft {s s' : sat_cdcl.Solver}
+    {since_restart : Std.U32}
     (hn : s'.value.val.length = s.value.val.length)
+    (hc : s'.conflicts = s.conflicts)
     (h : Solver.trailLeft s' < Solver.trailLeft s) :
-    Solver.searchMeasure s' budget < Solver.searchMeasure s budget := by
-  simp only [Solver.searchMeasure, hn]
+    Solver.searchMeasure s' since_restart < Solver.searchMeasure s since_restart := by
+  simp only [Solver.searchMeasure, hn, hc]
   omega
 
-/-- A restart: the trail goes back to level 0, and the budget grows instead. -/
-theorem Solver.searchMeasure_lt_of_restart {s s' : sat_cdcl.Solver} {budget budget' : Std.U32}
+/-- Propagation only appends to the trail, so it never climbs back down the measure. -/
+theorem Solver.searchMeasure_le_of_trailLeft {s s' : sat_cdcl.Solver}
+    {since_restart : Std.U32}
     (hn : s'.value.val.length = s.value.val.length)
-    (h2 : 2 ≤ budget.val) (hle : budget.val ≤ 3 ^ s.value.val.length)
-    (hbud : budget'.val = budget.val + budget.val / 2) :
-    Solver.searchMeasure s' budget' < Solver.searchMeasure s budget := by
-  have hstep := restartsLeft_lt (3 ^ s.value.val.length) budget.val h2 hle
+    (hc : s'.conflicts = s.conflicts)
+    (h : Solver.trailLeft s' ≤ Solver.trailLeft s) :
+    Solver.searchMeasure s' since_restart ≤ Solver.searchMeasure s since_restart := by
+  simp only [Solver.searchMeasure, hn, hc]
+  omega
+
+/-- **A conflict.** One unit of counter room out, one conflict into the window: the
+    weighted component does not move, so the trail is what has to decrease -- which is the
+    backjump's job, and why the two are one step rather than two. `hc` is `checked_add`
+    having succeeded, i.e. that there was room to spend. -/
+theorem Solver.searchMeasure_lt_of_conflict {s s' : sat_cdcl.Solver}
+    {since_restart since_restart' : Std.U32}
+    (hn : s'.value.val.length = s.value.val.length)
+    (hc : s'.conflicts.val = s.conflicts.val + 1)
+    (hsr : since_restart'.val = since_restart.val + 1)
+    (h : Solver.trailLeft s' < Solver.trailLeft s) :
+    Solver.searchMeasure s' since_restart' < Solver.searchMeasure s since_restart := by
+  have hle : s'.conflicts.val ≤ Std.U32.max := by scalar_tac
+  have heq : Std.U32.max - s'.conflicts.val + since_restart'.val
+      = Std.U32.max - s.conflicts.val + since_restart.val := by omega
+  simp only [Solver.searchMeasure, hn, heq]
+  omega
+
+/-- **A restart.** The window count goes to zero, and the guard -- `since_restart ≥ budget`
+    with `budget ≥ 1` -- says there was at least one conflict in it. One conflict is worth
+    `3 ^ n + 1`, and the trail the restart throws away is worth at most `3 ^ n`. -/
+theorem Solver.searchMeasure_lt_of_restart {s s' : sat_cdcl.Solver}
+    {since_restart since_restart' : Std.U32}
+    (hn : s'.value.val.length = s.value.val.length)
+    (hc : s'.conflicts = s.conflicts)
+    (hpos : 0 < since_restart.val)
+    (hzero : since_restart'.val = 0) :
+    Solver.searchMeasure s' since_restart' < Solver.searchMeasure s since_restart := by
   have htl := Solver.trailLeft_le s'
   rw [hn] at htl
-  have hkey : restartsLeft (3 ^ s.value.val.length) budget'.val
-        * (3 ^ s.value.val.length + 1) + (3 ^ s.value.val.length + 1)
-      ≤ restartsLeft (3 ^ s.value.val.length) budget.val * (3 ^ s.value.val.length + 1) := by
-    have hlt : restartsLeft (3 ^ s.value.val.length) budget'.val + 1
-        ≤ restartsLeft (3 ^ s.value.val.length) budget.val := by
-      rw [hbud]; omega
-    calc restartsLeft (3 ^ s.value.val.length) budget'.val * (3 ^ s.value.val.length + 1)
-            + (3 ^ s.value.val.length + 1)
-        = (restartsLeft (3 ^ s.value.val.length) budget'.val + 1)
-            * (3 ^ s.value.val.length + 1) := by ring
-      _ ≤ restartsLeft (3 ^ s.value.val.length) budget.val
-            * (3 ^ s.value.val.length + 1) := Nat.mul_le_mul_right _ hlt
-  simp only [Solver.searchMeasure, hn]
+  have hmul : (Std.U32.max - s.conflicts.val + 1) * (3 ^ s.value.val.length + 1)
+      ≤ (Std.U32.max - s.conflicts.val + since_restart.val)
+        * (3 ^ s.value.val.length + 1) :=
+    Nat.mul_le_mul_right _ (by omega)
+  have hexp : (Std.U32.max - s.conflicts.val + 1) * (3 ^ s.value.val.length + 1)
+      = (Std.U32.max - s.conflicts.val) * (3 ^ s.value.val.length + 1)
+        + (3 ^ s.value.val.length + 1) := by ring
+  simp only [Solver.searchMeasure, hn, hc, hzero, Nat.add_zero]
   omega
 
-/-- **The measure, bounded by a statement about the input.** `Solver.searchMeasure` is
-    what `search.spec`'s three numeric hypotheses are stated against, and it mentions the
-    solver. A caller that only knows the CNF's variables fit below `n` needs a bound in
-    terms of `n`, and this is the crudest one that works: at most `3 ^ n` restarts, each
-    worth at most one full trail's worth of steps, plus the trail the last window climbs.
+/-- **`u32::checked_add`, as the extraction models it.** Aeneas has a spec for its own
+    `Std.U32.checked_add`, but hax routes the call through `core_models`, where it is
+    `overflowing_add` plus a branch on the flag -- so this is the bridge, and it is the one
+    place in the file where an arithmetic overflow is an *answer* rather than a failure. -/
+@[step]
+theorem core.num.U32.checked_add.spec (x y : Std.U32) :
+    core.num.U32.checked_add x y ⦃ (o : core.option.Option Std.U32) =>
+      (∀ z, o = core.option.Option.Some z → z.val = x.val + y.val)
+      ∧ (o = core.option.Option.None → Std.U32.max < x.val + y.val) ⦄ := by
+  unfold core.num.U32.checked_add core.num.U32.overflowing_add
+    rust_primitives.arithmetic.overflowing_add_u32
+  have h := Std.UScalar.overflowing_add_eq (ty := Std.UScalarTy.U32) x y
+  simp only at h
+  rw [← Prod.mk.eta (p := Std.UScalar.overflowing_add x y)]
+  split at h <;> rw [h.2] <;> step*
 
-    It is doubly exponential in the variable count, and that is not slack in the argument
-    -- it is slack in the *statement*, which is all a caller has to satisfy. Sharpening it
-    would sharpen the hypothesis, not the theorem. -/
-def searchRoom (n : Nat) : Nat := 3 ^ n * 3 ^ n + 2 * 3 ^ n
+/-- Saturation is a `min`, and the `min` never has to wrap: it is at most the type's
+    maximum by construction. -/
+theorem Solver.val_saturating_add {ty : Std.UScalarTy} (x y : Std.UScalar ty) :
+    (Std.UScalar.saturating_add x y).val = min (Std.UScalar.max ty) (x.val + y.val) := by
+  have hmax : Std.UScalar.max ty = 2 ^ ty.numBits - 1 := Std.UScalar.max_def ty
+  have hpos : 0 < 2 ^ ty.numBits := Nat.two_pow_pos _
+  simp only [Std.UScalar.saturating_add, Std.UScalar.val, BitVec.toNat_ofNat]
+  rw [Nat.mod_eq_of_lt (by omega)]
 
-theorem Solver.searchMeasure_le_searchRoom (s : sat_cdcl.Solver) (budget : Std.U32)
-    {n : Nat} (hn : s.value.val.length ≤ n) :
-    Solver.searchMeasure s budget ≤ searchRoom n := by
-  have h3 : (3 : Nat) ^ s.value.val.length ≤ 3 ^ n :=
-    Nat.pow_le_pow_right (by norm_num) hn
-  have hr : restartsLeft (3 ^ s.value.val.length) budget.val ≤ 3 ^ s.value.val.length :=
-    restartsLeft_le _ _
-  have ht : Solver.trailLeft s ≤ 3 ^ s.value.val.length := Solver.trailLeft_le s
-  have hmul : restartsLeft (3 ^ s.value.val.length) budget.val
-      * (3 ^ s.value.val.length + 1) ≤ 3 ^ n * (3 ^ n + 1) :=
-    Nat.mul_le_mul (le_trans hr h3) (by omega)
-  have hexp : (3 : Nat) ^ n * (3 ^ n + 1) = 3 ^ n * 3 ^ n + 3 ^ n := by ring
-  simp only [Solver.searchMeasure, searchRoom]
-  omega
+/-- **`u32::saturating_add`**, the other half of the plumbing: a pure function the
+    extraction binds monadically, which `step` needs telling about. All the invariant wants
+    of the restart budget is that it never shrinks -- so a budget of at least `1` stays at
+    least `1` -- and saturation gives that whether or not the sum fits. -/
+@[step]
+theorem core.num.U32.saturating_add.spec (x y : Std.U32) :
+    core.num.U32.saturating_add x y ⦃ (z : Std.U32) =>
+      z.val = min Std.U32.max (x.val + y.val) ⦄ := by
+  unfold core.num.U32.saturating_add rust_primitives.arithmetic.saturating_add_u32
+  step*
+  have h := Solver.val_saturating_add x y
+  have hm : Std.UScalar.max Std.UScalarTy.U32 = Std.U32.max := by simp [Std.U32.max]
+  rw [hm] at h
+  exact h
 
 /-! #### Learning a clause, and the two answers
 
@@ -5103,44 +5122,35 @@ structure Solver.Searching (s : sat_cdcl.Solver) (db₀ : List (List cnf.Literal
       level. It is an invariant of the loop, not of the state. -/
   levels : ∀ k, 0 < k → k ≤ Solver.decisionLevel s → ∃ v ∈ s.trail.val,
     Solver.levelOf s v = k ∧ Solver.reasonOf s v = none
-  /-- The restart budget never shrinks, and 1 is excluded: see `search.spec`. -/
-  budget_ge : 2 ≤ budget.val
-  /-- Conflicts since the last restart are steps this window has taken, and a window
-      cannot take more steps than the trail numeral has room for. -/
-  window : since_restart.val + Solver.trailLeft s ≤ 3 ^ s.value.val.length
-  /-- The conflict counter has room for every conflict still to come. -/
-  room : s.conflicts.val + Solver.searchMeasure s budget ≤ Std.U32.max
-  /-- The clause vector has room for every clause still to be learned -- the same
-      accounting as `room`, one index wider. -/
-  db_room : (Solver.db s).length + Solver.searchMeasure s budget ≤ Std.Usize.max
-  /-- And the budget has room to grow. -/
-  fits : 2 * 3 ^ s.value.val.length ≤ Std.U32.max
+  /-- The restart budget never shrinks, and `0` is excluded: a budget of `0` lets a restart
+      happen with no conflict in the window, and then nothing decreases. `saturating_add`
+      keeps it where it is once it stops growing, which is all this needs. -/
+  budget_ge : 1 ≤ budget.val
+  /-- Conflicts since the last restart are conflicts, so the counter has counted them. This
+      is what keeps `since_restart += 1` in range without a check of its own: it is reset
+      more often than `conflicts` and incremented no more often. -/
+  window : since_restart.val ≤ s.conflicts.val
+  /-- The clause vector has room for every clause still to be learned: one per conflict,
+      and the counter says how many conflicts are left. -/
+  db_room : (Solver.db s).length + (Std.U32.max - s.conflicts.val) ≤ Std.Usize.max
 
-theorem Solver.Searching.conflicts_lt {s : sat_cdcl.Solver} {db₀ : List (List cnf.Literal)}
-    {budget since_restart : Std.U32}
-    (hinv : Solver.Searching s db₀ budget since_restart) :
-    s.conflicts.val < Std.U32.max := by
-  have h := hinv.room
-  have hpos := Solver.searchMeasure_pos s budget
-  omega
-
+/-- `since_restart + 1` is in range whenever `self.conflicts + 1` was -- which is what
+    `checked_add` has just established when the loop reaches it. -/
 theorem Solver.Searching.since_restart_lt {s : sat_cdcl.Solver}
     {db₀ : List (List cnf.Literal)} {budget since_restart : Std.U32}
-    (hinv : Solver.Searching s db₀ budget since_restart) :
+    (hinv : Solver.Searching s db₀ budget since_restart)
+    (hconf : s.conflicts.val < Std.U32.max) :
     since_restart.val < Std.U32.max := by
   have h := hinv.window
-  have hf := hinv.fits
-  have := Solver.trailNum_lt s
-  simp only [Solver.trailLeft] at h
-  have h3 : 0 < 3 ^ s.value.val.length := Nat.pow_pos (by omega)
   omega
 
-theorem Solver.Searching.budget_le {s : sat_cdcl.Solver} {db₀ : List (List cnf.Literal)}
-    {budget since_restart : Std.U32}
+/-- A restart's guard puts at least one conflict in the window it is closing. -/
+theorem Solver.Searching.since_restart_pos {s : sat_cdcl.Solver}
+    {db₀ : List (List cnf.Literal)} {budget since_restart : Std.U32}
     (hinv : Solver.Searching s db₀ budget since_restart)
     (hguard : budget.val ≤ since_restart.val) :
-    budget.val ≤ 3 ^ s.value.val.length := by
-  have h := hinv.window
+    0 < since_restart.val := by
+  have h := hinv.budget_ge
   omega
 
 /-- **Propagation keeps the invariant** and does not climb back down the measure. -/
@@ -5160,15 +5170,12 @@ theorem Solver.Searching.propagate {s s' : sat_cdcl.Solver} {db₀ : List (List 
     (hframe : ∀ v ∈ s.trail.val, Solver.levelOf s' v = Solver.levelOf s v
       ∧ Solver.reasonOf s' v = Solver.reasonOf s v) :
     Solver.Searching s' db₀ budget since_restart
-      ∧ Solver.searchMeasure s' budget ≤ Solver.searchMeasure s budget := by
+      ∧ Solver.trailLeft s' ≤ Solver.trailLeft s := by
   obtain ⟨suf, hsufeq⟩ := hsuf
   have hle : Solver.trailLeft s' ≤ Solver.trailLeft s :=
     Solver.trailLeft_le_of_trailNum_le hlen
       (Solver.trailNum_le_of_append hwf' hlen hsufeq (fun v hv => (hframe v hv).2))
-  have hmeas : Solver.searchMeasure s' budget ≤ Solver.searchMeasure s budget := by
-    simp only [Solver.searchMeasure, hlen]
-    omega
-  refine ⟨?_, hmeas⟩
+  refine ⟨?_, hle⟩
   refine
     { wf := hwf'
       bound := by rw [hlen]; exact hinv.bound
@@ -5179,9 +5186,7 @@ theorem Solver.Searching.propagate {s s' : sat_cdcl.Solver} {db₀ : List (List 
       levels := ?_
       budget_ge := hinv.budget_ge
       window := ?_
-      room := ?_
-      db_room := ?_
-      fits := by rw [hlen]; exact hinv.fits }
+      db_room := ?_ }
   · intro v hv
     obtain ⟨h1, h2⟩ := hinv.vars v hv
     exact ⟨by rw [hlen]; exact h1, by rw [hocc]; exact h2⟩
@@ -5190,19 +5195,16 @@ theorem Solver.Searching.propagate {s s' : sat_cdcl.Solver} {db₀ : List (List 
     exact ⟨v, by rw [hsufeq]; exact List.mem_append_left _ hv,
       by rw [(hframe v hv).1]; exact hvlvl, by rw [(hframe v hv).2]; exact hvrsn⟩
   · have h := hinv.window
-    rw [hlen]
-    omega
-  · have h := hinv.room
     rw [hconf]
     omega
   · have h := hinv.db_room
-    rw [hdb]
+    rw [hdb, hconf]
     omega
 
 /-- **A restart keeps the invariant**, and pays for the trail it throws away with the
     budget it grows: this is the one step of the loop where the trail numeral goes *down*. -/
 theorem Solver.Searching.restart {s s' : sat_cdcl.Solver} {db₀ : List (List cnf.Literal)}
-    {budget budget' since_restart : Std.U32}
+    {budget budget' since_restart since_restart' : Std.U32}
     (hinv : Solver.Searching s db₀ budget since_restart)
     (hguard : budget.val ≤ since_restart.val)
     (hwf' : Solver.WF s')
@@ -5211,11 +5213,12 @@ theorem Solver.Searching.restart {s s' : sat_cdcl.Solver} {db₀ : List (List cn
     (hlen : s'.value.val.length = s.value.val.length)
     (hocc : s'.occurs = s.occurs)
     (hconf : s'.conflicts = s.conflicts)
-    (hbud : budget'.val = budget.val + budget.val / 2) :
-    Solver.Searching s' db₀ budget' 0#u32
-      ∧ Solver.searchMeasure s' budget' < Solver.searchMeasure s budget := by
-  have hmeas : Solver.searchMeasure s' budget' < Solver.searchMeasure s budget :=
-    Solver.searchMeasure_lt_of_restart hlen hinv.budget_ge (hinv.budget_le hguard) hbud
+    (hbud : budget.val ≤ budget'.val)
+    (hzero : since_restart'.val = 0) :
+    Solver.Searching s' db₀ budget' since_restart'
+      ∧ Solver.searchMeasure s' since_restart' < Solver.searchMeasure s since_restart := by
+  have hmeas : Solver.searchMeasure s' since_restart' < Solver.searchMeasure s since_restart :=
+    Solver.searchMeasure_lt_of_restart hlen hconf (hinv.since_restart_pos hguard) hzero
   refine ⟨?_, hmeas⟩
   refine
     { wf := hwf'
@@ -5227,9 +5230,7 @@ theorem Solver.Searching.restart {s s' : sat_cdcl.Solver} {db₀ : List (List cn
       levels := ?_
       budget_ge := ?_
       window := ?_
-      room := ?_
-      db_room := ?_
-      fits := by rw [hlen]; exact hinv.fits }
+      db_room := ?_ }
   · intro cl _ _ hpos
     rw [hdl] at hpos
     exact absurd hpos (by omega)
@@ -5241,13 +5242,9 @@ theorem Solver.Searching.restart {s s' : sat_cdcl.Solver} {db₀ : List (List cn
     exact absurd hkle (by omega)
   · have h := hinv.budget_ge
     omega
-  · have h := Solver.trailLeft_le s'
-    simpa using h
-  · have h := hinv.room
-    rw [hconf]
-    omega
+  · omega
   · have h := hinv.db_room
-    rw [hdb]
+    rw [hdb, hconf]
     omega
 
 /-- **A decision keeps the invariant** and climbs the trail: one more digit where the
@@ -5271,7 +5268,7 @@ theorem Solver.Searching.decide {s s' : sat_cdcl.Solver} {db₀ : List (List cnf
       ∧ Solver.levelOf s' w = Solver.levelOf s w
       ∧ Solver.reasonOf s' w = Solver.reasonOf s w) :
     Solver.Searching s' db₀ budget since_restart
-      ∧ Solver.searchMeasure s' budget < Solver.searchMeasure s budget := by
+      ∧ Solver.searchMeasure s' since_restart < Solver.searchMeasure s since_restart := by
   have hvarnot : var ∉ s.trail.val := by
     rw [← hinv.wf.trail_iff, hfresh]
     simp
@@ -5279,8 +5276,8 @@ theorem Solver.Searching.decide {s s' : sat_cdcl.Solver} {db₀ : List (List cnf
     Solver.trailLeft_lt_of_trailNum_lt hlen
       (Solver.trailNum_lt_of_assign hwf' hlen htrail
         (fun v hv => (hframe v (fun hc => hvarnot (by rw [← hc]; exact hv))).2.2))
-  have hmeas : Solver.searchMeasure s' budget < Solver.searchMeasure s budget :=
-    Solver.searchMeasure_lt_of_trailLeft hlen hlt
+  have hmeas : Solver.searchMeasure s' since_restart < Solver.searchMeasure s since_restart :=
+    Solver.searchMeasure_lt_of_trailLeft hlen hconf hlt
   refine ⟨?_, hmeas⟩
   refine
     { wf := hwf'
@@ -5292,9 +5289,7 @@ theorem Solver.Searching.decide {s s' : sat_cdcl.Solver} {db₀ : List (List cnf
       levels := ?_
       budget_ge := hinv.budget_ge
       window := ?_
-      room := ?_
-      db_room := ?_
-      fits := by rw [hlen]; exact hinv.fits }
+      db_room := ?_ }
   -- the only literal that can have become false is the one just decided
   · intro cl hcl hall _
     obtain ⟨lit, hlit, hnf⟩ := hfix cl (by rw [hdb] at hcl; exact hcl)
@@ -5316,13 +5311,10 @@ theorem Solver.Searching.decide {s s' : sat_cdcl.Solver} {db₀ : List (List cnf
     · have hkeq : k = Solver.decisionLevel s + 1 := by omega
       exact ⟨var, by rw [htrail]; simp, by rw [hlvl, hkeq], hrsn⟩
   · have h := hinv.window
-    rw [hlen]
-    omega
-  · have h := hinv.room
     rw [hconf]
     omega
   · have h := hinv.db_room
-    rw [hdb]
+    rw [hdb, hconf]
     omega
 
 /-- Only the conflict counter and the activity scores changed, so the trail numeral did not. -/
@@ -5334,12 +5326,13 @@ theorem Solver.trailLeft_congr {s s' : sat_cdcl.Solver}
     simp [Solver.trailDigits, Solver.reasonOf, hreason, htrail]
   simp only [Solver.trailLeft, Solver.trailNum, h1, hvalue]
 
-/-- And so the measure did not. -/
-theorem Solver.searchMeasure_congr {s s' : sat_cdcl.Solver} {budget : Std.U32}
+/-- And so the measure did not, once the counter is put back too. -/
+theorem Solver.searchMeasure_congr {s s' : sat_cdcl.Solver} {since_restart : Std.U32}
     (hvalue : s'.value = s.value) (hreason : s'.reason = s.reason)
-    (htrail : s'.trail = s.trail) :
-    Solver.searchMeasure s' budget = Solver.searchMeasure s budget := by
-  simp only [Solver.searchMeasure, Solver.trailLeft_congr hvalue hreason htrail, hvalue]
+    (htrail : s'.trail = s.trail) (hconf : s'.conflicts = s.conflicts) :
+    Solver.searchMeasure s' since_restart = Solver.searchMeasure s since_restart := by
+  simp only [Solver.searchMeasure, Solver.trailLeft_congr hvalue hreason htrail, hvalue,
+    hconf]
 
 /-- A state that differs from another only in its conflict counter and its activity scores
     agrees with it on every array the invariant reads. -/
@@ -5422,12 +5415,10 @@ theorem Solver.Searching.learn {s₂ s₄ s₅ : sat_cdcl.Solver} {db₀ : List 
       v.val < s₂.value.val.length ∧ s₂.occurs.val[v.val]? = some true)
     (hlevels : ∀ k, 0 < k → k ≤ Solver.decisionLevel s₂ → ∃ v ∈ s₂.trail.val,
       Solver.levelOf s₂ v = k ∧ Solver.reasonOf s₂ v = none)
-    (hbudget : 2 ≤ budget.val)
-    (hfits : 2 * 3 ^ s₂.value.val.length ≤ Std.U32.max)
-    (hwindow : since_restart.val + Solver.trailLeft s₂ ≤ 3 ^ s₂.value.val.length)
+    (hbudget : 1 ≤ budget.val)
+    (hwindow : since_restart.val ≤ c)
     (hconf₂ : s₂.conflicts.val = c + 1)
-    (hroom : c + Solver.searchMeasure s₂ budget ≤ Std.U32.max)
-    (hdbroom : (Solver.db s₂).length + Solver.searchMeasure s₂ budget ≤ Std.Usize.max)
+    (hdbroom : (Solver.db s₂).length + (Std.U32.max - c) ≤ Std.Usize.max)
     (hsr : since_restart'.val = since_restart.val + 1)
     (hent : Entails (Solver.db s₂) learned)
     (hlfalse : ∀ lit ∈ learned, Solver.litFalse s₂ lit)
@@ -5460,7 +5451,7 @@ theorem Solver.Searching.learn {s₂ s₄ s₅ : sat_cdcl.Solver} {db₀ : List 
       ∧ Solver.levelOf s₅ w = Solver.levelOf s₄ w
       ∧ Solver.reasonOf s₅ w = Solver.reasonOf s₄ w) :
     Solver.Searching s₅ db₀ budget since_restart'
-      ∧ Solver.searchMeasure s₅ budget < Solver.searchMeasure s₂ budget := by
+      ∧ Solver.trailLeft s₅ < Solver.trailLeft s₂ := by
   have hlen5 : s₅.value.val.length = s₂.value.val.length := by rw [h5len, h4len]
   have hdl5 : Solver.decisionLevel s₅ = backjump.val := by rw [h5dl, h4dl]
   have huipmem : uip.var ∈ s₂.trail.val :=
@@ -5529,9 +5520,7 @@ theorem Solver.Searching.learn {s₂ s₄ s₅ : sat_cdcl.Solver} {db₀ : List 
     Solver.trailLeft_lt_of_trailNum_lt hlen5
       (Solver.trailNum_lt_of_backjump hwf₂ hlen5 htgtlt hdec
         (by rw [h5trail, h4trail]) (by rw [h5rsn]; simp) h5rsnframe)
-  have hmeas : Solver.searchMeasure s₅ budget < Solver.searchMeasure s₂ budget :=
-    Solver.searchMeasure_lt_of_trailLeft hlen5 hlt5
-  refine ⟨?_, hmeas⟩
+  refine ⟨?_, hlt5⟩
   refine
     { wf := hwf₅
       bound := by rw [hlen5]; exact hbound
@@ -5542,9 +5531,7 @@ theorem Solver.Searching.learn {s₂ s₄ s₅ : sat_cdcl.Solver} {db₀ : List 
       levels := ?_
       budget_ge := hbudget
       window := ?_
-      room := ?_
-      db_room := ?_
-      fits := by rw [hlen5]; exact hfits }
+      db_room := ?_ }
   -- the learned clause is entailed by the problem, so learning stays sound
   · intro cl hcl
     rw [h5db, h4db] at hcl
@@ -5591,14 +5578,13 @@ theorem Solver.Searching.learn {s₂ s₄ s₅ : sat_cdcl.Solver} {db₀ : List 
     refine ⟨v, by rw [h5trail]; exact List.mem_append_left _ hv4, ?_, ?_⟩
     · rw [(h5frame v hne).2.1, hlvl, hvlvl]
     · rw [(h5frame v hne).2.2, h4rsn v hv4, hvrsn]
-  · rw [hlen5, hsr]
-    omega
-  · rw [h5conf, h4conf, hconf₂]
+  · rw [hsr, h5conf, h4conf, hconf₂]
     omega
   · have hlen : (Solver.db s₅).length = (Solver.db s₂).length + 1 := by
       rw [h5db, h4db]
       simp
-    rw [hlen]
+    have hc2 : s₂.conflicts.val ≤ Std.U32.max := by scalar_tac
+    rw [hlen, h5conf, h4conf, hconf₂]
     omega
 
 /-- **A level begins no earlier than its own index.** While every open level has a decision,
@@ -5673,39 +5659,42 @@ theorem sat_cdcl.Solver.search_loop.spec (s : sat_cdcl.Solver)
     (budget since_restart : Std.U32) (db₀ : List (List cnf.Literal))
     (hinv : Solver.Searching s db₀ budget since_restart) :
     sat_cdcl.Solver.search_loop s budget since_restart ⦃
-      (sat : Bool) (s' : sat_cdcl.Solver) =>
+      (res : sat_result.SatResult Unit) (s' : sat_cdcl.Solver) =>
         Solver.WF s'
         ∧ (∀ cl ∈ Solver.db s', Entails db₀ cl)
         ∧ s'.value.val.length = s.value.val.length
-        ∧ (sat = true →
+        ∧ (res = sat_result.SatResult.Sat () →
             (∀ v ∈ cnfVars db₀, (Solver.valueOf s' v).isSome = true)
             ∧ ∀ w : Std.U16 → Bool,
                 (∀ v b, Solver.valueOf s' v = some b → w v = b) →
                 Cnf.eval w db₀ = true)
-        ∧ (sat = false → ∀ w : Std.U16 → Bool, Cnf.eval w db₀ ≠ true) ⦄ := by
+        ∧ (res = sat_result.SatResult.Unsat → ∀ w : Std.U16 → Bool, Cnf.eval w db₀ ≠ true)
+        ∧ (res = sat_result.SatResult.Unknown → s'.conflicts.val = Std.U32.max) ⦄ := by
   unfold sat_cdcl.Solver.search_loop
   step with (sat_cdcl.Solver.propagate.spec s hinv.wf hinv.falsified
     (fun hpos => hinv.levels _ hpos (Nat.le_refl _)))
   obtain ⟨hinv1, hm1⟩ := hinv.propagate o_post1 o_post2 o_post3 ⟨_, o_post4⟩ o_post8
     o_post9 o_post10 o_post11 o_post12
+  have hm1' : Solver.searchMeasure self1 since_restart
+      ≤ Solver.searchMeasure s since_restart :=
+    Solver.searchMeasure_le_of_trailLeft o_post8 o_post10 hm1
   step*
   -- the restart
   · step with (sat_cdcl.Solver.backtrack.spec self1 0#usize hinv1.wf)
     have hguard : budget.val ≤ since_restart.val := by
       have hbr : since_restart ≥ budget := ‹since_restart ≥ budget›
       scalar_tac
-    have hbudle : budget.val ≤ 3 ^ self1.value.val.length := hinv1.budget_le hguard
-    have hfits := hinv1.fits
     step
     step
-    obtain ⟨hinv2, hdec0⟩ := hinv1.restart hguard self2_post1 self2_post2
+    obtain ⟨hinv2, hdec0⟩ := hinv1.restart (since_restart' := 0#u32) hguard self2_post1
+      self2_post2
       (by rw [self2_post7]; simp) self2_post5 self2_post6 self2_post10
-      (by rw [budget1_post, i_post])
-    have hdec : Solver.searchMeasure self2 budget1 < Solver.searchMeasure s budget :=
-      Nat.lt_of_lt_of_le hdec0 hm1
+      (by rw [budget1_post]; scalar_tac) rfl
+    have hdec : Solver.searchMeasure self2 0#u32 < Solver.searchMeasure s since_restart :=
+      Nat.lt_of_lt_of_le hdec0 hm1'
     step with (sat_cdcl.Solver.search_loop.spec self2 budget1 0#u32 db₀ hinv2)
-    exact ⟨sat_post1, sat_post2, by rw [sat_post3, self2_post5, o_post8], sat_post4,
-      sat_post5⟩
+    exact ⟨res_post1, res_post2, by rw [res_post3, self2_post5, o_post8], res_post4,
+      res_post5, res_post6⟩
   -- the decision heuristic's cast has room
   · exact hinv1.bound
   -- **the `true` answer**: propagation reached a fixpoint and the heuristic found nothing
@@ -5715,7 +5704,7 @@ theorem sat_cdcl.Solver.search_loop.spec (s : sat_cdcl.Solver)
       obtain ⟨h1, h2⟩ := hinv1.vars v hv
       refine o1_post2 ?_ v h1 h2
       assumption
-    refine ⟨hinv1.wf, hinv1.sound, o_post8, fun _ => ⟨hassigned, ?_⟩, by simp⟩
+    refine ⟨hinv1.wf, hinv1.sound, o_post8, fun _ => ⟨hassigned, ?_⟩, by simp, by simp⟩
     intro w hw
     exact Solver.model_of_fixpoint hinv1.problem (o_post7 (by assumption)) hassigned w hw
   -- `trail_lim` has room for another level: there are no more open levels than trail
@@ -5748,23 +5737,30 @@ theorem sat_cdcl.Solver.search_loop.spec (s : sat_cdcl.Solver)
       self2_post2 (by rw [self2_post3, hdlopen]) self2_post4
       (by rw [self2_post6, hdlopen]) self2_post11 self2_post7 self2_post9 self2_post10
       self2_post8
-    have hdec : Solver.searchMeasure self2 budget < Solver.searchMeasure s budget :=
-      Nat.lt_of_lt_of_le hdec0 hm1
+    have hdec : Solver.searchMeasure self2 since_restart
+        < Solver.searchMeasure s since_restart :=
+      Nat.lt_of_lt_of_le hdec0 hm1'
     step with (sat_cdcl.Solver.search_loop.spec self2 budget since_restart db₀ hinv2)
-    exact ⟨sat_post1, sat_post2, by rw [sat_post3, self2_post7, o_post8], sat_post4,
-      sat_post5⟩
-  -- the conflict counter has room for this conflict
-  · have h := hinv1.conflicts_lt
+    exact ⟨res_post1, res_post2, by rw [res_post3, self2_post7, o_post8], res_post4,
+      res_post5, res_post6⟩
+  -- **`Unknown`**: the conflict counter is full. Nothing is claimed of the answer beyond
+  -- what produced it -- 2^32 conflicts really did happen -- which is the whole content of
+  -- the give-up outcome.
+  · refine ⟨hinv1.wf, hinv1.sound, o_post8, by simp, by simp, fun _ => ?_⟩
+    have h := o1_post2 (by assumption)
     scalar_tac
-  -- and so has the count since the last restart
-  · have h := hinv1.since_restart_lt
+  -- the count since the last restart has room, because the conflict counter had
+  · have hc := o1_post1 _ (by assumption)
+    have h := hinv1.since_restart_lt (by scalar_tac)
     scalar_tac
   · simp [sat_cdcl.DECAY_INTERVAL]
   -- **a conflict**
-  · step with (sat_cdcl.Solver.decay_if.spec { self1 with conflicts := i }
-      (Solver.wf_conflicts hinv1.wf i) (i1 = 0#u32))
+  · have hcval : c.val = self1.conflicts.val + 1 := o1_post1 _ (by assumption)
+    have hcroom : self1.conflicts.val < Std.U32.max := by scalar_tac
+    step with (sat_cdcl.Solver.decay_if.spec { self1 with conflicts := c }
+      (Solver.wf_conflicts hinv1.wf c) (i = 0#u32))
     -- the arrays are `self1`'s; only the counter and the scores moved
-    have hconf2 : self2.conflicts = i := by rw [self2_post2]
+    have hconf2 : self2.conflicts = c := by rw [self2_post2]
     have hfr2 : self2
         = { self1 with conflicts := self2.conflicts, activity := self2.activity } := by
       rw [hconf2]; exact self2_post2
@@ -5783,16 +5779,16 @@ theorem sat_cdcl.Solver.search_loop.spec (s : sat_cdcl.Solver)
       intro l; simp [Solver.litFalse, hval2]
     have hcat2 : ∀ k, Solver.clauseAt self2 k = Solver.clauseAt self1 k := by
       intro k; simp [Solver.clauseAt, hdb2]
-    have hmeas2 : Solver.searchMeasure self2 budget = Solver.searchMeasure self1 budget :=
-      Solver.searchMeasure_congr hv2 hr2 ht2
+    have htl2 : Solver.trailLeft self2 = Solver.trailLeft self1 :=
+      Solver.trailLeft_congr hv2 hr2 ht2
     step*
     -- **the `false` answer**: a conflict with no decision above it is a refutation
     · obtain ⟨ccl, hccl, hcclfalse, -⟩ := o_post6 conflict (by assumption)
       have hdl0 : Solver.decisionLevel self2 = 0 := by
-        have hbr : i2 = 0#usize := ‹i2 = 0#usize›
-        rw [← i2_post, hbr]
+        have hbr : i1 = 0#usize := ‹i1 = 0#usize›
+        rw [← i1_post, hbr]
         simp
-      refine ⟨self2_post1, ?_, by rw [hv2, o_post8], by simp, fun _ w => ?_⟩
+      refine ⟨self2_post1, ?_, by rw [hv2, o_post8], by simp, fun _ w => ?_, by simp⟩
       · rw [hdb2]
         exact hinv1.sound
       · refine Solver.unsat_of_conflict_level_zero' (cl := ccl) self2_post1 ?_ hdl0 ?_ ?_ w
@@ -5804,8 +5800,8 @@ theorem sat_cdcl.Solver.search_loop.spec (s : sat_cdcl.Solver)
     -- **a conflict above level 0**: analyse it, learn, backjump, assert
     · obtain ⟨ccl, hccl, hcclfalse, hccllvl⟩ := o_post6 conflict (by assumption)
       have hlevel : 0 < Solver.decisionLevel self2 := by
-        have hbr : ¬ (i2 = 0#usize) := ‹¬ (i2 = 0#usize)›
-        have hne : i2.val ≠ 0 := fun hc => hbr (Solver.uscalar_eq_of_val (by simpa using hc))
+        have hbr : ¬ (i1 = 0#usize) := ‹¬ (i1 = 0#usize)›
+        have hne : i1.val ≠ 0 := fun hc => hbr (Solver.uscalar_eq_of_val (by simpa using hc))
         omega
       step with (sat_cdcl.Solver.analyze.spec self2 conflict self2_post1 hlevel
         ⟨ccl, by rw [hcat2]; exact hccl, fun l hl => (hlf2 l).mpr (hcclfalse l hl), by
@@ -5833,9 +5829,9 @@ theorem sat_cdcl.Solver.search_loop.spec (s : sat_cdcl.Solver)
         intro w; simp [Solver.reasonOf, hr3]
       step with (sat_cdcl.Solver.backtrack.spec self3 backjump hwf3)
       step*
-      -- the clause vector has room for the learned clause
+      -- the clause vector has room for the learned clause: one conflict's worth, and
+      -- `checked_add` has just said there was one to spend
       · have h := hinv1.db_room
-        have hpos := Solver.searchMeasure_pos self1 budget
         have hdblen : (Solver.db self4).length = (Solver.db self1).length := by
           rw [self4_post2, hdb3, hdb2]
         simp only [Solver.db, List.length_map] at hdblen h
@@ -5947,15 +5943,8 @@ theorem sat_cdcl.Solver.search_loop.spec (s : sat_cdcl.Solver)
             obtain ⟨w, hw, hwlvl, hwrsn⟩ := hinv1.levels k hk hkle
             exact ⟨w, by rw [ht2]; exact hw, by rw [hlvl2]; exact hwlvl,
               by rw [hrsn2]; exact hwrsn⟩)
-          hinv1.budget_ge (by rw [hv2]; exact hinv1.fits)
-          (by
-            have h := hinv1.window
-            have htleq : Solver.trailLeft self2 = Solver.trailLeft self1 :=
-              Solver.trailLeft_congr hv2 hr2 ht2
-            rw [hv2, htleq]
-            exact h)
-          (by rw [hconf2, i_post]) (by rw [hmeas2]; exact hinv1.room)
-          (by rw [hdb2, hmeas2]; exact hinv1.db_room)
+          hinv1.budget_ge hinv1.window (by rw [hconf2]; exact hcval)
+          (by rw [hdb2]; exact hinv1.db_room)
           since_restart1_post learned_post1 learned_post2 hshape huiplvl learned_post7
           self4_post1 (by rw [self4_post2, hdb3]) h4len (by rw [self4_post6, ho3])
           (by rw [self4_post10, hcl3]) hdl4
@@ -5969,13 +5958,20 @@ theorem sat_cdcl.Solver.search_loop.spec (s : sat_cdcl.Solver)
           (by rw [self5_post4, hasserting]) (by rw [← hasserting]; exact self5_post6)
           (by rw [← hasserting]; exact self5_post12 idx rfl) self5_post7 self5_post9
           self5_post10 (by rw [← hasserting]; exact self5_post8)
-        have hdec : Solver.searchMeasure self5 budget < Solver.searchMeasure s budget := by
-          rw [hmeas2] at hdec0
-          exact Nat.lt_of_lt_of_le hdec0 hm1
+        have hdec : Solver.searchMeasure self5 since_restart1
+            < Solver.searchMeasure s since_restart := by
+          refine Nat.lt_of_lt_of_le ?_ hm1'
+          refine Solver.searchMeasure_lt_of_conflict ?_ ?_ since_restart1_post ?_
+          · rw [self5_post7, self4_post5, hv3, hv2]
+          · rw [self5_post10, self4_post10, hcl3, hconf2]
+            exact hcval
+          · rw [← htl2]
+            exact hdec0
         step with (sat_cdcl.Solver.search_loop.spec self5 budget since_restart1 db₀ hinv2)
-        exact ⟨sat_post1, sat_post2,
-          by rw [sat_post3, self5_post7, self4_post5, hv3, hv2, o_post8], sat_post4, sat_post5⟩
-termination_by Solver.searchMeasure s budget
+        exact ⟨res_post1, res_post2,
+          by rw [res_post3, self5_post7, self4_post5, hv3, hv2, o_post8], res_post4,
+          res_post5, res_post6⟩
+termination_by Solver.searchMeasure s since_restart
 
 /-- **The CDCL loop.** Given a well-formed state whose database is sound for `db₀`, with
     nothing falsified and every variable of `db₀` present and marked in `occurs`,
@@ -5994,74 +5990,78 @@ termination_by Solver.searchMeasure s budget
     clauses and the phases. That is also where the termination argument lives, and it is
     the one thing here `SatDpll.lean` has no analogue for.
 
-    Six hypotheses this statement did not have. Three of them make it false as it was
-    written:
+    Five hypotheses this statement did not have, and one answer it did not have.
+
+    The answer first: `search` is three-valued, and `Unknown` is what it says when
+    `self.conflicts.checked_add(1)` comes back `None`. That is not a hedge -- the
+    postcondition pins it down: an `Unknown` answer comes with `conflicts = u32::MAX`, so
+    the solver gave up only after `2 ^ 32` conflicts, and nothing weaker can produce it.
+
+    Two of the hypotheses make the statement false as it was written:
 
     * `hbound`: `pick_branch_var` scans the slot arrays in `usize` and casts the index down
       to the `u16` a variable is, so without `value.len() ≤ 2 ^ 16` the variable `search`
       decides on need not be the one the heuristic chose.
-    * `hroom`: `self.conflicts += 1` is *checked* `u32` arithmetic in the extraction, so a
-      state whose counter is near `u32::MAX` makes the call fail -- and a `⦃ ⦄` triple rules
-      failure out, so the theorem was simply not true of such a state. Every conflict drops
-      `Solver.searchMeasure`, so the measure is a bound on the conflicts still to come, and
-      this is the room the counter needs for them. It is an exponential bound in the number
-      of variables, which is the honest shape: a `u32` cannot count the conflicts of a
-      solver run on 50 variables, and the same is true of `budget`, whose growth this
-      bounds as well.
-    * `hbudget`: **`2 ≤ first_restart`, not `0 <`.** With a budget of 1, `budget += budget
-      / 2` is a no-op, so the solver restarts after every single conflict, forever, and
-      nothing in the measure above decreases across those restarts. Proving termination
-      *there* needs "a learned clause is not one the database already has", which is a
-      different and much harder argument than this file makes -- so the statement excludes
-      it instead of pretending otherwise. `Solver::solve` passes `FIRST_RESTART = 100`.
+    * `hbudget`: **`1 ≤ first_restart`.** With a budget of `0` the guard `since_restart ≥
+      budget` holds immediately, so the solver restarts with no conflict in the window and
+      nothing decreases -- the loop would not terminate, and a `⦃ ⦄` triple rules that out.
+      `Solver::solve` passes `FIRST_RESTART = 100`.
 
-    And three are the same accounting one step further:
+    One is bookkeeping, and one is not about machine integers at all:
 
     * `hdbroom`: pushing a learned clause needs the clause vector to have room, and the
-      measure bounds the clauses still to be learned exactly as it bounds the conflicts.
-    * `hfits`: the restart budget grows by half of itself, and `3 ^ n` is as far as it can
-      grow before restarts stop happening, so it has to fit twice over.
-    * `hlevels`: **every open level was opened by a decision.** This is the one hypothesis
-      that is not about machine integers, and `Solver.WF` cannot state it: `search` pushes
-      `trail_lim` and only *then* assigns, so the state `assign` is handed has an empty top
-      level. It is an invariant of the loop (`Solver.Searching`'s `levels`), and `search`
-      needs it of the state it is given -- `Solver::new`'s, where the trail is empty and it
-      holds vacuously. Without it `propagate`'s `hopen` is unavailable, and so is the
-      decision the backjump measure counts on.
+      search learns one clause per conflict, of which there are at most `u32::MAX` left.
+      So the clause count plus `u32::MAX` has to fit a `usize` -- which, at 64 bits against
+      32, is about as close to free as a hypothesis gets.
+    * `hlevels`: **every open level was opened by a decision.** `Solver.WF` cannot state
+      it: `search` pushes `trail_lim` and only *then* assigns, so the state `assign` is
+      handed has an empty top level. It is an invariant of the loop
+      (`Solver.Searching`'s `levels`), and `search` needs it of the state it is given --
+      `Solver::new`'s, where the trail is empty and it holds vacuously. Without it
+      `propagate`'s `hopen` is unavailable, and so is the decision the backjump measure
+      counts on.
 
-    And one that *weakened*: `hfix` used to read "no clause of the database is falsified",
-    which is what `propagate` reaching a fixpoint gives -- but it is false of a CNF holding
-    the **empty** clause, and `solve_cnf` has to answer for that CNF too. What the proof
+    And one *weakened*: `hfix` used to read "no clause of the database is falsified", which
+    is what `propagate` reaching a fixpoint gives -- but it is false of a CNF holding the
+    **empty** clause, and `solve_cnf` has to answer for that CNF too. What the proof
     actually spends it on is the loop invariant's `falsified`, so that is what the
     hypothesis now says: a falsified clause mentions the current level. At level 0 -- the
-    state `Solver::new` returns -- it is vacuous, which is the point. -/
+    state `Solver::new` returns -- it is vacuous, which is the point.
+
+    What is *not* here is the point of the exercise. There is no bound on the number of
+    variables, none on the search measure, and none on the restart budget's growth. The
+    previous version of this theorem had all three, because the conflict counter's headroom
+    had to be *proved* rather than checked, and the only bound available for it was the
+    termination measure -- exponential in the variable count, so the theorem held for about
+    ten variables and said nothing about anything one would actually run the solver on.
+    `checked_add` buys the difference, and the `Unknown` answer is what it costs. -/
 theorem sat_cdcl.Solver.search.spec (s : sat_cdcl.Solver)
     (db₀ : List (List cnf.Literal)) (first_restart : Std.U32)
     (hwf : Solver.WF s)
     (hbound : s.value.val.length ≤ 2 ^ 16)
-    (hbudget : 2 ≤ first_restart.val)
-    (hroom : s.conflicts.val + Solver.searchMeasure s first_restart ≤ Std.U32.max)
+    (hbudget : 1 ≤ first_restart.val)
     (hsound : ∀ cl ∈ Solver.db s, Entails db₀ cl)
     (hproblem : ∀ cl ∈ db₀, cl ∈ Solver.db s)
     (hfix : ∀ cl ∈ Solver.db s, (∀ lit ∈ cl, Solver.litFalse s lit) →
       0 < Solver.decisionLevel s →
       ∃ lit ∈ cl, Solver.levelOf s lit.var = Solver.decisionLevel s)
-    (hdbroom : (Solver.db s).length + Solver.searchMeasure s first_restart ≤ Std.Usize.max)
-    (hfits : 2 * 3 ^ s.value.val.length ≤ Std.U32.max)
+    (hdbroom : (Solver.db s).length + (Std.U32.max - s.conflicts.val) ≤ Std.Usize.max)
     (hvars : ∀ v ∈ cnfVars db₀,
       v.val < s.value.val.length ∧ s.occurs.val[v.val]? = some true)
     (hlevels : ∀ k, 0 < k → k ≤ Solver.decisionLevel s → ∃ v ∈ s.trail.val,
       Solver.levelOf s v = k ∧ Solver.reasonOf s v = none) :
-    sat_cdcl.Solver.search s first_restart ⦃ (sat : Bool) (s' : sat_cdcl.Solver) =>
-      Solver.WF s'
-      ∧ (∀ cl ∈ Solver.db s', Entails db₀ cl)
-      ∧ s'.value.val.length = s.value.val.length
-      ∧ (sat = true →
-          (∀ v ∈ cnfVars db₀, (Solver.valueOf s' v).isSome = true)
-          ∧ ∀ w : Std.U16 → Bool,
-              (∀ v b, Solver.valueOf s' v = some b → w v = b) →
-              Cnf.eval w db₀ = true)
-      ∧ (sat = false → ∀ w : Std.U16 → Bool, Cnf.eval w db₀ ≠ true) ⦄ := by
+    sat_cdcl.Solver.search s first_restart ⦃
+      (res : sat_result.SatResult Unit) (s' : sat_cdcl.Solver) =>
+        Solver.WF s'
+        ∧ (∀ cl ∈ Solver.db s', Entails db₀ cl)
+        ∧ s'.value.val.length = s.value.val.length
+        ∧ (res = sat_result.SatResult.Sat () →
+            (∀ v ∈ cnfVars db₀, (Solver.valueOf s' v).isSome = true)
+            ∧ ∀ w : Std.U16 → Bool,
+                (∀ v b, Solver.valueOf s' v = some b → w v = b) →
+                Cnf.eval w db₀ = true)
+        ∧ (res = sat_result.SatResult.Unsat → ∀ w : Std.U16 → Bool, Cnf.eval w db₀ ≠ true)
+        ∧ (res = sat_result.SatResult.Unknown → s'.conflicts.val = Std.U32.max) ⦄ := by
   unfold sat_cdcl.Solver.search
   refine sat_cdcl.Solver.search_loop.spec s first_restart 0#u32 db₀
     { wf := hwf
@@ -6072,10 +6072,8 @@ theorem sat_cdcl.Solver.search.spec (s : sat_cdcl.Solver)
       vars := hvars
       levels := hlevels
       budget_ge := hbudget
-      window := by simpa using Solver.trailLeft_le s
-      room := hroom
-      db_room := hdbroom
-      fits := hfits }
+      window := by simp
+      db_room := hdbroom }
 
 /-! #### The CNF layer
 
@@ -6169,29 +6167,25 @@ decreasing_by
 /-- **Soundness of `sat_cdcl::solve_cnf`**: a returned model satisfies the CNF, and
     covers every variable it mentions.
 
-    Three hypotheses besides `CnfShort`, and all three are `search.spec`'s numeric ones
-    pulled back to the input. `n` is any bound on the CNF's variables; `Solver::new` sizes
-    the slot arrays from the largest variable it finds, so `new.spec`'s "the slot count is
-    the least such bound" is what turns `n` into a bound on `s.value.len()` -- and hence on
-    `3 ^ s.value.len()`, which is what the measure and the `u32` counters are stated
-    against. Without that direction the only bound available is `2 ^ 16`, and
-    `searchRoom (2 ^ 16)` exceeds `u32::MAX`, which would make this theorem vacuous rather
-    than merely narrow.
+    Two hypotheses. `CnfShort` is the one about the input the whole file rests on -- no
+    clause holds more than `2 ^ 31 - 65537` literals -- and `hdbroom` is the clause vector
+    having room for the `u32::MAX` clauses the search could still learn, which at 64 bits
+    against 32 rules out nothing that fits in memory.
 
-    Narrow it is: `searchRoom n ≤ u32::MAX` holds up to about nine variables. That is the
-    price of `self.conflicts` being a `u32` and of `searchRoom` being the crude bound it
-    is; see `Solver.searchMeasure_le_searchRoom`.
+    What is gone is the arithmetic. This theorem used to take a bound `n` on the CNF's
+    variables together with `9 ^ n + 2 * 3 ^ n ≤ u32::MAX` -- the search measure's room in
+    the conflict counter -- which held up to about ten variables. `checked_add` on the
+    counter removes the need for it, at the price of the `Unknown` answer, about which this
+    direction says nothing: soundness is a claim about `Sat`, and `Unknown` is not `Sat`.
 
-    `hfix` is not among them. `search.spec` asks only that a falsified clause mention the
-    current level, and `Solver::new` returns a state at level 0, so the hypothesis is
-    vacuous -- which is exactly why it is stated that way: "no clause is falsified" fails
-    for a CNF containing the *empty* clause, and `solve_cnf` has to answer for that CNF
-    too (it answers `None`). -/
-theorem sat_cdcl.solve_cnf_sound (cc : cnf.Cnf) (n : Nat)
+    `hfix` is not among the hypotheses either. `search.spec` asks only that a falsified
+    clause mention the current level, and `Solver::new` returns a state at level 0, so the
+    hypothesis is vacuous -- which is exactly why it is stated that way: "no clause is
+    falsified" fails for a CNF containing the *empty* clause, and `solve_cnf` has to answer
+    for that CNF too (it answers `Unsat`). -/
+theorem sat_cdcl.solve_cnf_sound (cc : cnf.Cnf)
     (hshort : CnfShort (Cnf.contents cc))
-    (hvars : ∀ v ∈ cnfVars (Cnf.contents cc), v.val < n)
-    (hroom : searchRoom n ≤ Std.U32.max)
-    (hdbroom : (Cnf.contents cc).length + searchRoom n ≤ Std.Usize.max) :
+    (hdbroom : (Cnf.contents cc).length + Std.U32.max ≤ Std.Usize.max) :
     sat_cdcl.solve_cnf cc ⦃ (result : sat_result.SatResult (alloc.vec.Vec
       (Std.U16 × Bool))) =>
         ∀ model, result = sat_result.SatResult.Sat model →
@@ -6201,24 +6195,15 @@ theorem sat_cdcl.solve_cnf_sound (cc : cnf.Cnf) (n : Nat)
           ∧ (∀ p ∈ model.val, ∀ q ∈ model.val, p.1 = q.1 → p.2 = q.2) ⦄ := by
   unfold sat_cdcl.solve_cnf sat_cdcl.Solver.solve sat_cdcl.Solver.num_vars
   step with (sat_cdcl.Solver.new.spec cc hshort)
-  have hNn : solver.value.val.length ≤ n := solver_post8 n hvars
-  have hmeas : Solver.searchMeasure solver sat_cdcl.FIRST_RESTART ≤ searchRoom n :=
-    Solver.searchMeasure_le_searchRoom solver _ hNn
-  have h3 : (3 : Nat) ^ solver.value.val.length ≤ 3 ^ n :=
-    Nat.pow_le_pow_right (by norm_num) hNn
-  have hfits : 2 * 3 ^ solver.value.val.length ≤ Std.U32.max := by
-    simp only [searchRoom] at hroom
-    omega
-  -- the state `new` returns satisfies every hypothesis of `search.spec`: the counters are
-  -- at 0, the database is the problem, and the level is 0, which is what makes the two
+  -- the state `new` returns satisfies every hypothesis of `search.spec`: the counter is at
+  -- 0, the database is the problem, and the level is 0, which is what makes the two
   -- hypotheses about falsified clauses and open levels vacuous
   step with (sat_cdcl.Solver.search.spec solver (Cnf.contents cc) sat_cdcl.FIRST_RESTART
     solver_post1 solver_post7 (by simp [sat_cdcl.FIRST_RESTART])
-    (by rw [solver_post9]; omega)
     (fun cl hcl => Entails.of_mem (by rw [solver_post2] at hcl; exact hcl))
     (fun cl hcl => by rw [solver_post2]; exact hcl)
     (fun cl hcl hall hpos => absurd hpos (by rw [solver_post4]; omega))
-    (by rw [solver_post2]; omega) hfits solver_post6
+    (by rw [solver_post2, solver_post9]; simpa using hdbroom) solver_post6
     (fun k hk hle => absurd hle (by rw [solver_post4]; omega)))
   step*
   intro m hm
@@ -6233,10 +6218,11 @@ theorem sat_cdcl.solve_cnf_sound (cc : cnf.Cnf) (n : Nat)
     by_contra hge
     rw [Solver.valueOf, List.getElem?_eq_none (by omega)] at hc
     exact absurd hc (by simp)
-  refine ⟨fun w hw => (b_post4 ‹b = true›).2 w
-      fun v c hvc => hw (v, c) (hcover v c hvc), ?_, ?_⟩
+  -- `Unit` has structure eta, so the wildcard the `Sat _` arm binds *is* `()`
+  have hsat := sr_post4 (by assumption)
+  refine ⟨fun w hw => hsat.2 w fun v c hvc => hw (v, c) (hcover v c hvc), ?_, ?_⟩
   · intro v hv
-    obtain ⟨c, hc⟩ := Option.isSome_iff_exists.mp ((b_post4 ‹b = true›).1 v hv)
+    obtain ⟨c, hc⟩ := Option.isSome_iff_exists.mp (hsat.1 v hv)
     exact ⟨c, hcover v c hc⟩
   -- the vector holds no junk -- every pair in it is a slot read -- so it names each
   -- variable at most once, which is what the `Expr` layer needs to insert it into a map
@@ -6246,38 +6232,36 @@ theorem sat_cdcl.solve_cnf_sound (cc : cnf.Cnf) (n : Nat)
     rw [hkey, hqv] at hpv
     exact (Option.some.inj hpv).symm
 
-/-- **Completeness of `sat_cdcl::solve_cnf`**: a satisfiable CNF gets a model.
+/-- **Completeness of `sat_cdcl::solve_cnf`**: a satisfiable CNF is never called
+    unsatisfiable.
 
-    Same three input bounds as the soundness direction, and for the same reason -- they are
-    what `search.spec` asks of the state `Solver::new` builds, and neither direction can be
-    stated without them. The proof is the same prelude and then nothing: `search.spec`'s
-    `false` clause says the CNF has no model, `hsat` says it has one, and the `else` arm
-    that would return `None` is unreachable. -/
-theorem sat_cdcl.solve_cnf_complete (cc : cnf.Cnf) (w : Std.U16 → Bool) (n : Nat)
+    Same two input bounds as the soundness direction, and this is where the `Unknown`
+    answer is paid for. The old statement was "a satisfiable CNF gets a model", and it held
+    of CNFs of about ten variables. This one holds of every CNF, and says one thing less:
+    the answer is not `Unsat`. It is `Sat` unless the search burned through `2 ^ 32`
+    conflicts first, which `search.spec`'s last conjunct is what records -- but `solve_cnf`
+    does not return the counter, so that is as much as can be said here.
+
+    That weakening is not an artifact of how this is proved. A `u32` cannot count the
+    conflicts of a 250-variable run, the clause database grows by one clause per conflict
+    and `Vec::push` needs its length to fit a `usize`, and so *some* finite cap is forced;
+    a cap that can be hit is an answer that has to be reported. The choice is between a
+    theorem that covers the benchmarks and says "not `Unsat`" and one that says "a model"
+    about ten-variable formulas. -/
+theorem sat_cdcl.solve_cnf_complete (cc : cnf.Cnf) (w : Std.U16 → Bool)
     (hshort : CnfShort (Cnf.contents cc))
-    (hvars : ∀ v ∈ cnfVars (Cnf.contents cc), v.val < n)
-    (hroom : searchRoom n ≤ Std.U32.max)
-    (hdbroom : (Cnf.contents cc).length + searchRoom n ≤ Std.Usize.max)
+    (hdbroom : (Cnf.contents cc).length + Std.U32.max ≤ Std.Usize.max)
     (hsat : Cnf.eval w (Cnf.contents cc) = true) :
     sat_cdcl.solve_cnf cc ⦃ (result : sat_result.SatResult (alloc.vec.Vec
-      (Std.U16 × Bool))) => ∃ model, result = sat_result.SatResult.Sat model ⦄ := by
+      (Std.U16 × Bool))) => result ≠ sat_result.SatResult.Unsat ⦄ := by
   unfold sat_cdcl.solve_cnf sat_cdcl.Solver.solve sat_cdcl.Solver.num_vars
   step with (sat_cdcl.Solver.new.spec cc hshort)
-  have hNn : solver.value.val.length ≤ n := solver_post8 n hvars
-  have hmeas : Solver.searchMeasure solver sat_cdcl.FIRST_RESTART ≤ searchRoom n :=
-    Solver.searchMeasure_le_searchRoom solver _ hNn
-  have h3 : (3 : Nat) ^ solver.value.val.length ≤ 3 ^ n :=
-    Nat.pow_le_pow_right (by norm_num) hNn
-  have hfits : 2 * 3 ^ solver.value.val.length ≤ Std.U32.max := by
-    simp only [searchRoom] at hroom
-    omega
   step with (sat_cdcl.Solver.search.spec solver (Cnf.contents cc) sat_cdcl.FIRST_RESTART
     solver_post1 solver_post7 (by simp [sat_cdcl.FIRST_RESTART])
-    (by rw [solver_post9]; omega)
     (fun cl hcl => Entails.of_mem (by rw [solver_post2] at hcl; exact hcl))
     (fun cl hcl => by rw [solver_post2]; exact hcl)
     (fun cl hcl hall hpos => absurd hpos (by rw [solver_post4]; omega))
-    (by rw [solver_post2]; omega) hfits solver_post6
+    (by rw [solver_post2, solver_post9]; simpa using hdbroom) solver_post6
     (fun k hk hle => absurd hle (by rw [solver_post4]; omega)))
   step*
 
@@ -6348,21 +6332,6 @@ decreasing_by
     | nil => simp_all
     | cons e es => simp_all
 
-/-- **How many slots the encoded CNF needs.** `e`'s own variables reach `(varsOf e).foldl
-    bump 0` -- the same fold `Renamer::new` and `Encoder::new` run -- and the hybrid
-    transformation adds at most one gate per AST node, since the only thing that allocates
-    one is `disjoin`. The naive transformation on the fallback arm adds none.
-
-    This is the `n` the `solve_cnf` pair is stated against, and it is why
-    `cnf_transform_hybrid.Encodes` had to grow a field: `Encodes` knew the gate counter
-    started *above* `e`'s variables, and what a caller sizing an array needs is that it
-    starts no higher than it has to. -/
-def varBound (e : expr.Expr) : Nat := (varsOf e).foldl bump 0 + exprSize e
-
-theorem varsOf_lt_varBound (e : expr.Expr) :
-    ∀ k ∈ varsOf e, k.val < (varsOf e).foldl bump 0 :=
-  mem_lt_foldl_bump (varsOf e) 0
-
 /-- **The tail both roots share**, `sat_dpll.sound_tail`'s counterpart: the returned map
     represents its own readback on `e`'s variables, that readback agrees with the model the
     solver found, so it satisfies the CNF, so it satisfies `e` -- and `evaluate` on a map
@@ -6423,26 +6392,27 @@ functionality conjunct instead. -/
     is what the hybrid transformation needs, `hbound` the naive transformation's
     worst-case blowup on the fallback arm.
 
-    Three are new, and all three are `solve_cnf_sound`'s pulled back through `encode`:
+    Two are new, and both are `solve_cnf_sound`'s pulled back through `encode`:
 
     * `hshort` is `CnfShort`. Clauses of the naive transformation hold at most
       `exprSize e` literals and the hybrid's definition clauses one more, for the `neg g`
       that makes a definition an implication -- hence the `+ 1`.
-    * `hroom` and `hdbroom` are the search's room, and `varBound e` is the bound on the
-      *encoded* CNF's variables: `e`'s own, plus one gate per AST node. The clause count
-      is the hybrid's `exprSize e ^ 2 + exprSize e` or the naive transformation's
-      `2 ^ exprSize e`, and `hdbroom` covers whichever arm `encode` takes.
+    * `hdbroom` is the clause vector's room for what the search may still learn: the clause
+      count -- the hybrid's `exprSize e ^ 2 + exprSize e` or the naive transformation's
+      `2 ^ exprSize e`, whichever arm `encode` takes -- plus the `u32::MAX` conflicts the
+      counter can still reach.
 
-    `hroom` is the binding one and it is small: `searchRoom n ≤ u32::MAX` holds to about
-    `n = 10`, so this theorem speaks about expressions of a handful of variables and
-    nodes. It is not a statement about the solver's reach; it is a statement about what
-    fits in the `u32` the Rust counts conflicts in. -/
+    Neither binds. `hbound` is the one that does, and it is `sat_dpll`'s, not CDCL's: the
+    fallback arm's CNF can be exponential in the AST size, so this theorem is about
+    expressions of at most about 63 nodes. What is *not* here any more is a bound on the
+    search: there used to be one, exponential in the encoded CNF's variable count and good
+    for some ten of them, and removing it is what `checked_add` and the `Unknown` answer
+    were for. -/
 theorem sat_cdcl.solve_sat_sound (e : expr.Expr) (hbound : 2 ^ exprSize e ≤ Usize.max)
     (hquad : exprSize e * exprSize e + exprSize e + 1 ≤ Usize.max)
     (hshort : exprSize e + 1 + 2 ^ 16 ≤ Std.I32.max)
-    (hroom : searchRoom (varBound e) ≤ Std.U32.max)
     (hdbroom : exprSize e * exprSize e + exprSize e + 2 ^ exprSize e
-      + searchRoom (varBound e) ≤ Std.Usize.max) :
+      + Std.U32.max ≤ Std.Usize.max) :
     sat_cdcl.solve_sat e ⦃ (result : sat_result.SatResult expr.Map) =>
       ∀ v, result = sat_result.SatResult.Sat v →
         expr.evaluate e v ⦃ (r : core.result.Result Bool Unit) =>
@@ -6454,15 +6424,13 @@ theorem sat_cdcl.solve_sat_sound (e : expr.Expr) (hbound : 2 ^ exprSize e ≤ Us
   cases x with
   | Ok c =>
     have hEnc : cnf_transform_hybrid.Encodes e c := by simpa using x_post
-    have hvarsC : ∀ v ∈ cnfVars (Cnf.contents c), v.val < varBound e :=
-      cnf_transform_hybrid.Encodes.vars_lt hEnc (varsOf_lt_varBound e)
     have hshortC : CnfShort (Cnf.contents c) := by
       intro cl hcl
       have h := cnf_transform_hybrid.Encodes.clause_length_le hEnc cl hcl
       omega
     have hlenC : (Cnf.contents c).length ≤ exprSize e * exprSize e + exprSize e :=
       cnf_transform_hybrid.Encodes.length_le hEnc
-    step with (sat_cdcl.solve_cnf_sound c (varBound e) hshortC hvarsC hroom (by omega))
+    step with (sat_cdcl.solve_cnf_sound c hshortC (by omega))
     step*
     obtain ⟨hsearch, hcov, hfunm⟩ := cnf1_post model ‹cnf1 = sat_result.SatResult.Sat model›
     unfold alloc.vec.Vec.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter
@@ -6482,15 +6450,9 @@ theorem sat_cdcl.solve_sat_sound (e : expr.Expr) (hbound : 2 ^ exprSize e ≤ Us
       intro cl hcl
       have h := cnfPure_clause_length_le e false cl (by rw [← cnf1_post]; exact hcl)
       omega
-    have hvarsC : ∀ v ∈ cnfVars (Cnf.contents cnf1), v.val < varBound e := by
-      intro v hv
-      have h := cnfVars_cnfPure_subset e false v (by rw [← cnf1_post]; exact hv)
-      have := varsOf_lt_varBound e v h
-      simp only [varBound]
-      omega
     have hlenC : (Cnf.contents cnf1).length ≤ 2 ^ exprSize e := by
       rw [cnf1_post]; exact cnfPure_length_le e false
-    step with (sat_cdcl.solve_cnf_sound cnf1 (varBound e) hshortC hvarsC hroom (by omega))
+    step with (sat_cdcl.solve_cnf_sound cnf1 hshortC (by omega))
     step*
     obtain ⟨hsearch, hcov, hfunm⟩ := sr_post model ‹sr = sat_result.SatResult.Sat model›
     unfold alloc.vec.Vec.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter
@@ -6508,22 +6470,28 @@ theorem sat_cdcl.solve_sat_sound (e : expr.Expr) (hbound : 2 ^ exprSize e ≤ Us
       simpa using hw
 
 /-- **Completeness of `sat_cdcl::solve_sat`**: if `e` has a satisfying valuation at all,
-    it returns one. As in `SatDpll.lean`, `w` need not say anything about the gate
-    variables the hybrid transformation introduces -- `Encodes.complete` extends it.
+    `solve_sat` does not call it unsatisfiable. As in `SatDpll.lean`, `w` need not say
+    anything about the gate variables the hybrid transformation introduces --
+    `Encodes.complete` extends it.
 
-    Same five bounds, and the proof is `solve_cnf_complete` on each arm plus the
-    observation that the `None` arm is then unreachable: nothing is claimed about the map,
-    so the insertion loop's unconditional postcondition is all that is asked of it. -/
+    Same four bounds, and the proof is `solve_cnf_complete` on each arm plus the
+    observation that the `Unsat` arm is then unreachable: nothing is claimed about the map,
+    so the insertion loop's unconditional postcondition is all that is asked of it.
+
+    `sat_naive` and `sat_dpll` still say "returns a model"; this one says "does not say
+    `Unsat`". The two searches that can only say less are the two that cannot run out of
+    anything -- they recurse over a finite structure and have no counter to exhaust. CDCL
+    learns a clause per conflict and counts conflicts in a `u32`, and past that it answers
+    `Unknown`. See `solve_cnf_complete` for why that is not a shortcut in the proof. -/
 theorem sat_cdcl.solve_sat_complete (e : expr.Expr) (w : Std.U16 → Bool)
     (hbound : 2 ^ exprSize e ≤ Usize.max)
     (hquad : exprSize e * exprSize e + exprSize e + 1 ≤ Usize.max)
     (hshort : exprSize e + 1 + 2 ^ 16 ≤ Std.I32.max)
-    (hroom : searchRoom (varBound e) ≤ Std.U32.max)
     (hdbroom : exprSize e * exprSize e + exprSize e + 2 ^ exprSize e
-      + searchRoom (varBound e) ≤ Std.Usize.max)
+      + Std.U32.max ≤ Std.Usize.max)
     (hsat : evalPure w e = true) :
     sat_cdcl.solve_sat e ⦃ (result : sat_result.SatResult expr.Map) =>
-      ∃ v, result = sat_result.SatResult.Sat v ⦄ := by
+      result ≠ sat_result.SatResult.Unsat ⦄ := by
   have hsize : exprSize e ≤ Usize.max := le_trans Nat.lt_two_pow_self.le hbound
   have h2 : 0 < 2 ^ exprSize e := Nat.pow_pos (by norm_num)
   simp only [sat_cdcl.solve_sat, sat_cdcl.solve_sat_with, sat_dpll.encode]
@@ -6531,8 +6499,6 @@ theorem sat_cdcl.solve_sat_complete (e : expr.Expr) (w : Std.U16 → Bool)
   cases x with
   | Ok c =>
     have hEnc : cnf_transform_hybrid.Encodes e c := by simpa using x_post
-    have hvarsC : ∀ v ∈ cnfVars (Cnf.contents c), v.val < varBound e :=
-      cnf_transform_hybrid.Encodes.vars_lt hEnc (varsOf_lt_varBound e)
     have hshortC : CnfShort (Cnf.contents c) := by
       intro cl hcl
       have h := cnf_transform_hybrid.Encodes.clause_length_le hEnc cl hcl
@@ -6540,8 +6506,7 @@ theorem sat_cdcl.solve_sat_complete (e : expr.Expr) (w : Std.U16 → Bool)
     have hlenC : (Cnf.contents c).length ≤ exprSize e * exprSize e + exprSize e :=
       cnf_transform_hybrid.Encodes.length_le hEnc
     obtain ⟨w', -, hw'⟩ := cnf_transform_hybrid.Encodes.complete hEnc hsat
-    step with (sat_cdcl.solve_cnf_complete c w' (varBound e) hshortC hvarsC hroom
-      (by omega) hw')
+    step with (sat_cdcl.solve_cnf_complete c w' hshortC (by omega) hw')
     unfold alloc.vec.Vec.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter
     step*
   | Err u =>
@@ -6550,18 +6515,11 @@ theorem sat_cdcl.solve_sat_complete (e : expr.Expr) (w : Std.U16 → Bool)
       intro cl hcl
       have h := cnfPure_clause_length_le e false cl (by rw [← cnf1_post]; exact hcl)
       omega
-    have hvarsC : ∀ v ∈ cnfVars (Cnf.contents cnf1), v.val < varBound e := by
-      intro v hv
-      have h := cnfVars_cnfPure_subset e false v (by rw [← cnf1_post]; exact hv)
-      have := varsOf_lt_varBound e v h
-      simp only [varBound]
-      omega
     have hlenC : (Cnf.contents cnf1).length ≤ 2 ^ exprSize e := by
       rw [cnf1_post]; exact cnfPure_length_le e false
     have hcnf : Cnf.eval w (Cnf.contents cnf1) = true := by
       rw [cnf1_post, Cnf.eval_cnfPure, hsat]; simp
-    step with (sat_cdcl.solve_cnf_complete cnf1 w (varBound e) hshortC hvarsC hroom
-      (by omega) hcnf)
+    step with (sat_cdcl.solve_cnf_complete cnf1 w hshortC (by omega) hcnf)
     unfold alloc.vec.Vec.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter
     step*
 
@@ -6571,16 +6529,20 @@ Leaves up, as `PLAN.md` asks: `new.spec`, `assign.spec`, `backtrack.spec`,
 `propagate.spec`, `search.spec`, the `solve_cnf` pair, then the two roots. All nine done;
 no `sorry` left in this file.
 
-Every layer sent one requirement down to the layer below, and that is the whole story of
-how the statements changed. `search.spec` needed numeric room, so `new.spec` had to report
-the counters at 0 *and* the slot count as the least bound on the CNF's variables -- the
-first because `hroom` mentions `conflicts`, the second because without it the only bound
-available is `2 ^ 16` and `searchRoom (2 ^ 16)` exceeds `u32::MAX`, which would have made
-the `solve_cnf` pair vacuous rather than narrow. `solve_cnf` in turn had to answer for a CNF
-holding the empty clause, which weakened `search.spec`'s `hfix`. And the roots needed all of
-it pulled back through `encode`, which is where `cnf_transform_hybrid.Encodes` grew its own
-new field: it knew the gate counter started *above* `e`'s variables, and what sizing an
-array needs is that it starts no higher than it has to.
+Every layer sent one requirement down to the layer below, and that is most of the story of
+how the statements changed. `solve_cnf` had to answer for a CNF holding the empty clause,
+which is what weakened `search.spec`'s `hfix` to "a falsified clause mentions the current
+level". `search.spec` needs the counter's starting value, which is why `new.spec` reports
+`conflicts = 0`. And the roots needed both pulled back through `encode`.
+
+One chain used to run further and no longer does. The conflict counter's headroom was a
+*hypothesis*, stated against an exponential bound on the search measure, and discharging it
+at the `solve_cnf` layer needed `new.spec` to report the slot count as the **least** bound
+on the CNF's variables -- which is in turn why `cnf_transform_hybrid.Encodes` has a field
+saying the gate counter starts no higher than `e`'s variables force. `checked_add` removed
+the need for both. They are still reported, because both are true and both are what a
+caller sizing an array by the CNF would ask for, but nothing in this repository spends them
+now.
 
 The last link is `solve_sat_with`'s insertion loop, the one thing here with no DPLL
 counterpart -- DPLL searches the map it returns, CDCL copies a vector into it. Saying the
@@ -6618,31 +6580,37 @@ carry the weight, and the two places the statements are narrower than the code:
 
 * **Termination of the *search* was the hard obligation, and it is discharged.**
   `search.spec` is a `⦃ ⦄` statement, so proving it meant proving CDCL search terminates.
-  DPLL's "one variable fewer per level" measure does not apply; the measure is the trail
-  read as a base-3 numeral, one digit per slot, `1` for a decision and `2` for a
+  DPLL's "one variable fewer per level" measure does not apply; the inner measure is the
+  trail read as a base-3 numeral, one digit per slot, `1` for a decision and `2` for a
   propagation, which every step of the search makes strictly larger -- a backjump included,
   since it turns the decision it jumps over into a propagation of the clause just learned.
-  Restarts abandon the trail, and what pays for them is the geometrically growing budget:
-  `restartsLeft` counts how many times it can still grow before it exceeds the number of
-  steps a restart window can have. `Solver.searchMeasure` is the pair.
+  Restarts abandon the trail, and what pays for them is the room left in the conflict
+  counter: a restart needs at least one conflict in the window it closes, and
+  `checked_add` means the counter can never wrap, so `u32::MAX - conflicts` is a natural
+  that strictly drops. `Solver.searchMeasure` is the weighted sum.
 
-  What this does *not* cover, and what the statement now says instead of pretending
-  otherwise: a first restart interval of `1`, where the budget never grows and the solver
-  restarts after every conflict forever. Termination there needs "a learned clause is not
-  one the database already has", which is a different and much harder argument. And the
-  three numeric hypotheses are exponential in the number of variables, because the
-  counters they bound are `u32`s: the theorem covers formulas whose whole search fits in
-  a `u32`'s worth of conflicts, not the 50-variable instances the benchmarks run.
+  What this does *not* cover, and what the statement says instead of pretending otherwise:
+  a first restart interval of `0`, where the guard fires with no conflict in the window and
+  nothing decreases. `Solver::solve` passes `100`.
 
-* **The bounds are the narrow part, and they are narrow in the statement, not the
-  argument.** `searchRoom n = 3 ^ n * 3 ^ n + 2 * 3 ^ n` bounds `Solver.searchMeasure` from
-  above by way of `restartsLeft bound budget ≤ bound`, which is about as crude as a bound
-  can be; `searchRoom n ≤ u32::MAX` therefore holds only to about `n = 10`. Sharpening
-  `searchRoom` would widen the theorem without touching a line of the termination proof.
-  What could *not* be sharpened away is the exponential: the measure really is exponential
-  in the variable count, and `self.conflicts` really is a `u32`, so a machine-checked
-  `⦃ ⦄` -- which rules out failure, overflow included -- cannot cover a 50-variable
-  instance. Benchmarking is complementary to this, not redundant with it.
+  It is worth being clear about what the restart half of the argument now is and is not.
+  It is *not* "restarts run out because the budget grows geometrically" -- that was the
+  previous version, and it needed the budget bounded by `3 ^ n` and the whole measure
+  bounded by `u32::MAX`, which is where the ten-variable ceiling came from. It is "there
+  are at most `2 ^ 32` conflicts, because the code counts them and stops". The geometric
+  growth is still there in the Rust and still what makes the solver fast; it is just no
+  longer what the termination proof leans on.
+
+* **The give-up answer is the one place the statements are weaker than the code's
+  behaviour.** `solve_cnf` answers `Unknown` after `2 ^ 32` conflicts, and no instance in
+  the benchmarks comes within orders of magnitude of that -- but the theorems cannot rule
+  it out, so `solve_cnf_complete` says "not `Unsat`" where `sat_dpll`'s says "a model".
+  That is forced rather than chosen: the database grows by one clause per conflict and
+  never shrinks, `Vec::push` needs the length to fit a `usize`, and the only bound on the
+  conflicts of a 250-variable run is exponential -- so some finite cap exists, and a cap
+  that can be reached is an outcome that has to be reported. What the statement *does* pin
+  down is that reaching it means the counter really is full (`search.spec`'s last
+  conjunct), so `Unknown` cannot come from anything cheaper.
 
 * **Two `native_decide` axioms come in with the extraction**, not with any proof here:
   Aeneas's `toStr` discharges "this string literal is at most `u32::MAX` bytes" with

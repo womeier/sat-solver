@@ -22,11 +22,15 @@ arm `encode` takes when the hybrid runs out of gate variables.
 statements: `analyze.spec` (what 1-UIP conflict analysis computes, given a well-formed
 state), the four obligations that establish and preserve that state (`new`, `assign`,
 `propagate`, `backtrack`), `Solver.search.spec` (the CDCL loop -- soundness,
-completeness *and* termination, the last by a base-3 trail numeral paired with the
-restart budget), the `solve_cnf` pair, and the two roots. All nine are proved.
+completeness *and* termination, the last by a base-3 trail numeral paired with the room
+left in the conflict counter), the `solve_cnf` pair, and the two roots. All nine are
+proved.
 
-Its roots carry two bounds `sat_dpll`'s do not, and they are exponential: the search
-measure bounds the conflicts still to come, and the Rust counts conflicts in a `u32`.
+Its roots carry the same size bound `sat_dpll`'s do and none of their own, because
+`sat_cdcl` checks its conflict counter (`checked_add`) rather than assuming it cannot
+overflow. What that costs is a third answer: `sat_cdcl::solve_sat` can return
+`SatResult::Unknown`, so its completeness theorem reads "never answers `Unsat` for a
+satisfiable formula" where the other two read "returns a model".
 `SatSolver/PrintAxioms.lean` is where the per-theorem claims are checked. -/
 import SatSolver.Verification.Prelude
 import SatSolver.Verification.MapLemmas

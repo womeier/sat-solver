@@ -40,15 +40,25 @@
 //! - **Clause deletion.** Clause indices are used as `reason` handles, so
 //!   deleting or reordering clauses means rewriting every reason that points past
 //!   the hole. Keeping every learned clause costs memory and propagation time but
-//!   no correctness argument.
+//!   no correctness argument -- and it is what makes the conflict counter
+//!   load-bearing, since the database grows by one clause per conflict forever.
 //! - **Clause minimization** (self-subsuming resolution over the learned clause).
 //!
-//! Unlike `sat_naive` and `sat_dpll`, nothing here is proved in Lean yet -- the
-//! module is still excluded from extraction, and `PLAN.md` lists what a proof
-//! would have to establish. The tests below are what stands in for it: the
-//! pieces individually, a 300-instance random 3-SAT differential check against
-//! the proved-correct `sat_naive`, the pigeonhole family, and (in
-//! `tests/satlib.rs`) all 3000 SATLIB instances with every model model-checked.
+//! All of this is verified in Lean, end to end:
+//! `proofs/lean/SatSolver/Verification/SatCdcl.lean` proves soundness and
+//! completeness of [`solve_cnf`] and [`solve_sat`] against the extraction, via
+//! 1-UIP conflict analysis, the solver invariant, and termination of the search.
+//! One thing to know when reading the code: the theorems are total-correctness
+//! triples, so every *checked* arithmetic operation in the extraction has to be
+//! proved not to overflow. That is why [`Solver::search`] increments
+//! `self.conflicts` with `checked_add` and answers [`SatResult::Unknown`] rather
+//! than asserting there is room -- the only provable bound on the conflicts still
+//! to come is exponential in the variable count, so at benchmark size there is no
+//! fixed width that suffices. The tests below are what stands in for a proof of
+//! the parts the theorems do not reach: the pieces individually, a 300-instance
+//! random 3-SAT differential check against `sat_naive`, the pigeonhole family,
+//! and (in `tests/satlib.rs`) all 3000 SATLIB instances with every model
+//! model-checked.
 
 use crate::cnf::{Clause, Cnf, Literal};
 #[cfg(test)]
@@ -414,22 +424,39 @@ impl Solver {
     }
 
     // The CDCL loop: propagate, and either analyse the conflict it found or make
-    // a decision. Returns whether the clause database is satisfiable; on `true`
-    // the assignment in `value` is a model of it.
-    fn solve(&mut self) -> bool {
+    // a decision. `Sat` if the clause database is satisfiable, and then the
+    // assignment in `value` is a model of it; `Unsat` if it is not; `Unknown` if
+    // the conflict counter ran out first.
+    fn solve(&mut self) -> SatResult<()> {
         self.search(FIRST_RESTART)
     }
 
     // `solve`, with the first restart interval spelled out so the tests can
     // shrink it and make restarts the common case rather than a rare one.
-    fn search(&mut self, first_restart: u32) -> bool {
+    fn search(&mut self, first_restart: u32) -> SatResult<()> {
         let mut budget = first_restart;
         let mut since_restart = 0;
 
         loop {
             match self.propagate() {
                 Some(conflict) => {
-                    self.conflicts += 1;
+                    // The conflict counter is the one place the search can run
+                    // out of room, and `checked_add` is what turns that into an
+                    // answer instead of an assumption. The bound on the
+                    // conflicts still to come is the termination measure, which
+                    // is exponential in the variable count, so no fixed width
+                    // provably suffices at benchmark size; giving up is the
+                    // price of saying anything at all about such an instance.
+                    // Reaching this is not a realistic outcome -- 2^32 conflicts
+                    // is days of work on the instances here -- but it is what
+                    // lets the theorems drop the size hypothesis.
+                    match self.conflicts.checked_add(1) {
+                        None => return SatResult::Unknown,
+                        Some(c) => self.conflicts = c,
+                    }
+                    // Safe without a check of its own: `since_restart` is reset
+                    // to zero more often than `self.conflicts` and incremented
+                    // no more often, so it never exceeds it.
                     since_restart += 1;
                     if self.conflicts % DECAY_INTERVAL == 0 {
                         self.decay();
@@ -439,7 +466,7 @@ impl Solver {
                     // level-0 assignments alone produce, and those are forced by
                     // the clauses themselves: unsatisfiable.
                     if self.decision_level() == 0 {
-                        return false;
+                        return SatResult::Unsat;
                     }
 
                     let (learned, backjump) = self.analyze(conflict);
@@ -464,14 +491,18 @@ impl Solver {
                         // re-reaches the same assignments cheaply.
                         self.backtrack(0);
                         since_restart = 0;
-                        budget += budget / 2;
+                        // Saturating rather than checked: a budget that cannot
+                        // grow any further keeps restarting on the interval it
+                        // reached, which is a fine thing to do and nothing a
+                        // caller needs told about.
+                        budget = budget.saturating_add(budget / 2);
                         continue;
                     }
 
                     match self.pick_branch_var() {
                         // Nothing left to assign and nothing in conflict: every
                         // clause is satisfied.
-                        None => return true,
+                        None => return SatResult::Sat(()),
                         Some(v) => {
                             self.trail_lim.push(self.trail.len());
                             let value = self.phase[v as usize];
@@ -496,14 +527,15 @@ impl Solver {
 /// actually lives -- the `Expr` layer above it is just the encoding -- and
 /// because it is what a DIMACS front end wants.
 ///
-/// [`SatResult::Unknown`] is not returned yet: `search` still decides every
-/// formula it is given. The answer exists ahead of the counter that will
-/// produce it, so that adding the counter is a change to one function rather
-/// than to every signature above it.
+/// [`SatResult::Unknown`] if the search exhausted the `u32` conflict counter --
+/// 2^32 conflicts, which no instance here comes near, but which is what the
+/// verification needs an answer for rather than an assumption about.
 pub fn solve_cnf(cnf: &Cnf) -> SatResult<Vec<(u16, bool)>> {
     let mut solver = Solver::new(cnf);
-    if !solver.solve() {
-        return SatResult::Unsat;
+    match solver.solve() {
+        SatResult::Unsat => return SatResult::Unsat,
+        SatResult::Unknown => return SatResult::Unknown,
+        SatResult::Sat(_) => (),
     }
 
     // Only variables the CNF mentions are ever assigned, so the assigned slots
@@ -722,7 +754,7 @@ fn learning_records_what_the_conflict_proved() {
         &[(false, 0), (true, 1)],
         &[(true, 0), (false, 2)],
     ]));
-    assert!(s.solve());
+    assert_eq!(s.solve(), SatResult::Sat(()));
     assert_eq!(s.learned(), 1, "one conflict, one clause");
     assert_eq!(s.clauses[s.problem_clauses], Clause(vec![lit(0, false)]));
     // The unit clause is what put `a` back at level 0, where nothing can undo it.
@@ -982,7 +1014,9 @@ fn refutes_the_pigeonhole_principle() {
 fn restarts_do_not_lose_the_answer() {
     // A restart abandons the trail, so a solver that restarts constantly must
     // still terminate with the right verdict -- and with a budget of 1 every
-    // single conflict triggers one.
+    // single conflict triggers one. That is inside what `Solver.search.spec`
+    // proves: it asks only `1 <= first_restart`, since a budget of 0 would
+    // restart with no conflict in the window and never make progress.
     let unsat = cnf(&[
         &[(false, 0), (false, 1)],
         &[(false, 0), (true, 1)],
@@ -990,7 +1024,7 @@ fn restarts_do_not_lose_the_answer() {
         &[(true, 0), (true, 1)],
     ]);
     let mut s = Solver::new(&unsat);
-    assert!(!s.search(1));
+    assert_eq!(s.search(1), SatResult::Unsat);
 
     // The same, satisfiable: (x ∨ y) ∧ (¬x ∨ y) forces y.
     let sat = cnf(&[
@@ -998,6 +1032,6 @@ fn restarts_do_not_lose_the_answer() {
         &[(true, letter('x')), (false, letter('y'))],
     ]);
     let mut s = Solver::new(&sat);
-    assert!(s.search(1));
+    assert_eq!(s.search(1), SatResult::Sat(()));
     assert_eq!(s.value[letter('y') as usize], Some(true));
 }

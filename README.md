@@ -7,6 +7,11 @@ All three are verified end to end - soundness and completeness, machine-checked,
 - `sat_dpll` (DPLL on the CNF: unit propagation plus splitting)
 - `sat_cdcl` (DPLL plus conflict-driven clause learning).
 
+`sat_cdcl` has a third answer, `SatResult::Unknown`, which it gives when the `u32`
+conflict counter is exhausted; its completeness theorem is correspondingly "never answers
+`Unsat` for a satisfiable formula" where the other two say "returns a model". That is what
+lets it be verified with no bound on the search; the trade is spelled out under Todo below.
+
 The specification — soundness and completeness for all three solvers — lives in
 [`proofs/lean/SatSolver/Verification/ProofObligations.lean`](proofs/lean/SatSolver/Verification/ProofObligations.lean),
 which collects the theorems proved in
@@ -51,48 +56,49 @@ Known limits worth fixing (or at least documenting) alongside the above:
       `reason` handles) and does not minimize learned clauses. All three are
       engineering, not algorithm — the numbers above are what the algorithm alone
       buys.
-- [ ] **The verified guarantee doesn't cover benchmark-sized inputs.** Every
-      soundness/completeness theorem here carries a size hypothesis, and they are
-      the honest limit of what is proved. `sat_naive`/`sat_dpll` carry
-      `2 ^ exprSize e ≤ Usize.max` — formulas of at most ~63 AST nodes, inherited
-      from the worst-case CNF blowup bound in `Cnf.lean`. `sat_cdcl` carries
-      `searchRoom (varBound e) ≤ u32::MAX`, which is much tighter, and is worth
-      explaining because it is not slack in the *algorithm*:
+- [ ] **The verified guarantee doesn't cover benchmark-sized `Expr`s.** Every
+      soundness/completeness theorem here carries a size hypothesis. `sat_naive`,
+      `sat_dpll` and `sat_cdcl` all carry `2 ^ exprSize e ≤ Usize.max` — formulas
+      of at most ~63 AST nodes — inherited from the worst-case CNF blowup bound in
+      `Cnf.lean`, which `encode`'s naive-transform fallback arm can hit. That is
+      now the *only* binding one, and it is an artifact of the `Expr` layer, not
+      of any solver: `sat_cdcl::solve_cnf`, the entry point a DIMACS front end
+      calls, is verified with no bound on the CNF at all. So `solve_cnf_sound` and
+      `solve_cnf_complete` do cover `uf250-1065`.
 
-      `⦃ ⦄` is total correctness and rules out failure, so proving anything about
-      `search` means proving `self.conflicts += 1` — *checked* `u32` arithmetic in
-      the extraction — never overflows. That needs a bound on the conflicts still
-      to come, and the only such bound available is the termination measure itself,
-      which is exponential in the variable count. `searchRoom n = 9^n + 2·3^n` is
-      that bound, and `searchRoom n ≤ u32::MAX` holds exactly for `n ≤ 10`. So
-      `solve_cnf_{sound,complete}` speak about CNFs of at most ten variables, and at
-      the `Expr` layer `varBound e` is (largest variable index + 1) + `exprSize e`,
-      which is tighter still. It is the only one of the new hypotheses that binds:
-      the clause-count one has a 64-bit `usize` to spend and the clause-length one
-      an `i32`, and neither is anywhere near either.
+      Getting there cost one thing, and it is worth spelling out because it is a
+      real trade rather than bookkeeping. `⦃ ⦄` is total correctness and rules out
+      failure, so proving anything about `search` means proving the extraction's
+      *checked* `self.conflicts += 1` never overflows. The only bound available on
+      the conflicts still to come is the termination measure, which is exponential
+      in the variable count — so as a hypothesis it read
+      `9^n + 2·3^n ≤ u32::MAX`, true for `n ≤ 10`, and the theorems spoke about
+      ten-variable formulas. `sat_cdcl` now *checks* the counter instead:
+      `self.conflicts.checked_add(1)` and a third answer,
+      `SatResult::Unknown`, when it is exhausted. Two instructions per conflict
+      (`cmp eax, -1` and a never-taken `je`) against ~85 µs of work, so the cost
+      is not measurable.
 
-      Some of that is crudeness rather than necessity — `searchRoom` over-approximates
-      via `restartsLeft bound budget ≤ bound`, so sharpening it would widen the
-      theorem without touching a line of the termination proof. The exponential
-      underneath is real, though: a `u32` genuinely cannot count the conflicts of a
-      50-variable run.
+      What it buys: soundness and "never answers `Unsat` for a satisfiable CNF"
+      become unconditional. What it costs: completeness weakens from "a
+      satisfiable formula gets a model" to "a satisfiable formula does not get
+      `Unsat`" — it gets a model or `Unknown`, and `Unknown` only with
+      `conflicts = u32::MAX`, which `search.spec` records, so the weaker statement
+      cannot hide a cheap give-up. And the termination argument's outer half is now
+      "at most `2^32` conflicts, because the code counts them" rather than "the
+      restart budget grows geometrically, so restarts run out". The geometric
+      growth is still in the code and still what makes the solver fast; it is just
+      no longer what the proof leans on.
 
-      Checking the size at *runtime* and bailing out would not help — the bound is a
-      predicate on the input alone, so a check relocates it rather than removing it,
-      and it would refuse instances the solver in fact closes in a few thousand
-      conflicts. What would help is checking the *counter*: `checked_add` at the
-      increment site, answering `SatResult::Unknown` when it is exhausted. Then
-      soundness and "never answers UNSAT for a satisfiable formula" become
-      unconditional and cover the benchmarks, "satisfiable ⟹ returns a model" weakens
-      to "⟹ a model or `Unknown`", and — the reason it is a genuine trade — the
-      base-3 termination argument is replaced by counting the counter down.
+      That weakening is forced, not chosen. The clause database grows by one
+      learned clause per conflict and never shrinks (clause indices are `reason`
+      handles — see above), `Vec::push` needs the length to fit a `usize`, and the
+      only provable bound on the conflicts of a 250-variable run is exponential. So
+      some finite cap exists whatever the counter's width, and a cap that can be
+      reached is an outcome that has to be reported.
 
-      The third outcome is in place (`sat_result::SatResult`); the `checked_add` that
-      produces it is not, so every bound above still stands as written.
-
-      So: the code runs fine on a 218-clause instance; the theorems say nothing about
-      it. Benchmarking is complementary to the proofs, not redundant with them.
 - [ ] **No UNSAT proof output.** Competitions require DRAT proofs checked by
       `drat-trim`, because an `UNSAT` answer is otherwise unverifiable. The
-      machine-checked completeness theorem is the substitute here — but only
-      inside the bound above.
+      machine-checked soundness theorem is the substitute here, and for
+      `sat_cdcl::solve_cnf` it is now unconditional — an `Unsat` from it is a
+      refutation of the CNF as given, not of a CNF small enough to reason about.

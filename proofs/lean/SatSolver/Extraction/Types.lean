@@ -78,7 +78,7 @@ structure cnf_transform_tseitin.Encoder where
 def expr.evaluate.closure := Unit
 
 /-- [sat_solver::sat_cdcl::Status]
-    Source: 'src/sat_cdcl.rs', lines 72:0-81:1 -/
+    Source: 'src/sat_cdcl.rs', lines 82:0-91:1 -/
 @[discriminant isize]
 inductive sat_cdcl.Status where
 | Conflict : sat_cdcl.Status
@@ -86,7 +86,7 @@ inductive sat_cdcl.Status where
 | Silent : sat_cdcl.Status
 
 /-- [sat_solver::sat_cdcl::Solver]
-    Source: 'src/sat_cdcl.rs', lines 89:0-123:1 -/
+    Source: 'src/sat_cdcl.rs', lines 99:0-133:1 -/
 structure sat_cdcl.Solver where
   clauses : alloc.vec.Vec cnf.Clause
   problem_clauses : Std.Usize
