@@ -152,21 +152,24 @@ theorem expr.merge_vars.spec (dst : alloc.vec.Vec Std.U16) (src : Slice Std.U16)
   unfold expr.merge_vars
   step*
 
-/-- **Spec theorem for `sat_solver::expr::collect_vars_aux`**
+/-- **Spec theorem for `sat_solver::expr::collect_vars`**
+The returned vector contains exactly the variables of `e` (as a set), with no
+duplicates.
+
 `vs.val.length ≤ exprSize e` is carried along purely to discharge `merge_vars`'s
 `Usize.max` side-condition in the `Conj`/`Disj` cases -- it isn't otherwise
 meaningful (the real bound, after dedup, is `≤ 65536`, but this coarser one is
 enough and needs no extra machinery). -/
 @[step]
-theorem expr.collect_vars_aux.spec (e : expr.Expr) (hbound : exprSize e ≤ Usize.max) :
-    expr.collect_vars_aux e ⦃ (vs : alloc.vec.Vec Std.U16) =>
+theorem expr.collect_vars.spec (e : expr.Expr) (hbound : exprSize e ≤ Usize.max) :
+    expr.collect_vars e ⦃ (vs : alloc.vec.Vec Std.U16) =>
       (∀ k, k ∈ vs.val ↔ k ∈ varsOf e) ∧ vs.val.length ≤ exprSize e ∧ vs.val.Nodup ⦄ := by
   induction e with
-  | True => unfold expr.collect_vars_aux; step*; simp_all [varsOf, exprSize]
-  | False => unfold expr.collect_vars_aux; step*; simp_all [varsOf, exprSize]
-  | Variable v => unfold expr.collect_vars_aux; step*; simp_all [varsOf, exprSize]
+  | True => unfold expr.collect_vars; step*; simp_all [varsOf, exprSize]
+  | False => unfold expr.collect_vars; step*; simp_all [varsOf, exprSize]
+  | Variable v => unfold expr.collect_vars; step*; simp_all [varsOf, exprSize]
   | Conj e1 e2 ih1 ih2 =>
-    unfold expr.collect_vars_aux
+    unfold expr.collect_vars
     replace ih1 := ih1 (by simp only [exprSize] at hbound; scalar_tac)
     replace ih2 := ih2 (by simp only [exprSize] at hbound; scalar_tac)
     step*
@@ -176,7 +179,7 @@ theorem expr.collect_vars_aux.spec (e : expr.Expr) (hbound : exprSize e ≤ Usiz
       · simp_all [exprSize]; scalar_tac
       · simp_all
   | Disj e1 e2 ih1 ih2 =>
-    unfold expr.collect_vars_aux
+    unfold expr.collect_vars
     replace ih1 := ih1 (by simp only [exprSize] at hbound; scalar_tac)
     replace ih2 := ih2 (by simp only [exprSize] at hbound; scalar_tac)
     step*
@@ -186,20 +189,10 @@ theorem expr.collect_vars_aux.spec (e : expr.Expr) (hbound : exprSize e ≤ Usiz
       · simp_all [exprSize]; scalar_tac
       · simp_all
   | Neg e ih =>
-    unfold expr.collect_vars_aux
+    unfold expr.collect_vars
     replace ih := ih (by simp only [exprSize] at hbound; scalar_tac)
     step*
     simp_all [varsOf, exprSize]
     scalar_tac
-
-/-- **Spec theorem for `sat_solver::expr::collect_vars`**
-The returned vector contains exactly the variables of `e` (as a set), with no
-duplicates. -/
-@[step]
-theorem expr.collect_vars.spec (e : expr.Expr) (hbound : exprSize e ≤ Usize.max) :
-    expr.collect_vars e ⦃ (vs : alloc.vec.Vec Std.U16) =>
-      (∀ k, k ∈ vs.val ↔ k ∈ varsOf e) ∧ vs.val.Nodup ∧ vs.val.length ≤ exprSize e ⦄ := by
-  unfold expr.collect_vars
-  step*
 
 end sat_solver

@@ -195,24 +195,25 @@ fn merge_vars(dst: &mut Vec<u16>, src: &[u16]) {
     }
 }
 
-fn collect_vars_aux(expr: &Expr) -> Vec<u16> {
+/// The variables `expr` mentions, each once, in order of first appearance.
+///
+/// `merge_vars` is what keeps them distinct, so this is a set represented as a
+/// vector -- which is what the solvers want, since they index slot arrays by
+/// variable and need something to iterate.
+pub fn collect_vars(expr: &Expr) -> Vec<u16> {
     match expr {
         Expr::Variable(v) => {
             let mut vars = Vec::new();
             vars.push(*v);
             vars
         }
-        Expr::Neg(e) => collect_vars_aux(e),
+        Expr::Neg(e) => collect_vars(e),
         Expr::Disj(e1, e2) | Expr::Conj(e1, e2) => {
-            let mut vs1 = collect_vars_aux(e1);
-            let vs2 = collect_vars_aux(e2);
+            let mut vs1 = collect_vars(e1);
+            let vs2 = collect_vars(e2);
             merge_vars(&mut vs1, &vs2);
             vs1
         }
         Expr::True | Expr::False => Vec::new(),
     }
-}
-
-pub fn collect_vars(expr: &Expr) -> Vec<u16> {
-    collect_vars_aux(expr)
 }

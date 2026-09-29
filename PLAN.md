@@ -19,6 +19,12 @@
 > below, including its two top-level theorems, describe the state of the repo when the plan was
 > written.
 >
+> Also gone: `expr::collect_vars_aux`. It existed because it returned a `HashSet<char>` that
+> `collect_vars` converted to a `Vec<char>`; once the `HashSet` went (hax cannot model it, and
+> dedup moved into `merge_vars`) the wrapper became a pass-through with an identical signature,
+> so `collect_vars` is now the recursive function itself and `collect_vars_aux.spec` has been
+> folded into `collect_vars.spec`. Mentions of the pair below describe the older shape.
+>
 > Two smaller drifts, same story: the variable type is now `u16`/`Std.U16`, not the `u8`/`Std.U8`
 > the `char`→`u8` note under "Progress" landed on (the ceiling moved from 255 to 65535 variables;
 > the substitution was mechanical and needed no proof restructuring), and `Map` grew a `Cnf.lean`
